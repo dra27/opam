@@ -25,6 +25,11 @@ AS_IF([test "x${enable_version_check}" != "xno"], [
     AC_MSG_ERROR([Your version of OCaml: $OCAMLVERSION is not supported]))
 ])
 
+AC_MSG_CHECKING([for compiler os_type])
+OS_TYPE=`$OCAML shell/print_config.ml os_type 2>/dev/null | fgrep -v "Cannot find" || $OCAMLC -config | fgrep os_type | sed -e "s/.*: //"`
+AS_IF([ test "$?" -eq 0 ],,[AC_MSG_ERROR([failed])] )
+AC_MSG_RESULT([$OS_TYPE])
+
 # Need the C compiler used for OCaml (important on Windows, as both x86 and x64 are used)
 AS_IF([test "$OCAMLBEST" = "opt"],[OCAMLBESTCC=$OCAMLOPT],[OCAMLBESTCC=$OCAMLC])
 AC_PROG_CC([$($OCAMLBESTCC -config | fgrep native_c_compiler | sed -e "s/native_c_compiler: \(.*\) .*/\1/") gcc cl cc])
@@ -40,6 +45,17 @@ else
   printf "include %s/Makefile.config\nall:\n\t@echo \$(ARCMD)" `$OCAMLC -where | cygpath -f -` > conftestMakefile
   AR=`make --no-print-directory -f conftestMakefile`
 fi
+
+AS_IF([ test "${OS_TYPE}" = "Win32"],[
+  WIN32=1
+  EXE=.exe
+],[
+  EXE=
+  WIN32=0
+])
+
+AC_SUBST(WIN32)
+AC_SUBST(EXE)
 
 AS_IF([ test "x$AR" != "x" ],[AC_CHECK_TOOL(AR,$AR)],[AC_SUBST(AR,"no")])
 
@@ -126,6 +142,7 @@ AC_CONFIG_FILES(
   src/state.META
   src/client.META
   src/admin.META
+  opam.install
 )
 AC_OUTPUT
 
