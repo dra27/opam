@@ -68,6 +68,7 @@ src/opamlfind
 ._bcdi
 aclocal.m4
 autom4te.cache
+opam.install
 # doc
 doc/dev-manual/*aux
 doc/dev-manual/*.html

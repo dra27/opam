@@ -607,6 +607,8 @@ OCAMLYACC
 OCAMLLEXDOTOPT
 OCAMLLEX
 AR
+EXE
+WIN32
 CYGPATH
 ocaml_4_02
 ocaml_4_01
@@ -2875,6 +2877,17 @@ x$ax_compare_version_B" | sed 's/^ *//' | sort -r | sed "s/x${ax_compare_version
 
 fi
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for compiler os_type" >&5
+$as_echo_n "checking for compiler os_type... " >&6; }
+OS_TYPE=`$OCAML shell/print_config.ml os_type 2>/dev/null | fgrep -v "Cannot find" || $OCAMLC -config | fgrep os_type | sed -e "s/.*: //"`
+if  test "$?" -eq 0 ; then :
+
+else
+  as_fn_error $? "failed" "$LINENO" 5
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $OS_TYPE" >&5
+$as_echo "$OS_TYPE" >&6; }
+
 # Need the C compiler used for OCaml (important on Windows, as both x86 and x64 are used)
 if test "$OCAMLBEST" = "opt"; then :
   OCAMLBESTCC=$OCAMLOPT
@@ -3690,6 +3703,21 @@ else
   printf "include %s/Makefile.config\nall:\n\t@echo \$(ARCMD)" `$OCAMLC -where | cygpath -f -` > conftestMakefile
   AR=`make --no-print-directory -f conftestMakefile`
 fi
+
+if  test "${OS_TYPE}" = "Win32"; then :
+
+  WIN32=1
+  EXE=.exe
+
+else
+
+  EXE=
+  WIN32=0
+
+fi
+
+
+
 
 if  test "x$AR" != "x" ; then :
   if test -n "$ac_tool_prefix"; then
@@ -4603,7 +4631,7 @@ if test "$prefix" = "NONE"; then
   prefix=$ac_default_prefix
 fi
 
-ac_config_files="$ac_config_files Makefile.config META src/core/opamVersion.ml"
+ac_config_files="$ac_config_files Makefile.config META src/core/opamVersion.ml opam.install"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5314,6 +5342,7 @@ do
     "Makefile.config") CONFIG_FILES="$CONFIG_FILES Makefile.config" ;;
     "META") CONFIG_FILES="$CONFIG_FILES META" ;;
     "src/core/opamVersion.ml") CONFIG_FILES="$CONFIG_FILES src/core/opamVersion.ml" ;;
+    "opam.install") CONFIG_FILES="$CONFIG_FILES opam.install" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac
