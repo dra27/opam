@@ -119,6 +119,11 @@ AS_IF([ test "${OS_TYPE}" = "Win32"],[
 AC_SUBST(WIN32)
 AC_SUBST(EXE)
 
+AS_IF([ test ${WIN32} -eq 1 -a "$GCC" = "yes"],[
+  CC="$CC -std=c89"
+  AC_SUBST(CC)
+])
+
 AC_MSG_CHECKING([for invocation options for $OCAMLDEP])
 AS_IF([ test ${WIN32} -eq 1 ],[
   OCAMLDEPARGS=-slash
