@@ -58,6 +58,7 @@ src/state/opamScript.ml
 src/core/opamVersion.ml
 src/core/opamScript.ml
 src/core/opamCoreConfig.ml
+src/core/opamOther.c
 src/format/opamLexer.ml
 src/format/opamLineLexer.ml
 src/format/opamParser.ml
