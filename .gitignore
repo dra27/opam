@@ -51,6 +51,7 @@ opam-admin.top
 *.a
 *.lib
 *.dll
+*.so
 *.o
 *.obj
 *.install

@@ -610,6 +610,7 @@ LIB_PREPEND
 PATH_PREPEND
 EXE
 WIN32
+CONF_CFLAGS
 CONF_OCAMLFLAGS
 MCCS_ENABLED
 DEVELOPER_CACHE
@@ -3880,12 +3881,19 @@ fi
 if test "x${CI}" != "x" -o "x${enable_developer_mode}" = "xyes"; then :
 
   CONF_OCAMLFLAGS="-warn-error A"
+  if test "x${CCOMP_TYPE}" = "xmsvc"; then :
+  CONF_CFLAGS=/WX
+else
+  CONF_CFLAGS=-Werror
+fi
 
 else
 
   CONF_OCAMLFLAGS=
+  CONF_CFLAGS=
 
 fi
+
 
 
 if  test "${OCAML_OS_TYPE}" = "Win32"; then :
@@ -3902,6 +3910,13 @@ fi
 
 
 
+
+if  test ${WIN32} -eq 1 -a "$GCC" = "yes"; then :
+
+  CC="$CC -D inline=__inline__ -std=c89"
+
+
+fi
 
 if  test ${WIN32} -eq 1 -a "$GCC" != "yes" ; then :
 

@@ -107,10 +107,13 @@ AS_IF([test "x${with_mccs}" = "xno"], [AC_SUBST(MCCS_ENABLED,false)], [AC_SUBST(
 
 AS_IF([test "x${CI}" != "x" -o "x${enable_developer_mode}" = "xyes"], [
   CONF_OCAMLFLAGS="-warn-error A"
+  AS_IF([test "x${CCOMP_TYPE}" = "xmsvc"],[CONF_CFLAGS=/WX],[CONF_CFLAGS=-Werror])
 ],[
   CONF_OCAMLFLAGS=
+  CONF_CFLAGS=
 ])
 AC_SUBST(CONF_OCAMLFLAGS)
+AC_SUBST(CONF_CFLAGS)
 
 AS_IF([ test "${OCAML_OS_TYPE}" = "Win32"],[
   WIN32=1
@@ -122,6 +125,11 @@ AS_IF([ test "${OCAML_OS_TYPE}" = "Win32"],[
 
 AC_SUBST(WIN32)
 AC_SUBST(EXE)
+
+AS_IF([ test ${WIN32} -eq 1 -a "$GCC" = "yes"],[
+  CC="$CC -D inline=__inline__ -std=c89"
+  AC_SUBST(CC)
+])
 
 AS_IF([ test ${WIN32} -eq 1 -a "$GCC" != "yes" ],[
   AC_MSG_CHECKING([whether Microsoft Linker needs a PATH shim])
