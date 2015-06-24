@@ -394,4 +394,4 @@ let () =
   | OpamStd.Sys.Exit i -> exit i
   | e ->
     OpamConsole.error "Failure during install";
-    prerr_string (Printexc.to_string e); exit 1
+    Printf.eprintf "%s\n" (Printexc.to_string e); exit 1
