@@ -53,6 +53,7 @@ ocp-build.root.old.old
 *.a
 *.lib
 *.dll
+*.so
 *.o
 *.obj
 *.install
