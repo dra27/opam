@@ -66,6 +66,8 @@ val r : t ref
 
 val update : ?noop:_ -> (unit -> unit) options_fun
 
+val getpid : unit -> int
+
 (** [true] if OPAM was compiled in developer mode *)
 val developer : bool
 

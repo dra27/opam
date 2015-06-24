@@ -4058,6 +4058,13 @@ fi
 
 
 
+if  test ${WIN32} -eq 1 -a "$GCC" = "yes"; then :
+
+  CC="$CC -std=c89"
+
+
+fi
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for invocation options for $OCAMLDEP" >&5
 $as_echo_n "checking for invocation options for $OCAMLDEP... " >&6; }
 if  test ${WIN32} -eq 1 ; then :

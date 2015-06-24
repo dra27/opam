@@ -93,7 +93,7 @@ ALWAYS:
 	@
 
 # -- opam-core -- #
-opam-core.cma opam-core.cmxa: state/opamScript.ml core/opamCompat.ml core/opamCompat.mli ALWAYS
+opam-core.cma opam-core.cmxa: state/opamScript.ml core/opamCompat.ml core/opamCompat.mli core/opamOther.c ALWAYS
 
 state/opamScript.ml: ../shell core/opamVersion.ml
 	ocaml ../shell/crunch.ml "complete"     < ../shell/opam_completion.sh > $@
@@ -109,6 +109,10 @@ endif
 core/opamCompat.%: core/opamCompat.%.$(COMPATV)
 	cp -f $< $@
 
+core/opamOther.c: core/stubs.c
+	fgrep -A2 "CAMLprim" $^ | sed -e "s/--/  CAMLreturn(Val_unit);\n}\n/" > $@
+	printf "  CAMLreturn(Val_unit);\n}">> $@
+
 SRC_core = \
   opamCompat.ml \
   opamJson.ml \
@@ -121,7 +125,8 @@ SRC_core = \
   opamSystem.ml \
   opamParallel.ml \
   opamFilename.ml \
-  opamUrl.ml
+  opamUrl.ml \
+  opamWindows.c
 
 define PROJ_core
   SOURCES = $(call addmli,core,$(SRC_core))
@@ -346,7 +351,7 @@ export OCAMLMAKEFILE
 
 clean-aux:
 	rm -f $(foreach e,lib a cma cmxa,$(wildcard *.$e))
-	rm -f client/opamGitVersion.ml state/opamScript.ml core/opamCompat.ml core/opamCompat.mli ../opam-lib.install
+	rm -f client/opamGitVersion.ml state/opamScript.ml core/opamCompat.ml core/opamCompat.mli core/opamOther.c ../opam-lib.install
 	rm -f */*Parser.ml */*Parser.mli */*Lexer.ml
 	rm -f $(foreach e,obj o cmo cmx cmxs cmi cmt cmti,$(wildcard */*.$e))
 
