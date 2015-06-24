@@ -17,6 +17,11 @@ match Sys.argv.(1) with
     Printf.printf "4.0%d" ocaml_minor
   else
     Printf.printf "4.03"
+| "cflags" ->
+    if Config.ccomp_type = "msvc" then
+      Printf.printf "/WX"
+    else
+      Printf.printf "-Werror"
 | _ ->
     Printf.eprintf "Unrecognised context instruction: %s\n" Sys.argv.(1);
     exit 1
