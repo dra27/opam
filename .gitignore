@@ -38,7 +38,10 @@ ocp-build.root.old.old
 *.cmxa
 *.cmxs
 *.a
+*.lib
+*.dll
 *.o
+*.obj
 META
 opam-lib*.install
 Makefile.config
@@ -55,8 +58,12 @@ src/format/opamParser.mli
 src/core/opamCompat.ml
 src/core/opamCompat.mli
 src/opam
+src/opam.exe
 src/opam-admin
+src/opam-admin.exe
+src/opam-admin.top.exe
 src/opam-installer
+src/opam-installer.exe
 src/opam-check
 src/opamlfind
 src/opam-admin.top
