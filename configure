@@ -616,6 +616,7 @@ WIN32
 CYGPATH
 ocaml_4_03
 ocaml_4_02
+CONF_CFLAGS
 CONF_OCAMLFLAGS
 DEVELOPER_CACHE
 DEVELOPER
@@ -3856,12 +3857,19 @@ DEVELOPER_CACHE=$(echo ${DEVELOPER_CACHE} | sed -e "s/\\\\/\\\\\\\\/g")
 if test "x${CI}" != "x" -o "x${enable_developer_mode}" = "xyes"; then :
 
   CONF_OCAMLFLAGS="-warn-error A"
+  if test "x${CCOMP_TYPE}" = "xmsvc"; then :
+  CONF_CFLAGS=/WX
+else
+  CONF_CFLAGS=-Werror
+fi
 
 else
 
   CONF_OCAMLFLAGS=
+  CONF_CFLAGS=
 
 fi
+
 
 
 
@@ -4053,6 +4061,13 @@ fi
 
 
 
+
+if  test ${WIN32} -eq 1 -a "$GCC" = "yes"; then :
+
+  CC="$CC -D inline=__inline__ -std=c89"
+
+
+fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for invocation options for $OCAMLDEP" >&5
 $as_echo_n "checking for invocation options for $OCAMLDEP... " >&6; }

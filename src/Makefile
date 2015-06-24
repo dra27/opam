@@ -20,12 +20,13 @@ all:
 
 OCAMLFLAGS = -g -w +a-4-44-48 -bin-annot -short-paths $(CONF_OCAMLFLAGS)
 OCAMLLDFLAGS = -g -w +a-4-44-48 -bin-annot $(CONF_OCAMLFLAGS)
+CFLAGS = $(CONF_CFLAGS)
 ifeq ($(OCAML_4_02),true)
   OCAMLFLAGS += -safe-string
   OCAMLLDFLAGS += -safe-string
 endif
 
-export OCAMLFLAGS OCAMLLDFLAGS
+export OCAMLFLAGS OCAMLLDFLAGS CFLAGS
 
 BINTARGET = $(if $(USE_BYTE),byte-code,native-code)
 
@@ -119,7 +120,8 @@ SRC_core = \
   opamHash.ml \
   opamFilename.ml \
   opamDirTrack.ml \
-  opamUrl.ml
+  opamUrl.ml \
+  opamWindows.c
 
 define PROJ_core
   SOURCES = $(call addmli,core,$(SRC_core))
