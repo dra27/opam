@@ -9,3 +9,8 @@
   ((targets (ocaml-context-flags.sexp))
    (deps (../shell/context_flags.ml))
    (action (with-stdout-to ${@} (run ocaml ${^} flags)))))
+
+(rule
+  ((targets (c-flags.sexp))
+   (deps (../shell/context_flags.ml))
+   (action (with-stdout-to ${@} (run ocaml ${^} cflags)))))
