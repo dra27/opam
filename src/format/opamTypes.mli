@@ -400,6 +400,8 @@ type 'a switch_map = 'a OpamSwitch.Map.t
 
 (** The different kinds of locks *)
 type lock =
+  (** No locks acquired at all. *)
+  | Without_lock of (unit -> unit)
 
   | Read_lock of (unit -> unit)
   (** The function does not modify anything, but it needs the state

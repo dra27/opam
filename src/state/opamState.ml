@@ -3135,6 +3135,8 @@ let check f =
       (OpamFilename.Dir.to_string root);
 
   match f with
+    | Without_lock f ->
+        f ()
 
     | Global_lock f ->
       (* Take the global lock *)
