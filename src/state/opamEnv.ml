@@ -126,7 +126,8 @@ let expand (updates: env_update list) : env =
   let env =
     List.fold_left (fun env ((var, _, _, _) as upd) ->
         let v =
-          try List.find (fun (v, _, _) -> v = var) env |> fun (_, v, _) -> v
+          let f, var = if OpamStd.Sys.(os () = Win32) then String.uppercase, String.uppercase var else (fun x -> x), var in
+          try List.find (fun (v, _, _) -> f v = var) env |> fun (_, v, _) -> v
           with Not_found ->
           try List.assoc var defs
           with Not_found -> ""
@@ -138,8 +139,15 @@ let expand (updates: env_update list) : env =
 
 let add (env: env) (updates: env_update list) =
   let env =
-    List.filter (fun (k,_,_) -> List.for_all (fun (u,_,_,_) -> u <> k) updates)
-      env
+    if OpamStd.(Sys.os () = Sys.Win32) then
+      (*
+       * Environment variable names are case insensitive on Windows
+       *)
+      let updates = List.rev_map (fun (u,_,_,_) -> (String.uppercase u, "", "", None)) updates in
+      List.filter (fun (k,_,_) -> let k = String.uppercase k in List.for_all (fun (u,_,_,_) -> u <> k) updates) env
+    else
+      List.filter (fun (k,_,_) -> List.for_all (fun (u,_,_,_) -> u <> k) updates)
+        env
   in
   env @ expand updates
 
