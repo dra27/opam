@@ -75,8 +75,9 @@ let switch_to_updated_self debug opamroot =
 let global_options =
   let no_self_upgrade =
     mk_flag ~section:global_option_section ["no-self-upgrade"]
-      "Opam will replace itself with a newer binary found \
-       at $(b,OPAMROOT/opam) if present. This disables this behaviour." in
+      (Printf.sprintf
+        "Opam will replace itself with a newer binary found \
+         at $(b,OPAMROOT%sopam) if present. This disables this behaviour." (Manpage.escape Filename.dir_sep)) in
   let self_upgrade no_self_upgrade options =
     let self_upgrade_status =
       if OpamStd.Config.env_string "NOSELFUPGRADE" =
@@ -125,33 +126,42 @@ type command = unit Term.t * Term.info
 let init_doc = "Initialize opam state."
 let init =
   let doc = init_doc in
+  let sep = Manpage.escape Filename.dir_sep in
   let man = [
     `S "DESCRIPTION";
-    `P "The $(b,init) command initialises a local \"opam root\" (by default, \
-        $(i,~/.opam/)) that holds opam's data and packages. This is a \
-        necessary step for normal operation of opam.";
+    `P (Printf.sprintf
+         "The $(b,init) command initialises a local \"opam root\" (by default, \
+          $(i,~%s.opam%s)) that holds opam's data and packages. This is a \
+          necessary step for normal operation of opam."
+         sep sep);
     `P "Additionally, it prompts the user with the option to add a \
         configuration hook in their shell init files. The initial software \
         repositories are fetched, and an initial 'switch' can also be \
         installed, according to the configuration and options.";
-    `P "The initial repository and defaults can be set through a \
-        configuration file found at $(i,~/.opamrc) or $(i,/etc/opamrc).";
+    `P (Printf.sprintf
+         "The initial repository and defaults can be set through a \
+          configuration file found at $(i,~%s.opamrc) or $(i,/etc/opamrc)."
+        sep);
     `P "For further customisation once opam has been initialised, see \
         $(b,opam switch) and $(b,opam repository).";
     `S "ARGUMENTS";
     `S "OPTIONS";
     `S "CONFIGURATION FILE";
-    `P "Any field from the built-in initial configuration can be overriden \
-        through $(i,~/.opamrc), $(i,/etc/opamrc), or a file supplied with \
-        $(i,--config). The default configuration for this version of opam is:";
+    `P (Printf.sprintf
+         "Any field from the built-in initial configuration can be overriden \
+          through $(i,~%s.opamrc), $(i,/etc/opamrc), or a file supplied with \
+          $(i,--config). The default configuration for this version of opam is:"
+         sep);
     `Pre (OpamFile.InitConfig.write_to_string (OpamInitDefaults.init_config));
-    `P "Additional fields in the same format as for the $(i,~/.opam/config) \
-        file are also supported: $(b,jobs:), $(b,download-command:), \
-        $(b,download-jobs:), $(b,solver-criteria:), \
-        $(b,solver-upgrade-criteria:), \
-        $(b,solver-fixup-criteria:), $(b,solver:), $(b,wrap-build-commands:), \
-        $(b,wrap-install-commands:), $(b,wrap-remove-commands:), \
-        $(b,global-variables:).";
+    `P (Printf.sprintf
+         "Additional fields in the same format as for the $(i,~%s.opam%sconfig) \
+          file are also supported: $(b,jobs:), $(b,download-command:), \
+          $(b,download-jobs:), $(b,solver-criteria:), \
+          $(b,solver-upgrade-criteria:), \
+          $(b,solver-fixup-criteria:), $(b,solver:), $(b,wrap-build-commands:), \
+          $(b,wrap-install-commands:), $(b,wrap-remove-commands:), \
+          $(b,global-variables:)."
+         sep sep);
     `S OpamArg.build_option_section;
   ] in
   let compiler =
@@ -189,8 +199,9 @@ let init =
   in
   let no_config_file =
     mk_flag ["no-opamrc"]
-      "Don't read `/etc/opamrc' or `~/.opamrc': use the default settings and \
-       the files specified through $(b,--config) only"
+      (Printf.sprintf
+      "Don't read `/etc/opamrc' or `~%s.opamrc': use the default settings and \
+       the files specified through $(b,--config) only" sep)
   in
   let bypass_checks =
     mk_flag ["bypass-checks"]
@@ -660,6 +671,7 @@ end
 let config_doc = "Display configuration options for packages."
 let config =
   let doc = config_doc in
+  let sep = Manpage.escape Filename.dir_sep in
   let commands = [
     "env", `env, [],
     "Returns the bindings for the environment variables set in the current \
@@ -673,16 +685,20 @@ let config =
      revert-env)) undoes what $(b,eval \\$(opam config env\\)) did, as much as \
      possible.";
     "setup", `setup, [],
-    "Configure global and user parameters for opam. Use $(b, opam config \
-     setup) to display more options. Use $(b,--list) to display the current \
-     configuration options. You can use this command to automatically update: \
-     (i) user-configuration files such as ~/.profile; and (ii) \
-     global-configuration files controlling which shell scripts are loaded on \
-     startup, such as auto-completion. These configuration options can be \
-     updated using $(b,opam config setup --global) to setup the global \
-     configuration files stored in $(b,~/.opam/opam-init/) and $(b,opam config \
-     setup --user) to setup the user ones. To modify both the global and user \
-     configuration, use $(b,opam config setup --all).";
+    (Printf.sprintf
+      "Configure global and user parameters for opam. Use $(b, opam config \
+       setup) to display more options. Use $(b,--list) to display the current \
+       configuration options. You can use this command to automatically update: \
+       (i) user-configuration files such as ~%s.profile; and (ii) \
+       global-configuration files controlling which shell scripts are loaded on \
+       startup, such as auto-completion. These configuration options can be \
+       updated using $(b,opam config setup --global) to setup the global \
+       configuration files stored in $(b,%s) and $(b,opam config \
+       setup --user) to setup the user ones. To modify both the global and user \
+       configuration, use $(b,opam config setup --all)."
+      sep
+      (Filename.concat (Filename.concat (Filename.concat "~" ".opam") "opam-init") ""
+       |> Manpage.escape));
     "exec", `exec, ["[--] COMMAND"; "[ARG]..."],
     "Execute $(i,COMMAND) with the correct environment variables. This command \
      can be used to cross-compile between switches using $(b,opam config exec \
@@ -738,10 +754,10 @@ let config =
   let all_doc         = "Enable all the global and user configuration options." in
   let global_doc      = "Enable all the global configuration options." in
   let user_doc        = "Enable all the user configuration options." in
-  let profile_doc     = "Modify ~/.profile (or ~/.zshrc, etc., depending on your shell) to \
-                         setup an opam-friendly environment when starting a new shell." in
+  let profile_doc     = Printf.sprintf "Modify ~%s.profile (or ~%s.zshrc, etc., depending on your shell) to \
+                         setup an opam-friendly environment when starting a new shell." sep sep in
   let no_complete_doc = "Do not load the auto-completion scripts in the environment." in
-  let dot_profile_doc = "Select which configuration file to update (default is ~/.profile)." in
+  let dot_profile_doc = Printf.sprintf "Select which configuration file to update (default is ~%s.profile)." sep in
   let list_doc        = "List the current configuration." in
   let profile         = mk_flag ["profile"]        profile_doc in
   let no_complete     = mk_flag ["no-complete"]    no_complete_doc in
@@ -1793,6 +1809,7 @@ let get_repos_rt gt repos =
 let switch_doc = "Manage multiple installation prefixes."
 let switch =
   let doc = switch_doc in
+  let sep = Manpage.escape Filename.dir_sep in
   let commands = [
     "create", `install, ["SWITCH"; "[COMPILER]"],
     "Create a new switch, and install the given compiler there. $(i,SWITCH) \
@@ -1840,16 +1857,17 @@ let switch =
         switch set) to set the currently active switch. Without argument, \
         lists installed switches, with one switch argument, defaults to \
         $(b,set).";
-    `P ("Switch handles $(i,SWITCH) can be either a plain name, for switches \
-         that will be held inside $(i,~/.opam), or a directory name, which in \
-         that case is the directory where the switch prefix will be installed, as "
-        ^ OpamSwitch.external_dirname ^
-        ". Opam will automatically select a switch by that name found in the \
-         current directory or its parents, unless $(i,OPAMSWITCH) is set or \
-         $(b,--switch) is specified. When creating a directory switch, if \
-         package definitions are found locally, the user is automatically \
-         prompted to install them after the switch is created unless \
-         $(b,--no-install) is specified.");
+    `P (Printf.sprintf
+         "Switch handles $(i,SWITCH) can be either a plain name, for switches \
+          that will be held inside $(i,~%s.opam), or a directory name, which in \
+          that case is the directory where the switch prefix will be installed, as \
+          %s. Opam will automatically select a switch by that name found in the \
+          current directory or its parents, unless $(i,OPAMSWITCH) is set or \
+          $(b,--switch) is specified. When creating a directory switch, if \
+          package definitions are found locally, the user is automatically \
+          prompted to install them after the switch is created unless \
+          $(b,--no-install) is specified."
+         sep (Manpage.escape OpamSwitch.external_dirname));
     `P "$(b,opam switch set) sets the default switch globally, but it is also \
         possible to select a switch in a given shell session, using the \
         environment. For that, use $(i,eval \\$(opam env \
@@ -2560,8 +2578,8 @@ let source =
           OpamConsole.error_and_exit `Sync_error "%s is not available" u
         | Result _ | Up_to_date _ ->
           OpamConsole.formatted_msg
-            "Successfully fetched %s development repo to ./%s/\n"
-            (OpamPackage.name_to_string nv) (OpamPackage.name_to_string nv)
+            "Successfully fetched %s development repo to .%s%s%s\n"
+            (OpamPackage.name_to_string nv) Filename.dir_sep (OpamPackage.name_to_string nv) Filename.dir_sep
     ) else (
       let job =
         let open OpamProcess.Job.Op in
@@ -2756,6 +2774,7 @@ let lint =
 let clean_doc = "Cleans up opam caches"
 let clean =
   let doc = clean_doc in
+  let sep = Manpage.escape Filename.dir_sep in
   let man = [
     `S "DESCRIPTION";
     `P "Cleans up opam caches, reclaiming some disk space. If no options are \
@@ -2768,8 +2787,9 @@ let clean =
   in
   let download_cache =
     mk_flag ["c"; "download-cache"]
-      "Clear the cache of downloaded files (\\$OPAMROOT/download-cache), as \
-       well as the obsolete \\$OPAMROOT/archives, if that exists."
+      (Printf.sprintf
+        "Clear the cache of downloaded files (\\$OPAMROOT%sdownload-cache), as \
+         well as the obsolete \\$OPAMROOT%sarchives, if that exists." sep sep)
   in
   let repos =
     mk_flag ["unused-repositories"]
