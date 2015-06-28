@@ -24,8 +24,12 @@ let reset_env = lazy (
   let env =
     let path_sep = OpamStd.Sys.path_sep () in
     let path_sep_str = String.make 1 path_sep in
+    let f = if OpamStd.(Sys.os () = Sys.Win32) then
+      String.uppercase
+    else
+      fun x -> x in
     List.rev_map (fun (k,v as c) ->
-      match k with
+      match f k with
       | "PATH" ->
         k, String.concat path_sep_str
           (OpamStd.Env.reset_value path_sep
