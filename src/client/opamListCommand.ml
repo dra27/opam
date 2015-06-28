@@ -455,7 +455,7 @@ let display st ~header ~format ~dependency_order ~all_versions packages =
   List.rev |>
   add_head |>
   OpamStd.Format.align_table |>
-  OpamStd.Format.print_table ~cut:`Truncate stdout ~sep:" "
+  OpamStd.Format.print_table ~cut:`Truncate (OpamConsole.msg "%s") ~sep:" "
 
 let load_maybe gt =
   let rt = OpamRepositoryState.load `Lock_none gt in
@@ -604,7 +604,7 @@ let info gt ~fields ~raw_opam ~where atoms =
         fields
     in
     OpamStd.Format.align_table tbl |>
-    OpamStd.Format.print_table stdout ~sep:" ";
+    OpamStd.Format.print_table ~cut:`Wrap (OpamConsole.msg "%s") ~sep:" ";
   in
   OpamPackage.names_of_packages packages |>
   OpamPackage.Name.Set.iter (fun name ->

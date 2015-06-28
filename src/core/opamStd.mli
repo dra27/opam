@@ -268,10 +268,9 @@ module Format : sig
 
   (** {4 Printing} *)
 
-  (** Prints a table; generally called on tables passed through [align_table].
-      The default [cut] is to wrap on stdout, stderr, keep as-is otherwise *)
+  (** Prints a table; generally called on tables passed through [align_table]. *)
   val print_table:
-    ?cut:[`Wrap | `Truncate | `None] -> out_channel -> sep:string ->
+    cut:[`Wrap | `Truncate | `None] -> (string -> unit) -> sep:string ->
     string list list -> unit
 end
 
@@ -312,6 +311,34 @@ module Env : sig
   val getopt: string -> string option
 
   val list: unit -> (string * string) list
+end
+
+(** {2 Windows-specific functions} *)
+module Win32 : sig
+  (** CONSOLE_SCREEN_BUFFER_INFO (see https://msdn.microsoft.com/en-us/library/windows/desktop/ms682093.aspx)
+  *)
+  type console_screen_buffer_info = {
+    size: int * int; (** width and height of the screen buffer *)
+    cursorPosition: int * int; (** current position of the console cursor (caret) *)
+    attributes: int; (** screen attributes; see https://msdn.microsoft.com/en-us/library/windows/desktop/ms682088.aspx#_win32_character_attributes *)
+    window: int * int * int * int; (** Coordinates of the upper-left and lower-right corners of the display window within the screen buffer *)
+    maximumWindowSize: int * int; (** Maximum displayable size of the console for this screen buffer *)
+  }
+
+  (** Win32 API handles *)
+  type handle
+
+  external getStdHandle : int -> handle = "OPAMW_GetStdHandle"
+  (** Return a standard handle. Standard output is handle -11 (winbase.h; STD_OUTPUT_HANDLE)
+  *)
+
+  external getConsoleScreenBufferInfo : handle -> console_screen_buffer_info = "OPAMW_GetConsoleScreenBufferInfo"
+  (** Return current Console screen buffer information
+  *)
+
+  external setConsoleTextAttribute : handle -> int -> unit = "OPAMW_SetConsoleTextAttribute"
+  (** Set the consoles text attribute setting
+  *)
 end
 
 (** {2 System query and exit handling} *)

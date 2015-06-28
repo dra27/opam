@@ -518,7 +518,21 @@ module Env = struct
 
 end
 
+module Win32 = struct
+  type console_screen_buffer_info = {
+    size: int * int;
+    cursorPosition: int * int;
+    attributes: int;
+    window: int * int * int * int;
+    maximumWindowSize: int * int;
+  }
 
+  type handle
+
+  external getStdHandle : int -> handle = "OPAMW_GetStdHandle"
+  external getConsoleScreenBufferInfo : handle -> console_screen_buffer_info = "OPAMW_GetConsoleScreenBufferInfo"
+  external setConsoleTextAttribute : handle -> int -> unit = "OPAMW_SetConsoleTextAttribute"
+end
 
 module OpamSys = struct
 
@@ -558,6 +572,11 @@ module OpamSys = struct
         Unix.Unix_error _ | Sys_error _ | Failure _  | End_of_file | Not_found ->
           default_columns
 
+  let win32_get_console_width () =
+    let hConsoleOutput = Win32.getStdHandle (-11) in
+    let {Win32.size = (width, _); _} = Win32.getConsoleScreenBufferInfo hConsoleOutput in
+    width
+
   let terminal_columns =
     let v = ref (lazy (get_terminal_columns ())) in
     let () =
@@ -566,10 +585,16 @@ module OpamSys = struct
                (fun _ -> v := lazy (get_terminal_columns ())))
       with Invalid_argument _ -> ()
     in
-    fun () ->
-      if tty_out
-      then Lazy.force !v
-      else default_columns
+    if Sys.os_type = "Win32" then
+      fun () ->
+        if tty_out
+        then win32_get_console_width ()
+        else default_columns
+    else
+      fun () ->
+        if tty_out
+        then Lazy.force !v
+        else default_columns
 
   let home =
     let home = lazy (try Env.get "HOME" with Not_found -> Sys.getcwd ()) in
@@ -837,12 +862,7 @@ module OpamFormat = struct
     | [a;b] -> Printf.sprintf "%s %s %s" a last b
     | h::t  -> Printf.sprintf "%s, %s" h (pretty_list t)
 
-  let print_table ?cut oc ~sep =
-    let cut =
-      match cut with
-      | None -> if oc = stdout || oc = stderr then `Wrap else `None
-      | Some c -> c
-    in
+  let print_table ~cut oc ~sep =
     List.iter (fun l ->
         let str = match cut with
           | `None ->
@@ -868,8 +888,8 @@ module OpamFormat = struct
               in
               String.concat sep (List.rev (last::rest))
         in
-        output_string oc str;
-        output_char oc '\n')
+        oc str;
+        oc "\n")
 
 end
 
