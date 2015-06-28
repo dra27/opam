@@ -198,7 +198,7 @@ let print_list t ~uninst_versions ~short ~shortv ~order names =
           if OpamPackage.Name.Set.mem name roots then
             OpamConsole.colorise `underline name_str
           else name_str in
-        Printf.printf "%s\n" colored_name
+        OpamConsole.msg "%s\n" colored_name
     else
     let synop_len =
       let col = OpamStd.Sys.terminal_columns () in
@@ -224,7 +224,7 @@ let print_list t ~uninst_versions ~short ~shortv ~order names =
           else
             vs, OpamConsole.colorise `magenta vs, ""
       in
-      Printf.printf "%s  %s%s  %s\n"
+      OpamConsole.msg "%s  %s%s  %s\n"
         (OpamStd.Format.indent_left colored_name ~visual:name_str max_n)
         (OpamStd.Format.indent_right colored_version ~visual:sversion max_v)
         pinned

@@ -490,7 +490,21 @@ module Env = struct
 
 end
 
+module Win32 = struct
+  type console_screen_buffer_info = {
+    size: int * int;
+    cursorPosition: int * int;
+    attributes: int;
+    window: int * int * int * int;
+    maximumWindowSize: int * int;
+  }
 
+  type handle
+
+  external getStdHandle : int -> handle = "OPAMW_GetStdHandle"
+  external getConsoleScreenBufferInfo : handle -> console_screen_buffer_info = "OPAMW_GetConsoleScreenBufferInfo"
+  external setConsoleTextAttribute : handle -> int -> unit = "OPAMW_SetConsoleTextAttribute"
+end
 
 module OpamSys = struct
 
@@ -530,6 +544,11 @@ module OpamSys = struct
         with Not_found | Failure _ ->
           default_columns
 
+  let win32_get_console_width () =
+    let hConsoleOutput = Win32.getStdHandle (-11) in
+    let {Win32.size = (width, _); _} = Win32.getConsoleScreenBufferInfo hConsoleOutput in
+    width
+
   let terminal_columns =
     let v = ref (lazy (get_terminal_columns ())) in
     let () =
@@ -538,10 +557,16 @@ module OpamSys = struct
                (fun _ -> v := lazy (get_terminal_columns ())))
       with Invalid_argument _ -> ()
     in
-    fun () ->
-      if tty_out
-      then Lazy.force !v
-      else default_columns
+    if Sys.os_type = "Win32" then
+      fun () ->
+        if tty_out
+        then win32_get_console_width ()
+        else default_columns
+    else
+      fun () ->
+        if tty_out
+        then Lazy.force !v
+        else default_columns
 
   let home =
     let home = lazy (try Env.get "HOME" with Not_found -> Sys.getcwd ()) in
@@ -801,9 +826,9 @@ module OpamFormat = struct
 
   let print_table oc ~sep =
     List.iter (fun l ->
-        let l = match l with s::l -> output_string oc s; l | [] -> [] in
-        List.iter (fun s -> output_string oc sep; output_string oc s) l;
-        output_char oc '\n')
+        let l = match l with s::l -> oc s; l | [] -> [] in
+        List.iter (fun s -> oc sep; oc s) l;
+        oc "\n")
 
 end
 

@@ -325,4 +325,4 @@ let list ~short () =
     @ extra
   in
   let table = List.map lines (OpamPackage.Name.Map.bindings t.pinned) in
-  OpamStd.Format.print_table stdout ~sep:"  " (OpamStd.Format.align_table table)
+  OpamStd.Format.print_table (OpamConsole.msg "%s") ~sep:"  " (OpamStd.Format.align_table table)
