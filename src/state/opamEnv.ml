@@ -620,7 +620,7 @@ let setup_interactive root ~dot_profile shell =
   OpamConsole.header_msg "Required setup - please read";
   OpamConsole.msg
     "\n\
-    \  In normal operation, opam only alters files within ~/.opam.\n\
+    \  In normal operation, opam only alters files within ~%s.opam.\n\
      \n\
     \  However, to best integrate with your system, some environment variables\n\
     \  should be set. If you allow it to, this initialisation step will update\n\
@@ -634,6 +634,7 @@ let setup_interactive root ~dot_profile shell =
     \    %s\n\
      \n\
     \  You can always re-run this setup with 'opam init' later.\n\n"
+    Filename.dir_sep
     (OpamConsole.colorise `bold @@ string_of_shell shell)
     (OpamConsole.colorise `cyan @@ OpamFilename.prettify dot_profile)
     (OpamConsole.colorise `bold @@ source root ~shell (init_file shell))
