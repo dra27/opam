@@ -145,22 +145,22 @@ let run default commands =
     flush stdout;
     flush stderr;
     if (OpamConsole.verbose ()) then
-      Printf.eprintf "'%s' failed.\n" (String.concat " " (Array.to_list Sys.argv));
+      OpamConsole.errmsg "'%s' failed.\n" (String.concat " " (Array.to_list Sys.argv));
     let exit_code = ref 1 in
     begin match e with
       | OpamStd.Sys.Exit i ->
         exit_code := i;
         if (OpamConsole.debug ()) && i <> 0 then
-          Printf.eprintf "%s" (OpamStd.Exn.pretty_backtrace e)
+          OpamConsole.errmsg "%s" (OpamStd.Exn.pretty_backtrace e)
       | OpamSystem.Internal_error _ ->
-        Printf.eprintf "%s\n" (Printexc.to_string e)
+        OpamConsole.errmsg "%s\n" (Printexc.to_string e)
       | OpamSystem.Process_error result ->
-        Printf.eprintf "%s Command %S failed:\n%s\n"
+        OpamConsole.errmsg "%s Command %S failed:\n%s\n"
           (OpamConsole.colorise `red "[ERROR]")
           (try List.assoc "command" result.OpamProcess.r_info with
            | Not_found -> "")
           (Printexc.to_string e);
-        Printf.eprintf "%s" (OpamStd.Exn.pretty_backtrace e);
+        OpamConsole.errmsg "%s" (OpamStd.Exn.pretty_backtrace e);
       | Sys.Break
       | OpamParallel.Errors (_, (_, Sys.Break)::_, _) ->
         exit_code := 130
@@ -169,11 +169,11 @@ let run default commands =
            signal) and there is no way around at the moment *)
         exit_code := 141
       | Failure msg ->
-        Printf.eprintf "Fatal error: %s\n" msg;
-        Printf.eprintf "%s" (OpamStd.Exn.pretty_backtrace e);
+        OpamConsole.errmsg "Fatal error: %s\n" msg;
+        OpamConsole.errmsg "%s" (OpamStd.Exn.pretty_backtrace e);
       | _ ->
-        Printf.eprintf "Fatal error:\n%s\n" (Printexc.to_string e);
-        Printf.eprintf "%s" (OpamStd.Exn.pretty_backtrace e);
+        OpamConsole.errmsg "Fatal error:\n%s\n" (Printexc.to_string e);
+        OpamConsole.errmsg "%s" (OpamStd.Exn.pretty_backtrace e);
     end;
     exit !exit_code
 
