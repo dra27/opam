@@ -18,17 +18,20 @@ let debug () = OpamCoreConfig.(!r.debug_level) > 0
 let verbose () = OpamCoreConfig.(!r.verbose_level) > 0
 
 let dumb_term = lazy (
-  try OpamStd.Env.get "TERM" = "dumb" with Not_found -> true
+  try OpamStd.Env.get "TERM" = "dumb" with Not_found -> OpamStd.(Sys.os () <> Sys.Win32)
 )
+
+let win32_color = ref true
+let win32_ecolor = ref true
 
 let color =
   let auto = lazy (
     OpamStd.Sys.tty_out && not (Lazy.force dumb_term)
   ) in
   fun () -> match OpamCoreConfig.(!r.color) with
-    | `Always -> true
+    | `Always -> !win32_color || !win32_ecolor
     | `Never -> false
-    | `Auto -> Lazy.force auto
+    | `Auto -> Lazy.force auto && (!win32_color || !win32_ecolor)
 
 let disp_status_line () =
   match OpamCoreConfig.(!r.disp_status_line) with
@@ -100,17 +103,148 @@ let colorise' styles s =
       (String.concat ";" (List.map style_code styles))
       s
 
-let acolor_with_width width c oc s =
+let acolor_with_width width c () s =
   let str = colorise c s in
-  output_string oc str;
+  str ^
   match width with
-  | None   -> ()
+  | None   -> ""
   | Some w ->
-    if String.length str >= w then ()
-    else output_string oc (String.make (w-String.length str) ' ')
+    if String.length str >= w then ""
+    else String.make (w-String.length str) ' '
 
-let acolor c oc s = acolor_with_width None c oc s
-let acolor_w width c oc s = acolor_with_width (Some width) c oc s
+let acolor c () = colorise c
+let acolor_w width c oc s = output_string oc (acolor_with_width (Some width) c () s)
+
+(*
+ * Layout of attributes (wincon.h)
+ *
+ * Bit 0 - Blue --\
+ * Bit 1 - Green   } Foreground
+ * Bit 2 - Red    /
+ * Bit 3 - Bold -/
+ * Bit 4 - Blue --\
+ * Bit 5 - Green   } Background
+ * Bit 6 - Red    /
+ * Bit 7 - Bold -/
+ * Bit 8 - Leading Byte
+ * Bit 9 - Trailing Byte
+ * Bit a - Top horizontal
+ * Bit b - Left vertical
+ * Bit c - Right vertical
+ * Bit d - unused
+ * Bit e - Reverse video
+ * Bit f - Underscore
+ *)
+
+let win32_msg ch msg =
+  let (ch, fch, rch) =
+    match ch with
+    | `out -> (stdout, -11, win32_color)
+    | `err -> (stderr, -12, win32_ecolor)
+  in
+  if not !rch then
+    Printf.fprintf ch "%s%!" msg
+  else
+    try
+      flush ch;
+      let hConsoleOutput = OpamStd.Win32.getStdHandle fch in
+      let {OpamStd.Win32.attributes; _} =
+        try
+          OpamStd.Win32.getConsoleScreenBufferInfo hConsoleOutput
+        with Not_found ->
+          rch := false;
+          (*
+           * msg will have been constructed on the assumption that colour was available - process it as normal
+           * in order to remove the escape sequences
+           *)
+          {OpamStd.Win32.attributes = 0; cursorPosition = (0, 0); maximumWindowSize = (0, 0); window = (0, 0, 0, 0); size = (0, 0)}
+      in
+      let outputColor = !rch in
+      let background = (attributes land 0b1110000) lsr 4 in
+      let length = String.length msg in
+      let executeCode =
+        let color = ref (attributes land 0b1111) in
+        let blend ?(inheritbold = true) bits =
+          let bits =
+            if inheritbold then
+              (!color land 0b1000) lor (bits land 0b111)
+            else
+              bits in
+          let result = (attributes land (lnot 0b1111)) lor (bits land 0b1000) lor ((bits land 0b111) lxor background) in
+          color := (result land 0b1111);
+          result in
+        fun code ->
+          let l = String.length code in
+          assert (l > 0 && code.[0] = '[');
+          let attributes = OpamStd.String.split (String.sub code 1 (l - 1)) ';' in
+          let attributes = if attributes = [] then [""] else attributes in
+          let f attributes attribute =
+            match attribute with
+              "1"
+            | "01" ->
+                blend ~inheritbold:false (!color lor 0b1000)
+            | "04" ->
+                (* Don't have underline, so change the background *)
+                (attributes land (lnot 0b11111111)) lor 0b01110000
+            | "30" ->
+                blend 0b000
+            | "31" ->
+                blend 0b100
+            | "32" ->
+                blend 0b010
+            | "33" ->
+                blend 0b110
+            | "34" ->
+                blend ~inheritbold:false 0b001
+            | "35" ->
+                blend 0b101
+            | "36" ->
+                blend 0b011
+            | "37" ->
+                blend 0b111
+            | "" ->
+                blend ~inheritbold:false 0b0111
+            | _ -> assert false in
+          if outputColor then
+            OpamStd.Win32.setConsoleTextAttribute hConsoleOutput (List.fold_left f (blend !color) attributes) in
+      let rec f index start inCode =
+        if index < length
+        then let c = msg.[index] in
+             if c = '\027' then begin
+               assert (not inCode);
+               let fragment = String.sub msg start (index - start) in
+               let index = succ index in
+               if fragment <> "" then
+                 Printf.fprintf ch "%s%!" fragment;
+               f index index true end
+             else
+               if inCode && c = 'm' then
+                 let fragment = String.sub msg start (index - start) in
+                 let index = succ index in
+                 executeCode fragment;
+                 f index index false
+               else
+                 f (succ index) start inCode
+        else let fragment = String.sub msg start (index - start) in
+             if fragment <> "" then
+               if inCode then
+                 executeCode fragment
+               else
+                 Printf.fprintf ch "%s%!" fragment
+             else
+               flush ch in
+      f 0 0 false
+    with Exit -> ()
+
+let gen_msg =
+  if OpamStd.(Sys.os () = Sys.Win32) then
+    fun ch fmt ->
+      flush (if ch = `out then stderr else stdout);
+      Printf.ksprintf (win32_msg ch) (fmt ^^ "%!")
+  else
+    fun ch fmt ->
+      flush (if ch = `out then stderr else stdout);
+      Printf.ksprintf (output_string (if ch = `out then stdout else stderr)) (fmt ^^ "%!")
 
 let timestamp () =
   let time = Unix.gettimeofday () -. global_start_time in
@@ -124,8 +258,16 @@ let timestamp () =
 let log section ?(level=1) fmt =
   if level <= OpamCoreConfig.(!r.debug_level) then
     let () = flush stdout in
-    Printf.fprintf stderr ("%s  %a  " ^^ fmt ^^ "\n%!")
-      (timestamp ()) (acolor_w 30 `yellow) section
+    if OpamStd.(Sys.os () = Sys.Win32) then begin
+      (*
+       * In order not to break [slog], split the output into two. A side-effect of this is that
+       * logging lines may not use colour.
+       *)
+      win32_msg `err (Printf.sprintf "%s  %a  " (timestamp ()) (acolor_with_width (Some 30) `yellow) section);
+      Printf.fprintf stderr (fmt ^^ "\n%!") end
+    else
+      Printf.fprintf stderr ("%s  %a  " ^^ fmt ^^ "\n%!")
+        (timestamp ()) (acolor_w 30 `yellow) section
   else
     Printf.ifprintf stderr fmt
 
@@ -136,28 +278,23 @@ let slog to_string channel x = output_string channel (to_string x)
 
 let error fmt =
   Printf.ksprintf (fun str ->
-    flush stdout;
-    Printf.eprintf "%a %s\n%!" (acolor `red) "[ERROR]"
+    gen_msg `err "%a %s\n" (acolor `red) "[ERROR]"
       (OpamStd.Format.reformat ~start_column:8 ~indent:8 str)
   ) fmt
 
 let warning fmt =
   Printf.ksprintf (fun str ->
-    flush stdout;
-    Printf.eprintf "%a %s\n%!" (acolor `yellow) "[WARNING]"
+    gen_msg `err "%a %s\n" (acolor `yellow) "[WARNING]"
       (OpamStd.Format.reformat ~start_column:10 ~indent:10 str)
   ) fmt
 
 let note fmt =
   Printf.ksprintf (fun str ->
-    flush stdout;
-    Printf.eprintf "%a %s\n%!" (acolor `blue) "[NOTE]"
+    gen_msg `err "%a %s\n" (acolor `blue) "[NOTE]"
       (OpamStd.Format.reformat ~start_column:7 ~indent:7 str)
   ) fmt
 
-let errmsg fmt =
-  flush stdout;
-  Printf.eprintf (fmt ^^ "%!")
+let errmsg fmt = gen_msg `err fmt
 
 let error_and_exit ?(num=66) fmt =
   Printf.ksprintf (fun str ->
@@ -165,32 +302,54 @@ let error_and_exit ?(num=66) fmt =
     OpamStd.Sys.exit num
   ) fmt
 
-let msg fmt =
-  flush stderr;
-  Printf.printf (fmt ^^ "%!")
+let msg fmt = gen_msg `out fmt
+
+(* Flushing version of print_string *)
+let print_string s = gen_msg `out "%s" s
 
 let formatted_msg ?indent fmt =
   flush stderr;
   Printf.ksprintf
-    (fun s -> print_string (OpamStd.Format.reformat ?indent s); flush stdout)
+    (fun s -> print_string (OpamStd.Format.reformat ?indent s))
     fmt
 
+let carriage_delete () =
+  if OpamStd.(Sys.os () = Sys.Win32) then
+    (*
+     * Technically this doesn't erase the final character of the line -
+     *   but then there's no checking as to whether the status causes a line wrap either
+     *)
+    Printf.sprintf "\r%s\r" (String.make (OpamStd.Sys.terminal_columns () - 1) ' ')
+  else
+    "\r\027[K"
+
 let last_status = ref ""
-let status_line =
-  let carriage_delete = "\r\027[K" in
-  fun fmt ->
-    if debug () || not (disp_status_line ()) then
-      Printf.ksprintf
-        (fun s -> if s <> !last_status then (last_status := s; print_endline s))
-        fmt
+let status_line fmt =
+  let batch =
+    debug () || not (disp_status_line ()) in
+  let print_msg =
+    if batch then
+      if OpamStd.Sys.(os () = Win32) then
+        fun s -> win32_msg `out (s ^ "\n")
+      else
+        print_endline
     else
-      Printf.ksprintf
-        (fun s ->
-           print_string carriage_delete;
-           print_string s;
-           flush stdout;
-           print_string carriage_delete (* unflushed *))
-        fmt
+      if OpamStd.Sys.(os () = Win32) then
+        fun s -> flush stdout; win32_msg `out s
+      else
+        fun s -> print_string s in
+  if batch then
+    Printf.ksprintf
+      (fun s -> if s <> !last_status then (last_status := s; print_msg s))
+      fmt
+  else
+    let carriage_delete = carriage_delete () in
+    Printf.ksprintf
+      (fun s ->
+         output_string stdout carriage_delete;
+         print_msg s; (* flush before for Windows; after for Unix *)
+         output_string stdout carriage_delete (* unflushed *))
+      fmt
 
 let header_width () = min 80 (OpamStd.Sys.terminal_columns ())
 
@@ -216,7 +375,6 @@ let header_msg fmt =
         (print_string "  ";
          print_string (colorise `yellow utf8camel));
       print_char '\n';
-      flush stdout;
     ) fmt
 
 let header_error fmt =
@@ -227,19 +385,20 @@ let header_error fmt =
           output_char stderr '\n';
           let wpad = header_width () - String.length head - 8 in
           let wpadl = 4 in
-          output_string stderr (colorise `red (String.sub padding 0 wpadl));
+          let output_string = gen_msg `err "%s" in
+          output_string (colorise `red (String.sub padding 0 wpadl));
           output_char stderr ' ';
-          output_string stderr (colorise `bold "ERROR");
+          output_string (colorise `bold "ERROR");
           output_char stderr ' ';
-          output_string stderr (colorise `bold head);
+          output_string (colorise `bold head);
           output_char stderr ' ';
           let wpadr = wpad - wpadl in
           if wpadr > 0 then
-            output_string stderr
+            output_string
               (colorise `red
                  (String.sub padding (String.length padding - wpadr) wpadr));
           output_char stderr '\n';
-          output_string stderr contents;
+          output_string contents;
           output_char stderr '\n';
           flush stderr;
         ) fmt
@@ -320,3 +479,101 @@ let read fmt =
       ) else
         None
     ) fmt
+
+let print_table ?cut oc ~sep table =
+  let cut =
+    match cut with
+    | None -> if oc = stdout || oc = stderr then `Wrap "" else `None
+    | Some c -> c
+  in
+  let output_string s =
+    if oc = stdout then
+      msg "%s\n" s
+    else if oc = stderr then
+      errmsg "%s\n" s
+    else begin
+      output_string oc s;
+      output_char oc '\n'
+    end
+  in
+  let replace_newlines by =
+    Re.(replace_string (compile (char '\n')) ~by)
+  in
+  let print_line l = match cut with
+    | `None ->
+      let s = List.map (replace_newlines "\\n") l |> String.concat sep in
+      output_string s;
+    | `Truncate ->
+      let s = List.map (replace_newlines " ") l |> String.concat sep in
+      output_string (OpamStd.Format.cut_at_visual s (OpamStd.Sys.terminal_columns ()));
+    | `Wrap wrap_sep ->
+      let width = OpamStd.Sys.terminal_columns () in
+      let base_indent = 10 in
+      let sep_len = OpamStd.Format.visual_length sep in
+      let wrap_sep_len = OpamStd.Format.visual_length wrap_sep in
+      let max_sep_len = max sep_len wrap_sep_len in
+      let indent_string =
+        String.make (max 0 (base_indent - wrap_sep_len)) ' ' ^ wrap_sep
+      in
+      let margin = OpamStd.Format.visual_length indent_string in
+      let min_reformat_width = 30 in
+      let rec split_at_overflows start_col acc cur =
+        let append = function
+          | [] -> acc
+          | last::r -> List.rev (OpamStd.String.strip last :: r) :: acc
+        in
+        function
+        | [] -> List.rev (append cur)
+        | cell::rest ->
+          let multiline = String.contains cell '\n' in
+          let cell_width =
+            List.fold_left max 0
+              (List.map OpamStd.Format.visual_length (OpamStd.String.split cell '\n'))
+          in
+          let end_col = start_col + sep_len + cell_width in
+          let indent ~sep n cell =
+            let spc =
+              if sep then
+                String.make (max 0 (if sep then n - wrap_sep_len else n)) ' ' ^ wrap_sep
+              else String.make n ' '
+            in
+            OpamStd.List.concat_map ("\n"^spc)
+              OpamStd.String.strip_right
+              (OpamStd.String.split cell '\n')
+          in
+          if end_col < width then
+            if multiline then
+              let cell = indent ~sep:true start_col (OpamStd.String.strip cell) in
+              split_at_overflows margin (append (cell::cur)) [] rest
+            else
+              split_at_overflows end_col acc (cell::cur) rest
+          else if rest = [] && acc = [] && not multiline &&
+                  width - start_col - max_sep_len >= min_reformat_width
+          then
+            let cell =
+              OpamStd.String.strip cell |> fun cell ->
+              OpamStd.Format.reformat ~width:(width - start_col - max_sep_len) cell |>
+              indent ~sep:true start_col
+            in
+            split_at_overflows margin acc (cell::cur) []
+          else if multiline || margin + cell_width >= width then
+            let cell =
+              OpamStd.String.strip cell |> fun cell ->
+              OpamStd.Format.reformat ~width:(width - margin) cell |> fun cell ->
+              OpamStd.String.split cell '\n' |>
+              OpamStd.List.concat_map ("\n"^indent_string) OpamStd.String.strip_right
+            in
+            split_at_overflows margin ([cell]::append cur) [] rest
+          else
+            split_at_overflows (margin + cell_width) (append cur) [cell] rest
+      in
+      let splits = split_at_overflows 0 [] [] l in
+      let str =
+        OpamStd.List.concat_map
+          ("\n" ^ String.make base_indent ' ')
+          (String.concat sep)
+          splits
+      in
+      output_string str;
+  in
+  List.iter print_line table
