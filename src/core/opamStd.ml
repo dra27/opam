@@ -554,7 +554,21 @@ module Env = struct
       Re.(replace_string (compile (char '\'')) ~by:"'\"'\"'")
 end
 
+module Win32 = struct
+  type console_screen_buffer_info = {
+    size: int * int;
+    cursorPosition: int * int;
+    attributes: int;
+    window: int * int * int * int;
+    maximumWindowSize: int * int;
+  }
 
+  type handle
+
+  external getStdHandle : int -> handle = "OPAMW_GetStdHandle"
+  external getConsoleScreenBufferInfo : handle -> console_screen_buffer_info = "OPAMW_GetConsoleScreenBufferInfo"
+  external setConsoleTextAttribute : handle -> int -> unit = "OPAMW_SetConsoleTextAttribute"
+end
 
 module OpamSys = struct
 
@@ -603,6 +617,11 @@ module OpamSys = struct
     in
     if cols > 0 then cols else fallback
 
+  let win32_get_console_width () =
+    let hConsoleOutput = Win32.getStdHandle (-11) in
+    let {Win32.size = (width, _); _} = Win32.getConsoleScreenBufferInfo hConsoleOutput in
+    width
+
   let terminal_columns =
     let v = ref (lazy (get_terminal_columns ())) in
     let () =
@@ -611,10 +630,16 @@ module OpamSys = struct
                (fun _ -> v := lazy (get_terminal_columns ())))
       with Invalid_argument _ -> ()
     in
-    fun () ->
-      if tty_out
-      then Lazy.force !v
-      else default_columns
+    if Sys.os_type = "Win32" then
+      fun () ->
+        if tty_out
+        then win32_get_console_width ()
+        else default_columns
+    else
+      fun () ->
+        if tty_out
+        then Lazy.force !v
+        else default_columns
 
   let home =
     let home = lazy (try Env.get "HOME" with Not_found -> Sys.getcwd ()) in
@@ -908,97 +933,6 @@ module OpamFormat = struct
     | [a]   -> a
     | [a;b] -> Printf.sprintf "%s %s %s" a last b
     | h::t  -> Printf.sprintf "%s, %s" h (pretty_list t)
-
-  let print_table ?cut oc ~sep table =
-    let cut =
-      match cut with
-      | None -> if oc = stdout || oc = stderr then `Wrap "" else `None
-      | Some c -> c
-    in
-    let replace_newlines by =
-      Re.(replace_string (compile (char '\n')) ~by)
-    in
-    let print_line l = match cut with
-      | `None ->
-        let s = List.map (replace_newlines "\\n") l |> String.concat sep in
-        output_string oc s;
-        output_char oc '\n'
-      | `Truncate ->
-        let s = List.map (replace_newlines " ") l |> String.concat sep in
-        output_string oc (cut_at_visual s (OpamSys.terminal_columns ()));
-        output_char oc '\n'
-      | `Wrap wrap_sep ->
-        let width = OpamSys.terminal_columns () in
-        let base_indent = 10 in
-        let sep_len = visual_length sep in
-        let wrap_sep_len = visual_length wrap_sep in
-        let max_sep_len = max sep_len wrap_sep_len in
-        let indent_string =
-          String.make (max 0 (base_indent - wrap_sep_len)) ' ' ^ wrap_sep
-        in
-        let margin = visual_length indent_string in
-        let min_reformat_width = 30 in
-        let rec split_at_overflows start_col acc cur =
-          let append = function
-            | [] -> acc
-            | last::r -> List.rev (OpamString.strip last :: r) :: acc
-          in
-          function
-          | [] -> List.rev (append cur)
-          | cell::rest ->
-            let multiline = String.contains cell '\n' in
-            let cell_width =
-              List.fold_left max 0
-                (List.map visual_length (OpamString.split cell '\n'))
-            in
-            let end_col = start_col + sep_len + cell_width in
-            let indent ~sep n cell =
-              let spc =
-                if sep then
-                  String.make (max 0 (if sep then n - wrap_sep_len else n)) ' ' ^ wrap_sep
-                else String.make n ' '
-              in
-              OpamList.concat_map ("\n"^spc)
-                OpamString.strip_right
-                (OpamString.split cell '\n')
-            in
-            if end_col < width then
-              if multiline then
-                let cell = indent ~sep:true start_col (OpamString.strip cell) in
-                split_at_overflows margin (append (cell::cur)) [] rest
-              else
-                split_at_overflows end_col acc (cell::cur) rest
-            else if rest = [] && acc = [] && not multiline &&
-                    width - start_col - max_sep_len >= min_reformat_width
-            then
-              let cell =
-                OpamString.strip cell |> fun cell ->
-                reformat ~width:(width - start_col - max_sep_len) cell |>
-                indent ~sep:true start_col
-              in
-              split_at_overflows margin acc (cell::cur) []
-            else if multiline || margin + cell_width >= width then
-              let cell =
-                OpamString.strip cell |> fun cell ->
-                reformat ~width:(width - margin) cell |> fun cell ->
-                OpamString.split cell '\n' |>
-                OpamList.concat_map ("\n"^indent_string) OpamString.strip_right
-              in
-              split_at_overflows margin ([cell]::append cur) [] rest
-            else
-              split_at_overflows (margin + cell_width) (append cur) [cell] rest
-        in
-        let splits = split_at_overflows 0 [] [] l in
-        let str =
-          OpamList.concat_map
-            ("\n" ^ String.make base_indent ' ')
-            (String.concat sep)
-            splits
-        in
-        output_string oc str;
-        output_char oc '\n'
-    in
-    List.iter print_line table
 
 end
 

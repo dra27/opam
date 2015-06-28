@@ -54,7 +54,7 @@ let switch_to_updated_self debug opamroot =
           (OpamVersion.to_string update_version)
           (OpamVersion.to_string (OpamVersion.full ()));
       (if debug || (OpamConsole.debug ()) then
-         Printf.eprintf "!! %s found, switching to it !!\n%!" updated_self_str;
+         OpamConsole.errmsg "!! %s found, switching to it !!\n%!" updated_self_str;
        let env =
          Array.append
            [|"OPAMNOSELFUPGRADE="^ self_upgrade_bootstrapping_value|]
@@ -733,7 +733,7 @@ let show =
             flds
         in
         OpamStd.Format.align_table tbl |>
-        OpamStd.Format.print_table stdout ~sep:" ";
+        OpamConsole.print_table stdout ~sep:" ";
         `Ok ()
   in
   Term.(ret
