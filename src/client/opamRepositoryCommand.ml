@@ -134,4 +134,4 @@ let list rt ~short =
           with Not_found -> "NOT FOUND" |> OpamConsole.colorise `red
         ]) |>
     OpamStd.Format.align_table |>
-    OpamStd.Format.print_table stdout ~sep:" "
+    OpamStd.Format.print_table ~cut:`Wrap (OpamConsole.msg "%s") ~sep:" "

@@ -42,7 +42,7 @@ type text_style =
     disabled *)
 val colorise : text_style -> string -> string
 val colorise' : text_style list -> string -> string
-val acolor : text_style -> out_channel -> string -> unit
+val acolor : text_style -> unit -> string -> string
 val acolor_w : int -> text_style -> out_channel -> string -> unit
 
 (** Logging *)
@@ -66,14 +66,17 @@ val note : ('a, unit, string, unit) format4 -> 'a
 
 (** Message without prefix, reformat or newline, to stderr (useful to continue
     error messages without repeating "[ERROR]") *)
-val errmsg : ('a, out_channel, unit, unit, unit, unit) format6 -> 'a
+val errmsg : ('a, unit, string, unit) format4 -> 'a
 
 val error_and_exit : ?num:int -> ('a, unit, string, 'b) format4 -> 'a
-val msg : ('a, out_channel, unit, unit) format4 -> 'a
+val msg : ('a, unit, string, unit) format4 -> 'a
 val formatted_msg : ?indent:int -> ('a, unit, string, unit) format4 -> 'a
 val header_msg : ('a, unit, string, unit) format4 -> 'a
 val header_error :
   ('a, unit, string, ('b, unit, string, unit) format4 -> 'b) format4 -> 'a
+
+(** Returns a string to erase the current line *)
+val carriage_delete: unit -> string
 
 (** Display a dynamic status line to stdout, that will be erased on next output.
     The message should not be wider than screen nor contain newlines. *)

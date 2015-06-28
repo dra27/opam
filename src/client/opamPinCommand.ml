@@ -570,4 +570,4 @@ let list st ~short =
         OpamConsole.colorise `red " (no definition found)" ]
   in
   let table = List.map lines (OpamPackage.Set.elements st.pinned) in
-  OpamStd.Format.print_table stdout ~sep:"  " (OpamStd.Format.align_table table)
+  OpamStd.Format.print_table ~cut:`Wrap (OpamConsole.msg "%s") ~sep:"  " (OpamStd.Format.align_table table)

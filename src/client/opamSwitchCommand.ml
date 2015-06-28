@@ -111,7 +111,7 @@ let list gt ~print_short ~installed ~all =
             OpamStd.Option.to_string ~none:"" OpamFile.Descr.synopsis descr ])
       list
   in
-  OpamStd.Format.print_table stdout ~sep:"  "
+  OpamStd.Format.print_table ~cut:`Wrap (OpamConsole.msg "%s") ~sep:"  "
     (OpamStd.Format.align_table table);
 
   if not print_short && notshown > 0 then
