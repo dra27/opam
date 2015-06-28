@@ -478,8 +478,13 @@ module Env = struct
     ) in
     fun () -> Lazy.force lazy_env
 
-  let get n =
-    List.assoc n (list ())
+  let get =
+    if Sys.os_type = "Win32" then
+      fun n ->
+        let n = String.uppercase n in
+        snd (List.find (fun (k,_) -> String.uppercase k = n) (list ()))
+    else
+      fun n -> List.assoc n (list ())
 
   let getopt n = try Some (get n) with Not_found -> None
 

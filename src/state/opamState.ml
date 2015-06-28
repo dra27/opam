@@ -2053,8 +2053,15 @@ let expand_env t (env: env_update list) : env =
 
 let add_to_env t (env: env) (updates: env_update list) =
   let env =
-    List.filter (fun (k,_,_) -> List.for_all (fun (u,_,_,_) -> u <> k) updates)
-      env
+    if OpamStd.(Sys.os () = Sys.Win32) then
+      (*
+       * Environment variable names are case insensitive on Windows
+       *)
+      let updates = List.rev_map (fun (u,_,_,_) -> (String.uppercase u, "", "", None)) updates in
+      List.filter (fun (k,_,_) -> let k = String.uppercase k in List.for_all (fun (u,_,_,_) -> u <> k) updates) env
+    else
+      List.filter (fun (k,_,_) -> List.for_all (fun (u,_,_,_) -> u <> k) updates)
+        env
   in
   env @ expand_env t updates
 
