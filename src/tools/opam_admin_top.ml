@@ -82,9 +82,9 @@ let iter_packages_gen ?(quiet=false) f =
       if !changed then
         (incr changed_pkgs;
          if not quiet then
-           OpamConsole.msg "\r\027[KUpdated %s\n" (OpamPackage.to_string package))
+           OpamConsole.msg "%sUpdated %s\n" (OpamConsole.carriage_delete ()) (OpamPackage.to_string package))
       else if not quiet then
-        OpamConsole.msg "\r\027[K";
+        OpamConsole.msg "%s" (OpamConsole.carriage_delete ());
     ) packages;
   if not quiet then
     OpamConsole.msg "Done. Updated %d files in %d packages.\n"
