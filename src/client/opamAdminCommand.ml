@@ -351,7 +351,8 @@ let lint_command =
                        (string_of_int n))
                     w)
             else
-              OpamConsole.msg "\r\027[KIn %s:\n%s\n"
+              OpamConsole.msg "%sIn %s:\n%s\n"
+                (OpamConsole.carriage_delete ())
                 (OpamPackage.to_string nv)
                 (OpamFileTools.warns_to_string w);
           ret && not (warn_error && w <> [] ||
