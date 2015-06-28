@@ -291,3 +291,9 @@ end
 
 (** Convert a filename to an attribute, relatively to a root *)
 val to_attribute: Dir.t -> t -> Attribute.t
+
+(** On Unix, a no-op. On Windows, convert / to \ *)
+val forward_to_back : string -> string
+
+(** On Unix, a no-op. On Windows, convert \ to / *)
+val back_to_forward : string -> string
