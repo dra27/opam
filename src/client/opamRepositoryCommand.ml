@@ -103,9 +103,9 @@ let print_updated_compilers updates =
     updates.deleted
 
 let fix_compiler_descriptions t ~verbose =
-  log "Updating %a/ ...\n"
+  log "Updating %a%s ...\n"
     (slog (OpamFilename.prettify_dir @* OpamPath.compilers_dir))
-    t.root;
+    t.root Filename.dir_sep;
   let global_index = OpamState.compiler_state t in
   let repo_index = OpamState.compiler_repository_state t in
   let niet = String.concat ":" in
@@ -248,8 +248,8 @@ let update_dev_packages t ~verbose packages =
 (* Update the package contents, display the new packages and update
    reinstall *)
 let fix_package_descriptions t ~verbose =
-  log "Updating %a/ ...\n"
-    (slog (OpamFilename.prettify_dir @* OpamPath.packages_dir)) t.root;
+  log "Updating %a%s ...\n"
+    (slog (OpamFilename.prettify_dir @* OpamPath.packages_dir)) t.root Filename.dir_sep;
 
   let global_index = OpamState.package_state t in
   let repo_index   = OpamState.package_repository_state t in

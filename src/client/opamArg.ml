@@ -480,8 +480,11 @@ let shell_opt =
 
 let dot_profile_flag =
   mk_opt ["dot-profile"]
-    "FILENAME" "Name of the configuration file to update instead of \
-                $(i,~/.profile) or $(i,~/.zshrc) based on shell detection."
+    "FILENAME"
+    (Printf.sprintf
+      "Name of the configuration file to update instead of \
+       $(i,~%s.profile) or $(i,~%s.zshrc) based on shell detection."
+      Filename.dir_sep Filename.dir_sep)
     (Arg.some filename) None
 
 let repo_kind_flag =

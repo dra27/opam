@@ -19,6 +19,12 @@ module Base = OpamStd.AbstractString
 let log fmt = OpamConsole.log "FILENAME" fmt
 let slog = OpamConsole.slog
 
+let forward_to_back =
+  if OpamStd.(Sys.os () = Sys.Win32) then
+    String.map (function '/' -> '\\' | c -> c)
+  else
+    fun x -> x
+
 module Dir = struct
 
   include OpamStd.AbstractString
@@ -33,7 +39,7 @@ module Dir = struct
           (OpamStd.String.remove_prefix ~prefix:("~"^Filename.dir_sep) dirname)
       else dirname
     in
-    OpamSystem.real_path dirname
+    OpamSystem.real_path (forward_to_back dirname)
 
   let to_string dirname = dirname
 
@@ -130,8 +136,9 @@ type t = {
 }
 
 let create dirname basename =
-  let b1 = Filename.dirname (Base.to_string basename) in
+  let b1 = forward_to_back (Filename.dirname (Base.to_string basename)) in
   let b2 = Base.of_string (Filename.basename (Base.to_string basename)) in
+  let dirname = forward_to_back dirname in
   if basename = b2 then
     { dirname; basename }
   else
@@ -371,10 +378,11 @@ let copy_files ~src ~dst =
       let base = remove_prefix src file in
       let dst_file = create dst (Base.of_string base) in
       if OpamCoreConfig.(!r.verbose_level >= 2) then
-        OpamConsole.msg "Copying %s %s %s/\n"
+        OpamConsole.msg "Copying %s %s %s%s\n"
           (prettify file)
           (if exists dst_file then "over" else "to")
-          (prettify_dir dst);
+          (prettify_dir dst)
+          Filename.dir_sep;
       copy ~src:file ~dst:dst_file
     ) files
 
