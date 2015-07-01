@@ -416,6 +416,12 @@ module Sys : sig
   (** Return the full path to a command in the environment. *)
   val search_path_for_command: ?env:string array -> string -> string
 
+  (** For native Windows builds, returns [`Cygwin] if the command is a Cygwin-
+      compiled executable, [`CygLinked] if the command links to a library which is
+      itself Cygwin-compiled or [`Native] otherwise.
+      Note that this returns [`Native] on a Cygwin-build of opam! *)
+  val is_cygwin_variant: string -> [ `Native | `Cygwin | `CygLinked ]
+
   (** {3 Exit handling} *)
 
   (** Like Pervasives.at_exit but with the possibility to call manually
