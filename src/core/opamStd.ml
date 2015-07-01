@@ -522,6 +522,8 @@ module Env = struct
       | curr::after -> aux (curr::before) after
     in aux [] v
 
+  let initial_env = Unix.environment ()
+
   let list =
     let lazy_env = lazy (
       let e = Unix.environment () in
@@ -532,6 +534,20 @@ module Env = struct
         ) (Array.to_list e)
     ) in
     fun () -> Lazy.force lazy_env
+
+  let env_var env var =
+    let len = Array.length env in
+    let f = if Sys.os_type = "Win32" then String.uppercase else fun x -> x in
+    let prefix = f var^"=" in
+    let pfxlen = String.length prefix in
+    let rec aux i =
+      if i >= len then "" else
+      let s = env.(i) in
+      if OpamString.starts_with ~prefix (f s) then
+        String.sub s pfxlen (String.length s - pfxlen)
+      else aux (i+1)
+    in
+    aux 0
 
   let get =
     if Sys.os_type = "Win32" then
@@ -548,6 +564,7 @@ module Env = struct
       Re.(replace (compile (set "\\\'")) ~f:(fun g -> "\\"^Group.get g 0))
     else
       Re.(replace_string (compile (char '\'')) ~by:"'\"'\"'")
+
 end
 
 module Win32 = struct
@@ -782,6 +799,32 @@ module OpamSys = struct
       | Cygwin | _ -> ':'
     ) in
     fun () -> Lazy.force path_sep
+
+  let get_path_dirs path =
+    let path_sep = path_sep () in
+    let search =
+      let length = String.length path in
+      let rec f acc index current last normal =
+        if index = length
+        then let current = current ^ String.sub path last (index - last) in
+             if current <> "" then current::acc else acc
+        else let c = path.[index]
+             and next = succ index in
+             if c = path_sep && normal || c = '"' then
+               let current = current ^ String.sub path last (index - last) in
+               if c = '"' then
+                 f acc next current next (not normal)
+               else
+                 let acc = if current = "" then acc else current::acc in
+                 f acc next "" next true
+             else
+               f acc next current last normal in
+      f [] 0 "" 0 true in
+    List.rev search
+
+  let search_path_for_command ?(env=Env.initial_env) name =
+    let name = if os () = Win32 then if Filename.check_suffix name ".exe" then name else name ^ ".exe" else name in
+    Filename.concat (List.find (fun path -> let name = Filename.concat path name in Sys.file_exists name && (Unix.stat name).Unix.st_kind = Unix.S_REG) (get_path_dirs (Env.env_var env "PATH"))) name
 
   exception Exit of int
   exception Exec of string * string array * string array
