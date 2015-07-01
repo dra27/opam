@@ -830,6 +830,46 @@ module OpamSys = struct
     let name = if os () = Win32 then if Filename.check_suffix name ".exe" then name else name ^ ".exe" else name in
     Filename.concat (List.find (fun path -> let name = Filename.concat path name in Sys.file_exists name && (Unix.stat name).Unix.st_kind = Unix.S_REG) (get_path_dirs (Env.env_var env "PATH"))) name
 
+  let is_cygwin_variant =
+    if (os () = Win32) then
+      let results = Hashtbl.create 17 in
+      let requires_cygwin name =
+        let cmd = Printf.sprintf "cygcheck \"%s\"" name in
+        let c = Unix.open_process_in cmd in
+        let lines = ref [] in
+        try
+          while true do
+            lines := (input_line c)::!lines
+          done;
+          `Native
+        with End_of_file ->
+          close_in c;
+          let f a x =
+            if OpamString.ends_with ~suffix:"cygwin1.dll" (String.trim x) then
+              if OpamString.starts_with ~prefix:"  " x then
+                `Cygwin
+              else if a <> `Cygwin then
+                `CygLinked
+              else
+                a
+            else
+              a in
+          List.fold_left f `Native !lines
+      in
+      fun name ->
+        if Filename.is_relative name then
+          requires_cygwin name
+        else
+          try
+            Hashtbl.find results name
+          with Not_found ->
+            let result = requires_cygwin name
+            in
+              Hashtbl.add results name result;
+              result
+    else
+      fun _ -> `Native
+
   exception Exit of int
   exception Exec of string * string array * string array
 
