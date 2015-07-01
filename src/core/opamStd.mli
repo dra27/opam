@@ -311,6 +311,8 @@ module Env : sig
   val getopt: string -> string option
 
   val list: unit -> (string * string) list
+
+  val env_var: string array -> string -> string
 end
 
 (** {2 Windows-specific functions} *)
@@ -390,6 +392,9 @@ module Sys : sig
   (** The separator character used in the PATH variable (varies depending on
       OS) *)
   val path_sep: unit -> char
+
+  (** Return the full path to a command in the environment. *)
+  val search_path_for_command: ?env:string array -> string -> string
 
   (** {3 Exit handling} *)
 
