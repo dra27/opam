@@ -144,6 +144,9 @@ type command = string list
 (** Return the full path to a command in the environment. *)
 val get_actual_command: ?env:string array -> ?dir:string -> string -> string
 
+(** Converts a given path to Cygwin (/cygdrive/...) *)
+val apply_cygpath: string -> string
+
 (** Test whether a command exists in the environment. *)
 val command_exists: ?env:string array -> ?dir:string -> string -> bool
 
