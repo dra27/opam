@@ -275,86 +275,60 @@ type command = string list
 let default_env =
   Unix.environment ()
 
-let env_var env var =
-  let len = Array.length env in
-  let f = if OpamStd.(Sys.os () = Sys.Win32) then String.uppercase else fun x -> x in
-  let prefix = f var^"=" in
-  let pfxlen = String.length prefix in
-  let rec aux i =
-    if i >= len then "" else
-    let s = env.(i) in
-    if OpamStd.String.starts_with ~prefix (f s) then
-      String.sub s pfxlen (String.length s - pfxlen)
-    else aux (i+1)
-  in
-  aux 0
+let is_external_cmd name = Filename.basename name <> name
+
+let get_actual_command ?(env=default_env) ?dir =
+  if OpamStd.(Sys.os () = Sys.Win32) then
+    OpamStd.Sys.search_path_for_command ~env
+  else
+    fun name ->
+      let cmd, args = "/bin/sh", ["-c"; Printf.sprintf "command -v %s" name] in
+      let r =
+        OpamProcess.run
+          (OpamProcess.command ~env ?dir ~name:(temp_file "command") ~verbose:false
+             cmd args)
+      in
+      OpamProcess.cleanup ~force:true r;
+      if OpamProcess.is_success r then
+        match r.OpamProcess.r_stdout with
+        | cmdname::_ ->
+          (* check that we have permission to execute the command *)
+          if is_external_cmd cmdname then
+            let cmdname =
+              match Filename.is_relative cmdname, dir with
+              | true, Some dir -> Filename.concat dir cmdname
+              | _ -> cmdname
+            in
+            (try
+               let open Unix in
+               let uid = getuid() and groups = Array.to_list(getgroups()) in
+               let s = stat cmdname in
+               let cmd_uid = s.st_uid and cmd_gid = s.st_gid and cmd_perms = s.st_perm in
+               let mask = 0o001
+                          lor (if uid = cmd_uid then 0o100 else 0)
+                          lor (if List.mem cmd_gid groups then 0o010 else 0) in
+               (* Raise an exception if cmd_perms land mask = 0 *)
+               ignore (1 mod (cmd_perms land mask));
+               cmdname
+             with _ -> raise Not_found)
+          else cmdname
+        | _ -> raise Not_found
+      else raise Not_found
 
 let command_exists =
-  let is_external_cmd name = Filename.basename name <> name in
-  let check_existence ?dir env =
-    if OpamStd.(Sys.os () = Sys.Win32) then
-      fun name ->
-        let search =
-          let path = env_var env "PATH" in
-          let length = String.length path in
-          let rec f acc index current last normal =
-            if index = length
-            then let current = current ^ String.sub path last (index - last) in
-                 if current <> "" then current::acc else acc
-            else let c = path.[index]
-                 and next = succ index in
-                 if c = ';' && normal || c = '"' then
-                   let current = current ^ String.sub path last (index - last) in
-                   if c = '"' then
-                     f acc next current next (not normal)
-                   else
-                     let acc = if current = "" then acc else current::acc in
-                     f acc next "" next true
-                 else
-                   f acc next current last normal in
-          f [] 0 "" 0 true in
-        let name = if Filename.check_suffix name ".exe" then name else name ^ ".exe" in
-        List.exists (fun path -> let name = Filename.concat path name in Sys.file_exists name && (Unix.stat name).Unix.st_kind = Unix.S_REG) search
-    else
-      fun name ->
-        let cmd, args = "/bin/sh", ["-c"; Printf.sprintf "command -v %s" name] in
-        let r =
-          OpamProcess.run
-            (OpamProcess.command ~env ?dir ~name:(temp_file "command") ~verbose:false
-               cmd args)
-        in
-        OpamProcess.cleanup ~force:true r;
-        if OpamProcess.is_success r then
-          match r.OpamProcess.r_stdout with
-          | cmdname::_ ->
-            (* check that we have permission to execute the command *)
-            if is_external_cmd cmdname then
-              let cmdname =
-                match Filename.is_relative cmdname, dir with
-                | true, Some dir -> Filename.concat dir cmdname
-                | _ -> cmdname
-              in
-              (try
-
-                 let open Unix in
-                 let uid = getuid() and groups = Array.to_list(getgroups()) in
-                 let s = stat cmdname in
-                 let cmd_uid = s.st_uid and cmd_gid = s.st_gid and cmd_perms = s.st_perm in
-                 let mask = 0o001
-                            lor (if uid = cmd_uid then 0o100 else 0)
-                            lor (if List.mem cmd_gid groups then 0o010 else 0) in
-                 (cmd_perms land mask) <> 0
-               with _ -> false)
-            else true
-          | _ -> false
-        else false
+  let check_existence ?dir env name =
+    try
+      ignore (get_actual_command ~env ?dir name);
+      true
+    with Not_found ->
+      false
   in
   let cached_results = Hashtbl.create 17 in
   fun ?(env=default_env) ?dir name ->
     if dir <> None && is_external_cmd name then
       check_existence env ?dir name (* relative command, no caching *)
     else
-    let path = env_var env "PATH" in
+    let path = OpamStd.Env.env_var env "PATH" in
     try Hashtbl.find (Hashtbl.find cached_results path) name
     with Not_found ->
       let r = check_existence env name in
