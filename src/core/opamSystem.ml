@@ -520,9 +520,17 @@ module Tar = struct
       (fun suff -> Filename.check_suffix f suff)
       (List.concat (List.rev_map fst extensions))
 
-  let extract_function file =
-    let command c dir =
-      command [ "tar" ; Printf.sprintf "xf%c" c ; file; "-C" ; dir ] in
+  let extract_function =
+    let f = lazy (
+      if OpamStd.(Sys.os () = Sys.Win32) && OpamStd.Sys.is_cygwin_variant (get_actual_command "tar") = `Cygwin then
+          apply_cygpath
+      else
+        fun x -> x)
+    in
+    fun file ->
+      let command c dir =
+        let f = Lazy.force f in
+        command [ "tar" ; Printf.sprintf "xf%c" c ; f file; "-C" ; f dir ] in
 
     let ext =
       List.fold_left
@@ -562,9 +570,9 @@ end
 let is_tar_archive = Tar.is_archive
 
 let extract file dst =
-  let _, extract_function =
-    if Zip.is_archive file then "zip", Zip.extract_function
-    else "tar", Tar.extract_function
+  let extract_function =
+    if Zip.is_archive file then Zip.extract_function
+    else Tar.extract_function
   in
   with_tmp_dir (fun tmp_dir ->
     match extract_function file with
