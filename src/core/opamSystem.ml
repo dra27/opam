@@ -320,6 +320,24 @@ let get_actual_command ?(env=default_env) ?dir =
         | _ -> raise Not_found
       else raise Not_found
 
+let apply_cygpath name =
+  let r =
+    OpamProcess.run
+      (OpamProcess.command ~name:(temp_file "command") ~verbose:false "cygpath" [name])
+  in
+  OpamProcess.cleanup ~force:true r;
+  if OpamProcess.is_success r then
+    List.hd r.OpamProcess.r_stdout
+  else
+    OpamConsole.error_and_exit "Could not apply cygpath to %s" name
+
+let get_cygpath_function ~command =
+  lazy (
+    if OpamStd.Sys.(os () = Win32) && OpamStd.Sys.is_cygwin_variant (get_actual_command command) = `Cygwin then
+      apply_cygpath
+    else
+      fun x -> x)
+
 let command_exists =
   let check_existence ?dir env name =
     try

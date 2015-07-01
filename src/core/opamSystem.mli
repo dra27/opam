@@ -146,6 +146,11 @@ type command = string list
 (** Return the full path to a command in the environment. *)
 val get_actual_command: ?env:string array -> ?dir:string -> string -> string
 
+(** Returns a function which should be applied to arguments for a given command
+    by determining if the command is the Cygwin variant of the command. Returns
+    the identity function otherwise. *)
+val get_cygpath_function: command:string -> (string -> string) lazy_t
+
 (** Test whether a command exists in the environment. *)
 val command_exists: ?env:string array -> ?dir:string -> string -> bool
 
