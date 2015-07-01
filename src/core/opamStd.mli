@@ -320,6 +320,8 @@ module Env : sig
 
   val list: unit -> (string * string) list
 
+  val env_var: string array -> string -> string
+
   (** Utility function for shell single-quoted strings. In most shells,
       backslash escapes are not allowed and a single quote needs to be replaced
       by [quote double-quote quote double-quote quote] (close the single-quoted
@@ -410,6 +412,9 @@ module Sys : sig
   (** The separator character used in the PATH variable (varies depending on
       OS) *)
   val path_sep: unit -> char
+
+  (** Return the full path to a command in the environment. *)
+  val search_path_for_command: ?env:string array -> string -> string
 
   (** {3 Exit handling} *)
 
