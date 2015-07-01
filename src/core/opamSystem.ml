@@ -580,10 +580,12 @@ module Tar = struct
       (fun suff -> Filename.check_suffix f suff)
       (List.concat (List.rev_map fst extensions))
 
-  let extract_command file =
-    let command c dir =
-      make_command "tar" [ Printf.sprintf "xf%c" c ; file; "-C" ; dir ]
-    in
+  let extract_command =
+    let f = get_cygpath_function ~command:"tar" in
+    fun file ->
+      let command c dir =
+        let f = Lazy.force f in
+        make_command "tar" [ Printf.sprintf "xf%c" c ; f file; "-C" ; f dir ] in
     let ext =
       List.fold_left
         (fun acc (ext, c) -> match acc with
