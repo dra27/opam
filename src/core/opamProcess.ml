@@ -14,6 +14,8 @@
 (*                                                                        *)
 (**************************************************************************)
 
+external waitpids : int list -> int -> int * Unix.process_status = "OPAMW_waitpids"
+
 let log ?level fmt =
   OpamConsole.log "PROC" ?level fmt
 
@@ -410,12 +412,6 @@ let dontwait p =
 let dead_childs = Hashtbl.create 13
 let wait_one processes =
   if processes = [] then raise (Invalid_argument "wait_one");
-  if OpamStd.Sys.(os () = Win32) then
-    (* No waiting for any child pid on Windows, this is highly sub-optimal
-       but should at least work. Todo: C binding for better behaviour *)
-    let p = List.hd processes in
-    p, wait p
-  else
   try
     let p =
       List.find (fun p -> Hashtbl.mem dead_childs p.p_pid) processes
@@ -425,7 +421,13 @@ let wait_one processes =
     p, exit_status p return
   with Not_found ->
     let rec aux () =
-      let pid, return = safe_wait (List.hd processes).p_pid Unix.wait () in
+      let pid, return =
+        if OpamStd.Sys.(os () = Win32) then
+          (* No Unix.wait on Windows, use a stub wrapping WaitForMultipleObjects *)
+          let pids, len = List.fold_left (fun (l, n) t -> (t.p_pid::l, succ n)) ([], 0) processes in
+          waitpids pids len
+        else
+          safe_wait (List.hd processes).p_pid Unix.wait () in
       try
         let p = List.find (fun p -> p.p_pid = pid) processes in
         p, exit_status p return
