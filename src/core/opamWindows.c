@@ -14,10 +14,13 @@
 
 #define CAML_NAME_SPACE
 #include <stdio.h>
+#include <caml/mlvalues.h>
 #include <caml/memory.h>
 #include <caml/fail.h>
 #include <caml/alloc.h>
 #include <caml/custom.h>
+#include <caml/signals.h>
+#include <caml/unixsupport.h>
 
 #ifdef WIN32
 
