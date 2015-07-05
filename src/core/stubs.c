@@ -118,3 +118,64 @@ CAMLprim value OPAMW_IsWoW64(value unit)
 
   CAMLreturn(Val_bool(CurrentProcessIsWoW64()));
 }
+
+/*
+ * Taken from otherlibs/win32unix/winwait.c (sadly declared static)
+ * Altered only for CAML_NAME_SPACE
+ */
+static value alloc_process_status(HANDLE pid, int status)
+{
+  value res, st;
+
+  st = caml_alloc(1, 0);
+  Field(st, 0) = Val_int(status);
+  Begin_root (st);
+    res = caml_alloc_small(2, 0);
+    Field(res, 0) = Val_long((intnat) pid);
+    Field(res, 1) = st;
+  End_roots();
+  return res;
+}
+
+/*
+ * Adapted from otherlibs/win32unix/winwait.c win_waitpid
+ */
+CAMLprim value OPAMW_waitpids(value vpid_reqs, value vpid_len)
+{
+  int i;
+  DWORD status, retcode;
+  HANDLE pid_req;
+  DWORD err = 0;
+  int len = Int_val(vpid_len);
+  HANDLE *lpHandles = (HANDLE*)malloc(sizeof(HANDLE) * len);
+  value ptr = vpid_reqs;
+
+  if (lpHandles == NULL)
+    caml_raise_out_of_memory();
+
+  for (i = 0; i < len; i++) {
+    lpHandles[i] = (HANDLE)Long_val(Field(ptr, 0));
+    ptr = Field(ptr, 1);
+  }
+
+  caml_enter_blocking_section();
+  retcode = WaitForMultipleObjects(len, lpHandles, FALSE, INFINITE);
+  if (retcode == WAIT_FAILED) err = GetLastError();
+  caml_leave_blocking_section();
+  if (err) {
+    win32_maperr(err);
+    uerror("waitpids", Nothing);
+  }
+  pid_req = lpHandles[retcode - WAIT_OBJECT_0];
+  free(lpHandles);
+  if (! GetExitCodeProcess(pid_req, &status)) {
+    win32_maperr(GetLastError());
+    uerror("waitpids", Nothing);
+  }
+
+  /*
+   * NB Unlike in win_waitpid, it's not possible to have status == STILL_ACTIVE
+   */
+  CloseHandle(pid_req);
+  return alloc_process_status(pid_req, status);
+}
