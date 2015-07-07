@@ -580,12 +580,41 @@ module Win32 = struct
     maximumWindowSize: int * int;
   }
 
+  module RegistryHive = struct
+    type t =
+    | HKEY_CLASSES_ROOT
+    | HKEY_CURRENT_USER
+    | HKEY_LOCAL_MACHINE
+    | HKEY_USERS
+
+    type 'a value =
+    | REG_SZ : string value
+
+    let to_string = function
+    | HKEY_CLASSES_ROOT  -> "HKEY_CLASSES_ROOT"
+    | HKEY_CURRENT_USER  -> "HKEY_CURRENT_USER"
+    | HKEY_LOCAL_MACHINE -> "HKEY_LOCAL_MACHINE"
+    | HKEY_USERS         -> "HKEY_USERS"
+
+    let of_string = function
+    | "HKCR"
+    | "HKEY_CLASSES_ROOT"  -> HKEY_CLASSES_ROOT
+    | "HKCU"
+    | "HKEY_CURRENT_USER"  -> HKEY_CURRENT_USER
+    | "HKLM"
+    | "HKEY_LOCAL_MACHINE" -> HKEY_LOCAL_MACHINE
+    | "HKU"
+    | "HKEY_USERS"         -> HKEY_USERS
+    | _                    -> failwith "RegistryHive.of_string"
+  end
+
   type handle
 
   external getStdHandle : int -> handle = "OPAMW_GetStdHandle"
   external getConsoleScreenBufferInfo : handle -> console_screen_buffer_info = "OPAMW_GetConsoleScreenBufferInfo"
   external setConsoleTextAttribute : handle -> int -> unit = "OPAMW_SetConsoleTextAttribute"
   external isWoW64 : unit -> bool = "OPAMW_IsWoW64"
+  external writeRegistry : RegistryHive.t -> string -> string -> 'a RegistryHive.value -> 'a -> unit = "OPAMW_WriteRegistry"
 end
 
 module OpamSys = struct

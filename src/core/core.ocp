@@ -22,6 +22,12 @@ begin library "opam-core"
     "opamUrl.ml"
     "opamWindows.c"
   ]
+  if os_type = "Win32" then {
+    if system = "win32" || system = "win64" then
+      link = [ "-cclib" "advapi32.lib" ]
+    else
+      link = [ "-cclib" "-ladvapi32" ]
+  }
 
   requires = [
     "unix"
