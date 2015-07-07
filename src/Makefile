@@ -127,6 +127,9 @@ SRC_core = \
 
 define PROJ_core
   SOURCES = $(call addmli,core,$(SRC_core))
+ifeq ($(WIN32),1)
+  CLIBS = advapi32
+endif
   RESULT = opam-core
 endef
 export PROJ_core
