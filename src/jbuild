@@ -14,3 +14,8 @@
   ((targets (c-flags.sexp))
    (deps (../shell/context_flags.ml))
    (action (with-stdout-to ${@} (run ocaml ${^} cflags)))))
+
+(rule
+  ((targets (c-libraries.sexp))
+   (deps (../shell/context_flags.ml))
+   (action (with-stdout-to ${@} (run ocaml ${^} clibs)))))

@@ -8,6 +8,7 @@
    (flags (:standard (:include ../ocaml-flags-standard.sexp) (:include ../ocaml-context-flags.sexp)))
    (c_names (opamWindows))
    (c_flags (:standard (:include ../c-flags.sexp)))
+   (c_library_flags (:standard (:include ../c-libraries.sexp)))
    (wrapped false)))
 
 (rule
