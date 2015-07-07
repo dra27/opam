@@ -24,6 +24,8 @@ static struct custom_operations HandleOps =
 
 #define HANDLE_val(v) (*((HANDLE*)Data_custom_val(v)))
 
+static HKEY roots[] = {HKEY_CLASSES_ROOT, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, HKEY_USERS};
+
 CAMLprim value OPAMW_GetCurrentProcessID(value unit)
 {
   CAMLparam1(unit);
@@ -178,4 +180,55 @@ CAMLprim value OPAMW_waitpids(value vpid_reqs, value vpid_len)
    */
   CloseHandle(pid_req);
   return alloc_process_status(pid_req, status);
+}
+
+CAMLprim value OPAMW_WriteRegistry(value hKey, value lpSubKey, value lpValueName, value dwType, value lpData)
+{
+  CAMLparam5(hKey, lpSubKey, lpValueName, dwType, lpData);
+
+  HKEY key;
+  void* buf = NULL;
+  DWORD cbData = 0;
+  DWORD type = 0;
+
+  switch (RegOpenKeyEx(roots[Int_val(hKey)], String_val(lpSubKey), 0, KEY_WRITE, &key))
+  {
+    case ERROR_SUCCESS:
+      {
+        switch (Int_val(dwType))
+        {
+          case 0:
+            {
+              buf = String_val(lpData);
+              cbData = strlen(buf) + 1;
+              type = REG_SZ;
+              break;
+            }
+          default:
+            {
+              caml_failwith("OPAMW_WriteRegistry: value not implemented");
+              break;
+            }
+        }
+        if (RegSetValueEx(key, String_val(lpValueName), 0, type, (LPBYTE)buf, cbData) != ERROR_SUCCESS)
+        {
+          RegCloseKey(key);
+          caml_failwith("RegSetValueEx");
+        }
+        RegCloseKey(key);
+        break;
+      }
+    case ERROR_FILE_NOT_FOUND:
+      {
+        caml_raise_not_found();
+        break;
+      }
+    default:
+      {
+        caml_failwith("RegOpenKeyEx");
+        break;
+      }
+  }
+
+  CAMLreturn(Val_unit);
 }
