@@ -22,6 +22,8 @@ begin library "opam-core"
     "opamUrl.ml"
     "opamWindows.c"
   ]
+  if os_type = "Win32" then
+    link = [ "-cclib" "-ladvapi32" ]
 
   requires = [
     "unix"
