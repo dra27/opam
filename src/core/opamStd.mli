@@ -306,6 +306,23 @@ module Win32 : sig
     maximumWindowSize: int * int; (** Maximum displayable size of the console for this screen buffer *)
   }
 
+  (** Win32 Registry Hives and Values *)
+  module RegistryHive : sig
+    (** Registry root keys (hives) *)
+    type t =
+    | HKEY_CLASSES_ROOT
+    | HKEY_CURRENT_USER
+    | HKEY_LOCAL_MACHINE
+    | HKEY_USERS
+
+    (** Registry values *)
+    type 'a value =
+    | REG_SZ : string value (** String values *)
+
+    val of_string : string -> t
+    val to_string : t -> string
+  end
+
   (** Win32 API handles *)
   type handle
 
@@ -320,6 +337,10 @@ module Win32 : sig
   external setConsoleTextAttribute : handle -> int -> unit = "OPAMW_SetConsoleTextAttribute"
   (** Set the consoles text attribute setting
   *)
+
+  external writeRegistry : RegistryHive.t -> string -> string -> 'a RegistryHive.value -> 'a -> unit = "OPAMW_WriteRegistry"
+  (** [writeRegistry root subKey valueName valueType value] (over)writes a value in the Windows registry
+   *)
 end
 
 (** {2 System query and exit handling} *)
