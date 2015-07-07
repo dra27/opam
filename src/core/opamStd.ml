@@ -522,8 +522,8 @@ module Win32 = struct
     | HKEY_LOCAL_MACHINE
     | HKEY_USERS
 
-    type 'a value =
-    | REG_SZ : string value
+    type value =
+    | REG_SZ
 
     let to_string = function
     | HKEY_CLASSES_ROOT  -> "HKEY_CLASSES_ROOT"
@@ -548,7 +548,7 @@ module Win32 = struct
   external getStdHandle : int -> handle = "OPAMW_GetStdHandle"
   external getConsoleScreenBufferInfo : handle -> console_screen_buffer_info = "OPAMW_GetConsoleScreenBufferInfo"
   external setConsoleTextAttribute : handle -> int -> unit = "OPAMW_SetConsoleTextAttribute"
-  external writeRegistry : RegistryHive.t -> string -> string -> 'a RegistryHive.value -> 'a -> unit = "OPAMW_WriteRegistry"
+  external writeRegistry : RegistryHive.t -> string -> string -> RegistryHive.value -> 'a -> unit = "OPAMW_WriteRegistry"
 end
 
 module OpamSys = struct
