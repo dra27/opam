@@ -953,7 +953,7 @@ ifndef STATIC
 ifdef MSVC
 $(DLLSONAME):		$(OBJ_LINK)
 			$(OCAMLMKLIB) $(INCFLAGS) $(CLIBFLAGS) \
-				-o $(CLIB_BASE) $(OBJ_LINK) $(CLIBS:%=%.lib) $(CFRAMEWORKS:%=-framework %) \
+				-o $(CLIB_BASE) $(OBJ_LINK) $(CLIBS:%=-ldopt %.lib) $(CFRAMEWORKS:%=-framework %) \
 				$(OCAMLMKLIB_FLAGS)
 else
 $(DLLSONAME):		$(OBJ_LINK)
