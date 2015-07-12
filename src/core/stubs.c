@@ -204,3 +204,185 @@ CAMLprim value OPAMW_WriteRegistry(value hKey, value lpSubKey, value lpValueName
 
   CAMLreturn(Val_unit);
 }
+
+CAMLprim value OPAMW_GetConsoleOutputCP(value unit)
+{
+  CAMLparam1(unit);
+
+  CAMLreturn(Val_int(GetConsoleOutputCP()));
+}
+
+CAMLprim value OPAMW_SetConsoleOutputCP(value wCodePageID)
+{
+  CAMLparam1(wCodePageID);
+
+  CAMLreturn(Val_bool(SetConsoleOutputCP(Int_val(wCodePageID))));
+}
+
+CAMLprim value OPAMW_SetConsoleCP(value wCodePageID)
+{
+  CAMLparam1(wCodePageID);
+
+  CAMLreturn(Val_bool(SetConsoleCP(Int_val(wCodePageID))));
+}
+
+CAMLprim value OPAMW_output(value hConsoleOutput, value str)
+{
+  CAMLparam2(hConsoleOutput, str);
+
+  /*
+   * FIXME dwWritten is the number of *characters* written, not bytes, so UTF-8 needs handling.
+   *
+   * It's unlikely, given that long debugging messages go via printf anyway, that WriteConsole won't
+   * actually write everything in one go, hence ignoring dwWritten. It looks like the correct way is
+   * to convert the string to UTF-16 using MultiByteToWideChar and then write it using WriteConsoleW
+   * (where dwWritten will match up correctly with the length of the WSTR)
+   */
+  DWORD dwWritten;
+  WriteConsole(HANDLE_val(hConsoleOutput), String_val(str), caml_string_length(str), &dwWritten, NULL);
+
+  CAMLreturn(Val_unit);
+}
+
+CAMLprim value OPAMW_GetCurrentConsoleFontEx(value hConsoleOutput, value bMaximumWindow)
+{
+  CAMLparam2(hConsoleOutput, bMaximumWindow);
+  CAMLlocal3(result, coord, name);
+
+  int len;
+  CONSOLE_FONT_INFOEX fontInfo;
+  fontInfo.cbSize = sizeof(fontInfo);
+
+  if (GetCurrentConsoleFontEx(HANDLE_val(hConsoleOutput), Bool_val(bMaximumWindow), &fontInfo))
+  {
+    result = caml_alloc(5, 0);
+    Store_field(result, 0, Val_int(fontInfo.nFont));
+    coord = caml_alloc(2, 0);
+    Store_field(coord, 0, Val_int(fontInfo.dwFontSize.X));
+    Store_field(coord, 0, Val_int(fontInfo.dwFontSize.Y));
+    Store_field(result, 1, coord);
+    Store_field(result, 2, Val_int(fontInfo.FontFamily));
+    Store_field(result, 3, Val_int(fontInfo.FontWeight));
+    len = wcslen(fontInfo.FaceName) * 2;
+    name = caml_alloc_string(len);
+    memcpy(String_val(name), fontInfo.FaceName, len);
+    Store_field(result, 4, name);
+  }
+  else
+  {
+    caml_raise_not_found();
+  }
+
+  CAMLreturn(result);
+}
+
+CAMLprim value OPAMW_WideCharToMultiByte(value codePage, value flags, value str)
+{
+  CAMLparam3(codePage, flags, str);
+  CAMLlocal1(result);
+
+  UINT CodePage = Int_val(codePage);
+  DWORD dwFlags = Int_val(flags);
+  LPCWSTR lpWideCharStr = (LPCWSTR)String_val(str);
+  int cbMultiByte = caml_string_length(str) / 2;
+
+  int len = WideCharToMultiByte(CodePage, dwFlags, lpWideCharStr, cbMultiByte, NULL, 0, NULL, NULL);
+  result = caml_alloc_string(len);
+  WideCharToMultiByte(CodePage, dwFlags, lpWideCharStr, cbMultiByte, String_val(result), len, NULL, NULL);
+
+  CAMLreturn(result);
+}
+
+CAMLprim value OPAMW_CheckGlyphs(value fontName, value glyphList, value length)
+{
+  CAMLparam3(fontName, glyphList, length);
+  CAMLlocal3(result, tail, cell);
+
+  int l = Int_val(length);
+  HDC hDC;
+  char* failed = NULL;
+
+  if (l <= 0)
+    caml_invalid_argument("OPAMW_CheckGlyphs: bad length");
+
+  /*
+   * We just need any device context in which to load the font, so use the Screen DC
+   */
+  hDC = GetDC(NULL);
+
+  if (hDC)
+  {
+    HFONT hFont = CreateFontW(0, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, (LPCWSTR)String_val(fontName));
+
+    if (hFont)
+    {
+      if (SelectObject(hDC, hFont))
+      {
+        LPWSTR testString = (LPWSTR)malloc(l * 2);
+        LPWORD indices = (LPWORD)malloc(l * sizeof(WORD));
+        LPWSTR cur = testString;
+        DWORD converted;
+
+        cell = glyphList;
+        do
+        {
+          *cur++ = (WCHAR)Int_val(Field(cell, 0));
+          cell = Field(cell, 1);
+        }
+        while (Is_block(cell));
+
+        converted = GetGlyphIndicesW(hDC, testString, l, indices, GGI_MARK_NONEXISTING_GLYPHS);
+        if (converted == l)
+        {
+          int i = 0;
+          LPWORD ptr = indices;
+          tail = result = caml_alloc(2, 0);
+          while (i++ < l)
+          {
+            cell = caml_alloc(2, 0);
+            Store_field(cell, 0, Val_bool(*ptr++ != 0xffff));
+            Store_field(tail, 1, cell);
+            tail = cell;
+          }
+          Store_field(cell, 1, Val_int(0));
+          result = Field(result, 1);
+        }
+        else
+        {
+          if (converted == GDI_ERROR)
+          {
+            failed = "OPAMW_CheckGlyphs: GetGlyphIndicesW";
+          }
+          else
+          {
+            failed = "OPAMW_CheckGlyphs: GetGlyphIndicesW (unexpected return)";
+          }
+        }
+
+        free(indices);
+        free(testString);
+      }
+      else
+      {
+        failed = "OPAMW_CheckGlyphs: SelectObject";
+      }
+
+      DeleteObject(hFont);
+    }
+    else
+    {
+      failed = "OPAMW_CheckGlyphs: CreateFontW";
+    }
+
+    ReleaseDC(NULL, hDC);
+  }
+  else
+  {
+    failed = "OPAMW_CheckGlyphs: GetDC";
+  }
+
+  if (failed)
+    caml_failwith(failed);
+
+  CAMLreturn(result);
+}

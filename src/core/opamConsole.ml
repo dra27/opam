@@ -46,18 +46,30 @@ let disp_status_line () =
 
 let utf8, utf8_extended =
   let auto = lazy (
-    let checkv v =
-      try Some (OpamStd.String.ends_with ~suffix:"UTF-8" (OpamStd.Env.get v))
-      with Not_found -> None
-    in
-    OpamStd.Option.Op.(checkv "LC_ALL" ++ checkv "LANG" +! false)
+    if OpamStd.Sys.(os () = Win32) then
+      try
+        let info = OpamStd.Win32.getCurrentConsoleFontEx (OpamStd.Win32.getStdHandle (-11)) false in
+          (*
+           * The Windows Console can be set to support Unicode as long as a TrueType font has been selected (Consolas or Lucida Console
+           * are installed by default)
+           * TMPF_TRUETYPE = 0x4 (wingdi.h)
+           *)
+          OpamStd.Win32.(info.fontFamily land 0x4 <> 0)
+      with Not_found ->
+        false
+    else
+      let checkv v =
+        try Some (OpamStd.String.ends_with ~suffix:"UTF-8" (OpamStd.Env.get v))
+        with Not_found -> None
+      in
+      OpamStd.Option.Op.(checkv "LC_ALL" ++ checkv "LANG" +! false)
   ) in
   (fun () -> match OpamCoreConfig.(!r.utf8) with
      | `Always | `Extended -> true
      | `Never -> false
      | `Auto -> Lazy.force auto),
   (fun () -> match OpamCoreConfig.(!r.utf8) with
-     | `Extended -> true
+     | `Extended -> OpamStd.Sys.(os () <> Win32)
      | `Always | `Never -> false
      | `Auto -> Lazy.force auto && OpamStd.Sys.(os () = Darwin))
 
@@ -142,19 +154,25 @@ let win32_msg ch msg =
   if not !rch then
     Printf.fprintf ch "%s%!" msg
   else
+    (*
+     * Tread extremely cautiously (and possibly incorrectly) where UTF-8 is concerned. Although we could blithely
+     * set code page 65001 at program launch, processes invoked by OPAM may struggle to cope with it. However, the "test"
+     * for UTF-8 is simply the presence of any byte with bit 7 set, so we could run into trouble if any extended ASCII
+     * bytes are sent through this routine.
+     *)
     try
       flush ch;
       let hConsoleOutput = OpamStd.Win32.getStdHandle fch in
-      let {OpamStd.Win32.attributes; _} =
+      let ({OpamStd.Win32.attributes; _}, write) =
         try
-          OpamStd.Win32.getConsoleScreenBufferInfo hConsoleOutput
+          (OpamStd.Win32.getConsoleScreenBufferInfo hConsoleOutput, OpamStd.Win32.writeWindowsConsole hConsoleOutput)
         with Not_found ->
           rch := false;
           (*
            * msg will have been constructed on the assumption that colour was available - process it as normal
            * in order to remove the escape sequences
            *)
-          {OpamStd.Win32.attributes = 0; cursorPosition = (0, 0); maximumWindowSize = (0, 0); window = (0, 0, 0, 0); size = (0, 0)}
+          ({OpamStd.Win32.attributes = 0; cursorPosition = (0, 0); maximumWindowSize = (0, 0); window = (0, 0, 0, 0); size = (0, 0)}, Printf.fprintf ch "%s%!")
       in
       let outputColor = !rch in
       let background = (attributes land 0b1110000) lsr 4 in
@@ -201,7 +219,7 @@ let win32_msg ch msg =
             | _ -> assert false in
           if outputColor then
             OpamStd.Win32.setConsoleTextAttribute hConsoleOutput attributes in
-      let rec f index start inCode =
+      let rec f ansi index start inCode =
         if index < length
         then let c = msg.[index] in
              if c = '\027' then begin
@@ -209,25 +227,43 @@ let win32_msg ch msg =
                let fragment = String.sub msg start (index - start) in
                let index = succ index in
                if fragment <> "" then
-                 Printf.fprintf ch "%s%!" fragment;
-               f index index true end
+                 write fragment;
+               f ansi index index true end
              else
                if inCode && c = 'm' then
                  let fragment = String.sub msg start (index - start) in
                  let index = succ index in
                  executeCode fragment;
-                 f index index false
+                 f ansi index index false
                else
-                 f (succ index) start inCode
+                 (* UTF-8 chars assumed not to appear inside ANSI escape *)
+                 let ansi =
+                   if ansi && int_of_char c land 0x80 <> 0 then
+                     not (OpamStd.Win32.setConsoleOutputCP 65001)
+                   else
+                     ansi
+                 in
+                 f ansi (succ index) start inCode
         else let fragment = String.sub msg start (index - start) in
              if fragment <> "" then
                if inCode then
                  executeCode fragment
                else
-                 Printf.fprintf ch "%s%!" fragment
+                 write fragment
              else
-               flush ch in
-      f 0 0 false
+               flush ch;
+             ansi in
+      let cp =
+        OpamStd.Win32.getConsoleOutputCP ()
+      in
+      let result =
+        if f (cp <> 65001 && utf8 ()) 0 0 false then
+          cp
+        else
+          65001
+      in
+      if cp <> result then
+        ignore (OpamStd.Win32.setConsoleOutputCP cp)
     with Exit -> ()
 
 let gen_msg =
