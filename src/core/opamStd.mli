@@ -318,6 +318,23 @@ end
 
 (** {2 Windows-specific functions} *)
 module Win32 : sig
+  (** Win32 WSTR - UCS2-ish string, opaque to prevent accidental printing *)
+  module WSTR : sig
+    type t
+
+    val to_string : t -> string
+  end
+
+  (** CONSOLE_FONT_INFOEX (see https://msdn.microsoft.com/en-us/library/windows/desktop/ms682069.aspx)
+  *)
+  type console_font_infoex = {
+    font: int; (** Index of the font within the system console font table *)
+    fontSize: int * int; (** Width and height of the characters in logical units *)
+    fontFamily: int; (** Font pitch and family. See tmPitchAndFamily in https://msdn.microsoft.com/en-us/library/windows/desktop/dd145132.aspx *)
+    fontWeight: int; (** Font weight (100--1000) *)
+    faceName: WSTR.t; (** Name of the font *)
+  }
+
   (** CONSOLE_SCREEN_BUFFER_INFO (see https://msdn.microsoft.com/en-us/library/windows/desktop/ms682093.aspx)
   *)
   type console_screen_buffer_info = {
@@ -363,6 +380,32 @@ module Win32 : sig
   external writeRegistry : RegistryHive.t -> string -> string -> 'a RegistryHive.value -> 'a -> unit = "OPAMW_WriteRegistry"
   (** [writeRegistry root subKey valueName valueType value] (over)writes a value in the Windows registry
    *)
+
+  external getConsoleOutputCP : unit -> int = "OPAMW_GetConsoleOutputCP"
+  (** Retrieves the current Console Output Code Page
+   *)
+
+  external setConsoleOutputCP : int -> bool = "OPAMW_SetConsoleOutputCP"
+  (** Sets the Console Output Code Page
+   *)
+
+  external setConsoleCP : int -> bool = "OPAMW_SetConsoleCP"
+  (** Sets the Console Input Code Page
+   *)
+
+  external getCurrentConsoleFontEx : handle -> bool -> console_font_infoex = "OPAMW_GetCurrentConsoleFontEx"
+  (** Gets information on the current console output font
+   *)
+
+  external checkGlyphs : WSTR.t -> int list -> int -> bool list = "OPAMW_CheckGlyphs"
+  (** [checkGlyphs font chars length] takes a list of [length] BMP Unicode code-points to check for
+   * in the given font. The return result is a list of the same length with the value [true]
+   * indicating that the corresponding UTF16 character has a glyph in the font.
+   *)
+
+  external writeWindowsConsole : handle -> string -> unit = "OPAMW_output"
+  (** Writes output to the Windows Console using WriteConsoleW
+  *)
 end
 
 (** {2 System query and exit handling} *)
