@@ -8,6 +8,11 @@ let compat_version =
   | 02 -> "4.02"
   | _  -> "4.03"
 
+let c_library_flags =
+  if Sys.os_type = "Win32" then {|
+   (c_library_flags (:standard -lgdi32 -luser32))|}
+  else ""
+
 let () = out {|
 (jbuild_version 1)
 
@@ -18,7 +23,7 @@ let () = out {|
    (libraries (jsonm re ocamlgraph unix bigarray))
    (flags (:standard %s))
    (c_names (opamWindows))
-   (c_flags (:standard %s))
+   (c_flags (:standard %s))%s
    (wrapped false)))
 
 (foreach ${ext} (ml mli)
@@ -26,4 +31,4 @@ let () = out {|
    ((targets (opamCompat.${ext}))
     (deps    (opamCompat.${ext}.%s))
     (action  (copy ${^} ${@})))))
-|} ocaml_flags c_flags compat_version
+|} ocaml_flags c_flags c_library_flags compat_version
