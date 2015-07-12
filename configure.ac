@@ -41,6 +41,20 @@ AC_PROG_CC([$($OCAMLBESTCC -config | fgrep native_c_compiler | sed -e "s/native_
 
 AS_IF([test "x${enable_developer_mode}" = "xyes"], [AC_SUBST(DEVELOPER,true)], [AC_SUBST(DEVELOPER,false)])
 
+AC_ARG_VAR(DEVELOPER_CACHE, [Developer file cache location])
+
+AS_IF([test "x${DEVELOPER_CACHE}" != "x"], [
+  AS_IF([test "${enable_developer_mode+set}" = "set"], [
+    AS_IF([test "x${enable_developer_mode}" = "xno"], [
+      AC_MSG_WARN([--disable-developer-mode given; DEVELOPER_CACHE ignored])]
+    )], [
+    AC_MSG_WARN([============================================================================])
+    AC_MSG_WARN([DEVELOPER_CACHE specified: developer mode has been automatically enabled])
+    AC_MSG_WARN([============================================================================])
+    AC_SUBST(DEVELOPER,true)])], [AC_SUBST(DEVELOPER_CACHE,"~/.opam-cache")])
+DEVELOPER_CACHE=$(echo ${DEVELOPER_CACHE} | sed -e "s/\\\\/\\\\\\\\/g")
+AC_SUBST(DEVELOPER_CACHE)
+
 AX_COMPARE_VERSION([$OCAMLVERSION], [ge], [4.02.0])
 AC_SUBST(ocaml_4_02,"$ax_compare_version")
 
