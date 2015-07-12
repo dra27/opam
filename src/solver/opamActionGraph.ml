@@ -32,7 +32,69 @@ let name_of_action = function
   | `Reinstall _ -> "recompile"
   | `Build _ -> "build"
 
-let symbol_of_action = function
+let win32_symbols = lazy (
+  let table =
+    [int_of_char 'X'; 0x00d8; 0x2298;
+     int_of_char '*'; 0x2736; 0x2217;
+     int_of_char 'U'; 0x2191; 0x2197;
+     int_of_char 'D'; 0x2193; 0x2198;
+     int_of_char 'R'; 0x2195; 0x21bb;
+     int_of_char 'B'; 0x2191; 0x39B]
+  and translation =
+    ["X "; "\xc3\x98 "; "\xe2\x8a\x98 ";
+     "* "; "\xe2\x9c\xb6 "; "\xe2\x88\x97 ";
+     "U "; "\xe2\x86\x91 "; "\xe2\x86\x97 ";
+     "D "; "\xe2\x86\x93 "; "\xe2\x86\x98 ";
+     "R "; "\xe2\x86\x95 "; "\xe2\x86\xbb ";
+     "B "; "\xe2\x9c\xb6 "; "\xce\xbb "]
+  in
+  let font =
+    try
+      OpamStd.Win32.((getCurrentConsoleFontEx (getStdHandle (-11)) false).faceName)
+    with Not_found ->
+      OpamStd.Win32.((getCurrentConsoleFontEx (getStdHandle (-12)) false).faceName)
+  in
+  let glyphs =
+    OpamStd.Win32.checkGlyphs font table 18
+  in
+  let table = [| ""; ""; ""; ""; ""; "" |] in
+  let f (idx, curr) trans avail =
+    if avail then
+      table.(idx) <- trans;
+    let curr =
+      if curr = 1 then
+        3
+      else
+        pred curr
+    in
+    let idx =
+      if curr = 3 then
+        succ idx
+      else
+        idx
+    in
+    (idx, curr)
+  in
+  ignore (List.fold_left2 f (0, 3) translation glyphs);
+  table)
+
+let symbol_of_action a =
+  (*
+   * Take the view that on OS's other than Windows, you should fix your
+   * terminal or disable UTF-8 if you don't have the required characters.
+   * That's not such a good solution on Windows, as Console fonts are rarer
+   * (and harder to install), so check for available characters
+   *)
+  if OpamStd.Sys.(os () = Win32) then
+    let table = Lazy.force win32_symbols in
+      match a with
+        | `Remove _ -> table.(0)
+        | `Install _ -> table.(1)
+        | `Change (`Up,_,_) -> table.(2)
+        | `Change (`Down,_,_) -> table.(3)
+        | `Reinstall _ -> table.(4)
+        | `Build _ -> table.(5)
+  else match a with
   | `Remove _ -> "\xe2\x8a\x98 " (* U+2298 *)
   | `Install _ -> "\xe2\x88\x97 " (* U+2217 *)
   | `Change (`Up,_,_) -> "\xe2\x86\x97 " (* U+2197 *)
