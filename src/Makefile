@@ -123,10 +123,11 @@ SRC_core = \
   opamUrl.ml \
   opamWindows.c
 
+# NB flexlink specifies -luser32 automatically for mingw, but doesn't include user32.lib for msvc
 define PROJ_core
   SOURCES = $(call addmli,core,$(SRC_core))
 ifeq ($(WIN32),1)
-  CLIBS = advapi32
+  CLIBS = advapi32 gdi32 user32
 endif
   RESULT = opam-core
 endef
@@ -172,6 +173,9 @@ SRC_solver = \
 
 define PROJ_solver
   SOURCES = $(call addmli,solver,$(SRC_solver))
+ifeq ($(WIN32),1)
+	CLIBS = gdi32
+endif
   RESULT = opam-solver
 endef
 export PROJ_solver

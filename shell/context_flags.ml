@@ -24,7 +24,7 @@ match Sys.argv.(1) with
       Printf.printf "-Werror"
 | "clibs" ->
     if Sys.win32 then
-      Printf.printf "(-ladvapi32)"
+      Printf.printf "(-ladvapi32 -lgdi32 -luser32)"
 | _ ->
     Printf.eprintf "Unrecognised context instruction: %s\n" Sys.argv.(1);
     exit 1
