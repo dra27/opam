@@ -124,7 +124,7 @@ let init =
           the initial remote package repository."
          Filename.dir_sep);
     `P (Printf.sprintf
-         "Once the fresh client has been created, OPAM will ask the user if he wants \
+         "Once the fresh client has been created, OPAM will ask whether the user wants \
           $(i,~%s.profile) (or $(i,~%s.zshrc), etc. depending on his shell) and $(i,~%s.ocamlinit) \
           to be updated. \
           If $(b,--auto-setup) is used, OPAM will modify the configuration files automatically, \
