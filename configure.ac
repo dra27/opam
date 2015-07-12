@@ -122,8 +122,11 @@ if test "$OCAML_PKG_extlib" = "no" ||
   echo "============================================================================"
   echo
   AC_SUBST(hasalldeps,"")
+  printf "S src_ext/*\nB src_ext/*" > .merlin
+  grep -v "^PKG" .merlin.in >> .merlin
 else
   AC_SUBST(hasalldeps,"true")
+  cp .merlin.in .merlin
 fi
 
 if test "$prefix" = "NONE"; then
