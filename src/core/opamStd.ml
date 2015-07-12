@@ -568,6 +568,22 @@ module Env = struct
 end
 
 module Win32 = struct
+  module WSTR = struct
+    type t = string
+
+    external wideCharToMultiByte : int -> int -> t -> string = "OPAMW_WideCharToMultiByte"
+
+    let to_string = wideCharToMultiByte 3 0 (* CP_THREAD_ACP - see winnls.h *)
+  end
+
+  type console_font_infoex = {
+    font: int;
+    fontSize: int * int;
+    fontFamily: int;
+    fontWeight: int;
+    faceName: WSTR.t;
+  }
+
   type console_screen_buffer_info = {
     size: int * int;
     cursorPosition: int * int;
@@ -611,6 +627,12 @@ module Win32 = struct
   external setConsoleTextAttribute : handle -> int -> unit = "OPAMW_SetConsoleTextAttribute"
   external isWoW64 : unit -> bool = "OPAMW_IsWoW64"
   external writeRegistry : RegistryHive.t -> string -> string -> 'a RegistryHive.value -> 'a -> unit = "OPAMW_WriteRegistry"
+  external getConsoleOutputCP : unit -> int = "OPAMW_GetConsoleOutputCP"
+  external setConsoleOutputCP : int -> bool = "OPAMW_SetConsoleOutputCP"
+  external setConsoleCP : int -> bool = "OPAMW_SetConsoleCP"
+  external getCurrentConsoleFontEx : handle -> bool -> console_font_infoex = "OPAMW_GetCurrentConsoleFontEx"
+  external checkGlyphs : WSTR.t -> int list -> int -> bool list = "OPAMW_CheckGlyphs"
+  external writeWindowsConsole : handle -> string -> unit = "OPAMW_output"
 end
 
 module OpamSys = struct
