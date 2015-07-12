@@ -621,6 +621,7 @@ CC64
 CONF_CFLAGS
 CONF_OCAMLFLAGS
 MCCS_ENABLED
+DEVELOPER_CACHE
 DEVELOPER
 OBJEXT
 EXEEXT
@@ -709,6 +710,7 @@ CFLAGS
 LDFLAGS
 LIBS
 CPPFLAGS
+DEVELOPER_CACHE
 CXX
 CXXFLAGS
 CCC'
@@ -1359,6 +1361,8 @@ Some influential environment variables:
   LIBS        libraries to pass to the linker, e.g. -l<library>
   CPPFLAGS    (Objective) C/C++ preprocessor flags, e.g. -I<include dir> if
               you have headers in a nonstandard directory <include dir>
+  DEVELOPER_CACHE
+              Developer file cache location
   CXX         C++ compiler command
   CXXFLAGS    C++ compiler flags
 
@@ -3955,6 +3959,36 @@ else
   DEVELOPER=false
 
 fi
+
+
+
+if test "x${DEVELOPER_CACHE}" != "x"; then :
+
+  if test "${enable_developer_mode+set}" = "set"; then :
+
+    if test "x${enable_developer_mode}" = "xno"; then :
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: --disable-developer-mode given; DEVELOPER_CACHE ignored" >&5
+$as_echo "$as_me: WARNING: --disable-developer-mode given; DEVELOPER_CACHE ignored" >&2;}
+
+fi
+else
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ============================================================================" >&5
+$as_echo "$as_me: WARNING: ============================================================================" >&2;}
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: DEVELOPER_CACHE specified: developer mode has been automatically enabled" >&5
+$as_echo "$as_me: WARNING: DEVELOPER_CACHE specified: developer mode has been automatically enabled" >&2;}
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ============================================================================" >&5
+$as_echo "$as_me: WARNING: ============================================================================" >&2;}
+    DEVELOPER=true
+
+fi
+else
+  DEVELOPER_CACHE="~/.opam-cache"
+
+fi
+DEVELOPER_CACHE=$(echo ${DEVELOPER_CACHE} | sed -e 's/\\/\\\\/g')
+
 
 if test "x${with_mccs}" = "xno"; then :
   MCCS_ENABLED=false

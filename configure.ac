@@ -123,6 +123,20 @@ AC_PROG_CC(["${OCAML_CC}" gcc cc])
 
 AS_IF([test "x${enable_developer_mode}" = "xyes"], [AC_SUBST(DEVELOPER,true)], [AC_SUBST(DEVELOPER,false)])
 
+AC_ARG_VAR(DEVELOPER_CACHE, [Developer file cache location])
+
+AS_IF([test "x${DEVELOPER_CACHE}" != "x"], [
+  AS_IF([test "${enable_developer_mode+set}" = "set"], [
+    AS_IF([test "x${enable_developer_mode}" = "xno"], [
+      AC_MSG_WARN([--disable-developer-mode given; DEVELOPER_CACHE ignored])]
+    )], [
+    AC_MSG_WARN([============================================================================])
+    AC_MSG_WARN([DEVELOPER_CACHE specified: developer mode has been automatically enabled])
+    AC_MSG_WARN([============================================================================])
+    AC_SUBST(DEVELOPER,true)])], [AC_SUBST(DEVELOPER_CACHE,"~/.opam-cache")])
+DEVELOPER_CACHE=$(echo ${DEVELOPER_CACHE} | sed -e 's/\\/\\\\/g')
+AC_SUBST(DEVELOPER_CACHE)
+
 AS_IF([test "x${with_mccs}" = "xno"], [AC_SUBST(MCCS_ENABLED,false)], [AC_SUBST(MCCS_ENABLED,true)])
 
 AS_IF([test "x${CI}" != "x" -o "x${enable_developer_mode}" = "xyes"], [
