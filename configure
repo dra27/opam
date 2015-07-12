@@ -613,6 +613,7 @@ CYGPATH
 ocaml_4_02
 ocaml_4_01
 ocaml_4
+DEVELOPER
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -678,6 +679,7 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_version_check
+enable_developer_mode
 enable_certificate_check
 '
       ac_precious_vars='build_alias
@@ -1298,6 +1300,8 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-version-check Do not check OCaml version
+
+  --enable-developer-mode Enable developer features
 
   --disable-certificate-check
                           Do not check the certificate of OPAM's dependency
@@ -3006,6 +3010,12 @@ if test "${enable_version_check+set}" = set; then :
 fi
 
 
+# Check whether --enable-developer_mode was given.
+if test "${enable_developer_mode+set}" = set; then :
+  enableval=$enable_developer_mode;
+fi
+
+
 # Check that OCaml version is greater or equal to 3.12.1
 for ac_prog in gawk mawk nawk awk
 do
@@ -3703,6 +3713,14 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
+
+if test "x${enable_developer_mode}" = "xyes"; then :
+  DEVELOPER=true
+
+else
+  DEVELOPER=false
+
+fi
 
 
 
@@ -4846,7 +4864,7 @@ if test "$prefix" = "NONE"; then
   prefix=$ac_default_prefix
 fi
 
-ac_config_files="$ac_config_files Makefile.config META src/core/opamVersion.ml opam.install"
+ac_config_files="$ac_config_files Makefile.config META src/core/opamVersion.ml src/core/opamCoreConfig.ml opam.install"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5557,6 +5575,7 @@ do
     "Makefile.config") CONFIG_FILES="$CONFIG_FILES Makefile.config" ;;
     "META") CONFIG_FILES="$CONFIG_FILES META" ;;
     "src/core/opamVersion.ml") CONFIG_FILES="$CONFIG_FILES src/core/opamVersion.ml" ;;
+    "src/core/opamCoreConfig.ml") CONFIG_FILES="$CONFIG_FILES src/core/opamCoreConfig.ml" ;;
     "opam.install") CONFIG_FILES="$CONFIG_FILES opam.install" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
