@@ -405,6 +405,10 @@ module Win32 : sig
   external writeWindowsConsole : handle -> string -> unit = "OPAMW_output"
   (** Writes output to the Windows Console using WriteConsoleW
   *)
+
+  val parent_putenv : string -> string -> bool
+  (** Update an environment variable in the parent (i.e. shell) process's environment
+   *)
 end
 
 (** {2 System query and exit handling} *)
