@@ -571,6 +571,47 @@ module Win32 = struct
   external getCurrentConsoleFontEx : handle -> bool -> console_font_infoex = "OPAMW_GetCurrentConsoleFontEx"
   external checkGlyphs : WSTR.t -> int list -> int -> bool list = "OPAMW_CheckGlyphs"
   external writeWindowsConsole : handle -> string -> unit = "OPAMW_output"
+  external isWoW64Mismatch_stub : unit -> int = "OPAMW_IsWoW64Mismatch"
+  external parent_putenv_stub : string -> string -> bool = "OPAMW_parent_putenv"
+
+  let parent_putenv =
+    let ppid =
+      if Sys.os_type = "Win32" then
+        isWoW64Mismatch_stub ()
+      else
+        0 in
+    if ppid > 0 then
+      (*
+       * Expect to see opam-putenv.exe in the same directory as opam.exe, rather than the path
+       * (allow for crazy users like developers who may have both builds of opam)
+       *)
+      let putenv_exe = Filename.concat (Filename.dirname Sys.executable_name) "opam-putenv.exe" in
+      let ppid = string_of_int ppid in
+      let ctrl = ref stdout in
+      at_exit (fun () -> if !ctrl <> stdout then begin Printf.fprintf !ctrl "::QUIT\n%!"; ctrl := stdout end);
+      if Sys.file_exists putenv_exe then
+        fun key value ->
+          if !ctrl = stdout then begin
+            let (inCh, outCh) = Unix.pipe () in
+            let _ = (Unix.create_process putenv_exe [| putenv_exe; ppid |] inCh Unix.stdout Unix.stderr) in
+            ctrl := (Unix.out_channel_of_descr outCh);
+            set_binary_mode_out !ctrl true;
+          end;
+          Printf.fprintf !ctrl "%s\n%s\n%!" key value;
+          if key = "::QUIT" then ctrl := stdout;
+          true
+      else
+        let shownWarning = ref false in
+        fun _ _ ->
+          if not !shownWarning then begin
+            shownWarning := true;
+            Printf.eprintf "opam-putenv was not found - OPAM is unable to alter environment variables\n%!";
+            false
+          end else
+            false
+    else
+      function "::QUIT" -> fun _ -> true
+        | key -> parent_putenv_stub key
 end
 
 module OpamSys = struct

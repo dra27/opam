@@ -68,6 +68,7 @@ src/opam-installer
 src/opam-installer.exe
 src/opam-check
 src/opamlfind
+src/opam-putenv.exe
 ._d
 ._ncdi
 ._bcdi

@@ -386,3 +386,125 @@ CAMLprim value OPAMW_CheckGlyphs(value fontName, value glyphList, value length)
 
   CAMLreturn(result);
 }
+
+/*
+ * OPAMW_parent_putenv is implemented using Process Injection.
+ * Idea inspired by Bill Stewart's editvar (http://www.westmesatech.com/editv.html)
+ * Full technical details at http://www.codeproject.com/Articles/4610/Three-Ways-to-Inject-Your-Code-into-Another-Proces#section_3
+ */
+
+static char* getCurrentProcess(PROCESSENTRY32 *entry)
+{
+  /*
+   * Create a Toolhelp Snapshot of running processes
+   */
+  HANDLE hProcessSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  entry->dwSize = sizeof(PROCESSENTRY32);
+
+  if (hProcessSnapshot == INVALID_HANDLE_VALUE)
+    return "getCurrentProcess: could not create snapshot";
+
+  /*
+   * Locate our process
+   */
+  if (!Process32First(hProcessSnapshot, entry))
+  {
+    CloseHandle(hProcessSnapshot);
+    return "getCurrentProcess: could not walk process tree";
+  }
+  else
+  {
+    DWORD processId = GetCurrentProcessId();
+
+    while (entry->th32ProcessID != processId)
+    {
+      if (!Process32Next(hProcessSnapshot, entry))
+      {
+        CloseHandle(hProcessSnapshot);
+        return "getCurrentProcess: could not find process!";
+      }
+    }
+  }
+
+  /*
+   * Finished with the snapshot
+   */
+  CloseHandle(hProcessSnapshot);
+
+  return NULL;
+}
+
+char* InjectSetEnvironmentVariable(DWORD pid, char* key, char* val);
+
+CAMLprim value OPAMW_parent_putenv(value key, value val)
+{
+  CAMLparam2(key, val);
+  CAMLlocal1(res);
+
+  PROCESSENTRY32 entry;
+  char* msg;
+  char* result;
+
+  /*
+   * MSDN is all over the place as to what the technical limits are for environment variables
+   * (looks like 32KiB for both both name and value) however there's no need to inject 64KiB
+   * data each time - hence 4KiB "limit".
+   */
+  if (caml_string_length(key) > 4095 || caml_string_length(val) > 4095)
+    caml_invalid_argument("Strings too long");
+
+  msg = getCurrentProcess(&entry);
+  if (msg)
+    caml_failwith(msg);
+
+  result = InjectSetEnvironmentVariable(entry.th32ParentProcessID, String_val(key), String_val(val));
+
+  if (result == NULL)
+  {
+    res = Val_true;
+  }
+  else if (strlen(result) == 0)
+  {
+    res = Val_false;
+  }
+  else
+  {
+    caml_failwith(result);
+  }
+
+  CAMLreturn(res);
+}
+
+typedef BOOL (WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
+
+CAMLprim value OPAMW_IsWoW64Mismatch(value unit)
+{
+  CAMLparam1(unit);
+
+  PROCESSENTRY32 entry;
+  char* msg = getCurrentProcess(&entry);
+  LPFN_ISWOW64PROCESS IsWoW64Process;
+  BOOL pidWoW64 = FALSE, ppidWoW64 = FALSE;
+  HANDLE hProcess;
+
+  if (msg)
+    caml_failwith(msg);
+
+  /*
+   * 32-bit versions may or may not have IsWow64Process (depends on age). Recommended way is to use
+   * GetProcAddress to obtain IsWow64Process, rather than relying on Windows.h.
+   * See http://msdn.microsoft.com/en-gb/library/windows/desktop/ms684139.aspx
+   */
+  IsWoW64Process = (LPFN_ISWOW64PROCESS)GetProcAddress(GetModuleHandle("kernel32"), "IsWow64Process");
+  if (IsWoW64Process)
+  {
+    IsWoW64Process(GetCurrentProcess(), &pidWoW64);
+    if ((hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, entry.th32ParentProcessID)))
+    {
+      IsWoW64Process(hProcess, &ppidWoW64);
+      CloseHandle(hProcess);
+    }
+  }
+
+  CAMLreturn(Val_int((pidWoW64 != ppidWoW64 ? entry.th32ParentProcessID : 0)));
+}
