@@ -416,6 +416,73 @@ CAMLprim value OPAMW_CheckGlyphs(value fontName, value glyphList, value length)
 }
 
 /*
+ * Somewhat against my better judgement, wrap SHGetFolderPath rather than SHGetKnownFolderPath to maintain XP compatibility.
+ * OPAM already requires Windows Vista+ because of GetCurrentConsoleFontEx, but there may be a workaround for that for XP lusers.
+ */
+CAMLprim value OPAMW_SHGetFolderPath(value nFolder, value dwFlags)
+{
+  CAMLparam2(nFolder, dwFlags);
+  CAMLlocal1(result);
+  TCHAR szPath[MAX_PATH];
+
+  if (SUCCEEDED(SHGetFolderPath(NULL, Int_val(nFolder), NULL, Int_val(dwFlags), szPath)))
+    result = caml_copy_string(szPath);
+  else
+    caml_failwith("OPAMW_SHGetFolderPath");
+
+  CAMLreturn(result);
+}
+
+CAMLprim value OPAMW_SendMessageTimeout(value hWnd, value uTimeout, value fuFlags, value msg, value wParam, value lParam)
+{
+  CAMLparam5(hWnd, msg, wParam, lParam, fuFlags);
+  CAMLxparam1(uTimeout);
+  CAMLlocal1(result);
+
+  DWORD_PTR dwReturnValue;
+  HRESULT lResult;
+  WPARAM rwParam;
+  LPARAM rlParam;
+  UINT rMsg;
+
+  switch (Int_val(msg))
+  {
+    case 0:
+      {
+        rMsg = WM_SETTINGCHANGE;
+        rwParam = Int_val(wParam);
+        rlParam = (LPARAM)String_val(lParam);
+        break;
+      }
+    default:
+      {
+        caml_failwith("OPAMW_SendMessageTimeout: message not implemented");
+        break;
+      }
+  }
+
+  lResult = SendMessageTimeout((HWND)Nativeint_val(hWnd), rMsg, rwParam, rlParam, Int_val(fuFlags), Int_val(uTimeout), &dwReturnValue);
+
+  switch (Int_val(msg))
+  {
+    case 0:
+      {
+        result = caml_alloc(2, 0);
+        Store_field(result, 0, Val_int(lResult));
+        Store_field(result, 1, Val_int(dwReturnValue));
+        break;
+      }
+  }
+
+  CAMLreturn(result);
+}
+
+CAMLprim value OPAMW_SendMessageTimeout_byte(value * argv, int argn)
+{
+  return OPAMW_SendMessageTimeout(argv[0], argv[1], argv[2], argv[3], argv[4], argv[5]);
+}
+
+/*
  * OPAMW_parent_putenv is implemented using Process Injection.
  * Idea inspired by Bill Stewart's editvar (http://www.westmesatech.com/editv.html)
  * Full technical details at http://www.codeproject.com/Articles/4610/Three-Ways-to-Inject-Your-Code-into-Another-Proces#section_3

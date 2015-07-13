@@ -25,6 +25,7 @@
 #ifdef _WIN32
 
 #include <Windows.h>
+#include <Shlobj.h>
 #include <TlHelp32.h>
 
 #include "stubs.c"
