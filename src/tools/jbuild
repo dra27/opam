@@ -1,3 +1,26 @@
+(* -*- tuareg -*- *)
+
+module J = Jbuild_plugin.V1
+
+let (cc64_build, build_putenv) =
+  let cc64 =
+    try
+      let c = open_in "../cc64.sexp" in
+      try
+        input_line c
+      with End_of_file ->
+        ""
+    with Sys_error _ ->
+      ""
+  in
+  if cc64 = "" then ("(echo no)", "") else (cc64, {|
+(install
+  ((section bin)
+   (package opam)
+   (files (opam-putenv.exe))))
+|})
+
+let () = Printf.ksprintf J.send {|
 (jbuild_version 1)
 
 (executable
@@ -17,6 +40,11 @@
    (flags (:standard (:include ../ocaml-flags-standard.sexp) (:include ../ocaml-context-flags.sexp)))
    (libraries (opam-client))))
 
+(rule
+  ((targets (opam-putenv.exe))
+   (deps    (opam-putenv.c ../core/opamInject.c))
+   (action  %s)))
+%s
 (executable
   ((name opam_installer)
    (package opam)
@@ -24,3 +52,4 @@
    (modules (opam_installer))
    (libraries (opam-state cmdliner))
    (flags (:standard (:include ../ocaml-flags-standard.sexp) (:include ../ocaml-context-flags.sexp)))))
+|} cc64_build build_putenv

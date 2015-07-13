@@ -77,7 +77,7 @@ clean:
 distclean: clean clean-ext
 	rm -rf autom4te.cache bootstrap
 	rm -f Makefile.config config.log config.status aclocal.m4
-	rm -f src/*.META src/*/.merlin
+	rm -f src/*.META src/*/.merlin src/cc64.sexp
 
 OPAMINSTALLER_FLAGS = --prefix "$(DESTDIR)$(prefix)"
 OPAMINSTALLER_FLAGS += --mandir "$(DESTDIR)$(mandir)"
