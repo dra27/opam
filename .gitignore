@@ -73,6 +73,7 @@ src/opam-check
 src/opam-admin.top
 src/opam-admin.top.exe
 src/*.META
+src/opam-putenv.exe
 ._d
 ._ncdi
 ._bcdi
