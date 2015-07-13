@@ -1,2 +1,3 @@
 let c_flags = "@CONF_CFLAGS@"
 let ocaml_flags = "-w +a-4-44-48 -short-paths @CONF_OCAMLFLAGS@"
+let cc64 = "@CC64_JBUILD@"
