@@ -77,7 +77,7 @@ clean: fastclean
 distclean: clean clean-ext
 	rm -rf autom4te.cache bootstrap
 	rm -f .merlin Makefile.config config.log config.status src/core/opamVersion.ml src/core/opamCoreConfig.ml aclocal.m4
-	rm -f src/*.META src/*/.merlin src/ocaml-flags-standard.sexp
+	rm -f src/*.META src/*/.merlin src/ocaml-flags-standard.sexp src/cc64.sexp
 
 OPAMINSTALLER_FLAGS = --prefix "$(DESTDIR)$(prefix)"
 OPAMINSTALLER_FLAGS += --mandir "$(DESTDIR)$(mandir)"
@@ -103,6 +103,7 @@ opam.install:
 	@echo 'bin: [' >$@
 	@echo '  "src/opam$(EXE)"' >>$@
 	@echo '  "src/opam-installer$(EXE)"' >>$@
+	@echo '  "?src/opam-putenv.exe"' >>$@
 	@echo ']' >>$@
 	@echo 'man: [' >>$@
 	@$(patsubst %,echo '  "'%'"' >>$@;,$(wildcard doc/man/*.1))
