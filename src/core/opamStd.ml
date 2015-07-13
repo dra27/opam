@@ -561,6 +561,9 @@ module Win32 = struct
 
   type handle
 
+  type ('a, 'b, 'c) winmessage =
+  | WM_SETTINGCHANGE : (int, string, int) winmessage
+
   external getStdHandle : int -> handle = "OPAMW_GetStdHandle"
   external getConsoleScreenBufferInfo : handle -> console_screen_buffer_info = "OPAMW_GetConsoleScreenBufferInfo"
   external setConsoleTextAttribute : handle -> int -> unit = "OPAMW_SetConsoleTextAttribute"
@@ -573,6 +576,8 @@ module Win32 = struct
   external writeWindowsConsole : handle -> string -> unit = "OPAMW_output"
   external isWoW64Mismatch_stub : unit -> int = "OPAMW_IsWoW64Mismatch"
   external parent_putenv_stub : string -> string -> bool = "OPAMW_parent_putenv"
+  external shGetFolderPath : int -> int -> string = "OPAMW_SHGetFolderPath"
+  external sendMessageTimeout : int -> int -> int -> ('a, 'b, 'c) winmessage -> 'a -> 'b -> int * 'c = "OPAMW_SendMessageTimeout_byte" "OPAMW_SendMessageTimeout"
 
   let parent_putenv =
     let ppid =
@@ -612,6 +617,17 @@ module Win32 = struct
     else
       function "::QUIT" -> fun _ -> true
         | key -> parent_putenv_stub key
+
+  let persistHomeDirectory home =
+    (* Update our environment *)
+    Unix.putenv "HOME" home;
+    (* Update our parent's environment *)
+    ignore (parent_putenv "HOME" home);
+    (* Persist the value to the user's environment *)
+    RegistryHive.(writeRegistry HKEY_CURRENT_USER "Environment" "HOME" REG_SZ home);
+    (* Broadcast the change (or a reboot would be required) *)
+    (* HWND_BROADCAST = 0xffff; SMTO_ABORTIFHUNG = 0x2 (WinUser.h) *)
+    ignore (sendMessageTimeout 0xffff 5000 0x2 WM_SETTINGCHANGE 0 "Environment")
 end
 
 module OpamSys = struct
