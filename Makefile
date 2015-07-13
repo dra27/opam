@@ -84,6 +84,7 @@ opam.install:
 	@echo 'bin: [' >$@
 	@echo '  "src/opam$(EXE)"' >>$@
 	@echo '  "src/opam-installer$(EXE)"' >>$@
+	@echo '  "?src/opam-putenv.exe"' >>$@
 	@echo ']' >>$@
 	@echo 'man: [' >>$@
 	@$(patsubst %,echo '  "'%'"' >>$@;,$(wildcard doc/man/*.1))

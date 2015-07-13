@@ -121,6 +121,7 @@ SRC_core = \
   opamFilename.ml \
   opamDirTrack.ml \
   opamUrl.ml \
+  opamInject.c \
   opamWindows.c
 
 # NB flexlink specifies -luser32 automatically for mingw, but doesn't include user32.lib for msvc
@@ -263,15 +264,26 @@ client/opamGitVersion.ml: ALWAYS
 	cd .. && ocaml shell/get-git-id.ml src/$@
 	touch $@
 
-opam: $(addsuffix $(LIBEXT),$(OPAMLIB)) ALWAYS
+ifeq ($(BUILD_PUTENV),1)
+PUTENV_TARGET=opam-putenv.exe
+else
+PUTENV_TARGET=
+endif
+
+opam: $(PUTENV_TARGET) $(addsuffix $(LIBEXT),$(OPAMLIB)) ALWAYS
 	$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBPROJS=opam SUBTARGET=$(BINTARGET)
 
 define PROJ_opam
   SOURCES = $(call addmli,client,opamMain.ml)
   RESULT = opam
+  TRASH = opam-putenv.exe
   LIBS = $(LIBS) $(OPAMLIB)
 endef
 export PROJ_opam
+
+opam-putenv.exe: core/opamInject.c tools/opam-putenv.c
+#	It is very important for cl that there are no prefixing spaces in the parameters to $(call ...)
+	$(call CC64,$@,core,tools) tools/opam-putenv.c
 
 # -- opam utils -- #
 
