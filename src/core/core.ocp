@@ -24,7 +24,7 @@ begin library "opam-core"
     "opamWindows.c"
   ]
   if os_type = "Win32" then
-    link = [ "-cclib" "-luser32" "-cclib" "-lgdi32" ]
+    link = [ "-cclib" "-luser32" "-cclib" "-lgdi32" "-cclib" "-lshell32" ]
 
   requires = [
     "unix"
