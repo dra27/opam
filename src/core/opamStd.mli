@@ -379,6 +379,11 @@ module Win32 : sig
   (** Win32 API handles *)
   type handle
 
+  (** Windows Messages (at least, one of them!) *)
+  type ('a, 'b, 'c) winmessage =
+  | WM_SETTINGCHANGE : (int, string, int) winmessage
+    (** See https://msdn.microsoft.com/en-us/library/windows/desktop/ms725497.aspx *)
+
   external getStdHandle : int -> handle = "OPAMW_GetStdHandle"
   (** Return a standard handle. Standard output is handle -11 (winbase.h; STD_OUTPUT_HANDLE)
   *)
@@ -423,6 +428,22 @@ module Win32 : sig
 
   val parent_putenv : string -> string -> bool
   (** Update an environment variable in the parent (i.e. shell) process's environment
+   *)
+
+  external shGetFolderPath : int -> int -> string = "OPAMW_SHGetFolderPath"
+  (** [shGetFolderPath nFolder dwFlags] retrieves the location of a special folder by CSIDL value.
+   * See https://msdn.microsoft.com/en-us/library/windows/desktop/bb762181.aspx
+   *)
+
+  external sendMessageTimeout : int -> int -> int -> ('a, 'b, 'c) winmessage -> 'a -> 'b -> int * 'c = "OPAMW_SendMessageTimeout_byte" "OPAMW_SendMessageTimeout"
+  (** [sendMessageTimeout hwnd timeout flags message wParam lParam] sends a message to the given hwnd
+   * but is guaranteed to return within [timeout] milliseconds. The result consists of two parts, [fst]
+   * is the return value from SendMessageTimeout, [snd] depends on both the message and [fst].
+   *)
+
+  val persistHomeDirectory : string -> unit
+  (** [persistHomeDirectory value] sets the HOME environment variable in this and the parent process
+   * and also persists the setting to the user's registry and broadcasts the change to other processes.
    *)
 end
 
