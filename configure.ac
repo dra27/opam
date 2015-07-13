@@ -149,16 +149,53 @@ AS_IF([ test ${WIN32} -eq 1 ],[
 ])
 AC_SUBST(OCAMLDEPARGS)
 
-AS_IF([ test ${WIN32} -eq 1 -a "$GCC" != "yes" ],[
-  AC_MSG_CHECKING([whether Microsoft Linker needs a PATH shim])
-  PREV_PREPEND="$PATH_PREPEND"
-  PATH_PREPEND=$(bash ./shell/check_linker)
-  AS_IF([test "x${PATH_PREPEND}" = "x${PREV_PREPEND}" ],[PATH_PREPEND_RESULT=no],[PATH_PREPEND_RESULT=yes])
-  AC_SUBST(PATH_PREPEND)
-  AC_SUBST(LIB_PREPEND)
-  AC_SUBST(INC_PREPEND)
-  AC_MSG_RESULT([$PATH_PREPEND_RESULT])
+AS_IF([ test ${WIN32} -eq 1 ],[
+  AS_IF([ test "$GCC" = "yes"], [
+    AS_IF([ test "x${CC64}" = "x" ], [
+      AS_IF([ test "$ARCH" = "i386" ],[T_CC64=x86_64-w64-mingw32-gcc],[T_CC64=i686-w64-mingw32-gcc])])
+    AC_CHECK_TOOL(CC64,[${T_CC64}],[no])
+    AS_IF([ test "x${CC64}" != "xno" ],[
+      CC64_JBUILD="(run ${CC64} -o \${@} -I ../core -D inline=__inline__ -std=c89 \${<})"
+      CC64="${CC64} -o \$(1) -I \$(2) -D inline=__inline__ -std=c89"
+    ])
+  ],[
+    AC_MSG_CHECKING([whether Microsoft Linker needs a PATH shim])
+    PREV_PREPEND="$PATH_PREPEND"
+    PATH_PREPEND=$(bash ./shell/check_linker)
+    AS_IF([test "x${PATH_PREPEND}" = "x${PREV_PREPEND}" ],[PATH_PREPEND_RESULT=no],[PATH_PREPEND_RESULT=yes])
+    AC_SUBST(PATH_PREPEND)
+    AC_SUBST(LIB_PREPEND)
+    AC_SUBST(INC_PREPEND)
+    AC_MSG_RESULT([$PATH_PREPEND_RESULT])
+    AS_IF([ test "$ARCH" = "i386" ],[COMP_ARCH=x64],[COMP_ARCH=x86])
+    AC_MSG_CHECKING([for a way to invoke an $COMP_ARCH C compiler])
+    eval `PATH="$PRE_BOOTSTRAP_PATH" ./shell/findwinsdk $COMP_ARCH`
+    AS_IF([ test "x$SDK" = "x" ], [
+      AC_MSG_RESULT([no])
+      CC64=no
+    ],[
+      AC_MSG_RESULT([via Windows SDK SetEnv])
+      CC64="PATH=\"${SDK}:\$(PATH)\" LIB=\"${SDK_LIB};\$(LIB)\" INCLUDE=\"${SDK_INC};\$(INCLUDE)\" cl /nologo /Fe\$(1) /Fo\$(3)/ /I\$(2)"
+      CL_FULL="`PATH="${SDK}:${PATH}" which cl | cygpath -f - -w`"
+      SDK="`echo "${SDK}" | cygpath -f - -wp`"
+      CC64_JBUILD="(setenv PATH \"${SDK}\" (setenv LIB \"${SDK_LIB};${LIB}\" (setenv INCLUDE \"${SDK_INC};${INCLUDE}\" (run \"${CL_FULL}\" /nologo /Fe\${@} /I../core \${<}))))"
+    ])
+  ])
+  AS_IF([ test "x${CC64}" = "xno" ],[
+    AC_MSG_WARN([Complementary C compiler not found - opam-putenv will not be built])
+    BUILD_PUTENV=0
+    CC64_JBUILD=
+  ],[
+    BUILD_PUTENV=1
+  ])
+],[
+  BUILD_PUTENV=0
+  CC64=
+  CC64_JBUILD=
 ])
+AC_SUBST(BUILD_PUTENV)
+AC_SUBST(CC64)
+AC_SUBST(CC64_JBUILD)
 
 AS_IF([ test "x$AR" != "x" ],[AC_CHECK_TOOL(AR,$AR)],[AC_SUBST(AR,"no")])
 
@@ -251,6 +288,7 @@ AC_CONFIG_FILES(
   src/client.META
   src/admin.META
   src/ocaml-flags-standard.sexp
+  src/cc64.sexp
 )
 AC_OUTPUT
 
