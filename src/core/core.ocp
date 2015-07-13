@@ -20,6 +20,7 @@ begin library "opam-core"
     "opamFilename.ml"
     "opamDirTrack.ml"
     "opamUrl.ml"
+    "opamInject.c"
     "opamWindows.c"
   ]
   if os_type = "Win32" then

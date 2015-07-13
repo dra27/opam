@@ -2,6 +2,14 @@
 
 #use "../jbuild.common"
 
+let build_putenv =
+  if cc64 = "" then "" else {|
+(install
+  ((section bin)
+   (package opam)
+   (files (opam-putenv.exe))))
+|}
+
 let () = out {|
 (jbuild_version 1)
 
@@ -22,6 +30,11 @@ let () = out {|
    (flags (:standard %s))
    (libraries (opam-client))))
 
+(rule
+  ((targets (opam-putenv.exe))
+   (deps    (opam-putenv.c ../core/opamInject.c))
+   (action  (run %s %s ${<}))))
+%s
 (executable
   ((name opam_installer)
    (package opam)
@@ -29,4 +42,4 @@ let () = out {|
    (modules (opam_installer))
    (libraries (opam-state cmdliner))
    (flags (:standard %s))))
-|} ocaml_flags ocaml_flags ocaml_flags
+|} ocaml_flags ocaml_flags cc64 c_flags build_putenv ocaml_flags
