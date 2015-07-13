@@ -10,7 +10,7 @@ let compat_version =
 
 let c_library_flags =
   if Sys.os_type = "Win32" then {|
-   (c_library_flags (:standard -ladvapi32 -lgdi32 -luser32))|}
+   (c_library_flags (:standard -ladvapi32 -lgdi32 -luser32 -lshell32))|}
   else ""
 
 let () = out {|
