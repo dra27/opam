@@ -25,9 +25,9 @@ begin library "opam-core"
   ]
   if os_type = "Win32" then {
     if system = "win32" || system = "win64" then
-      link = [ "-cclib" "advapi32.lib" "-cclib" "gdi32.lib" "-cclib" "user32.lib" ]
+      link = [ "-cclib" "advapi32.lib" "-cclib" "gdi32.lib" "-cclib" "user32.lib" "-cclib" "shell32.lib" ]
     else
-      link = [ "-cclib" "-ladvapi32" "-cclib" "-lgdi32" "-cclib" "-luser32" ]
+      link = [ "-cclib" "-ladvapi32" "-cclib" "-lgdi32" "-cclib" "-luser32" "-cclib" "-lshell32" ]
   }
 
   requires = [
