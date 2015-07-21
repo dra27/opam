@@ -1,4 +1,6 @@
+ifneq ($(filter-out archives cache-archives,$(MAKECMDGOALS)),)
 -include ../Makefile.config
+endif
 
 SRC_EXTS = cppo extlib re cmdliner graph cudf dose uutf jsonm opam_file_format
 
@@ -32,6 +34,14 @@ MD5_jsonm = 631a5dabdada83236c83056f60e42685
 URL_opam_file_format = https://github.com/ocaml/opam-file-format/archive/2.0.0-beta3.tar.gz
 MD5_opam_file_format = fb461d14a44aac3a43751aa936e79143
 
+ifndef FETCH
+ifneq ($(shell command -v curl > /dev/null),)
+FETCH=curl -OL
+else
+FETCH=wget
+endif
+endif
+
 ARCHIVES = $(foreach lib,$(SRC_EXTS),$(notdir $(URL_$(lib))))
 lib_of = $(foreach lib,$(SRC_EXTS),$(if $(findstring $(1),$(URL_$(lib))),$(lib),,))
 
@@ -53,6 +63,14 @@ clone: $(SRC_EXTS:=.stamp) graph-workaround extlib-cppo dose-cppo
 archives: $(SRC_EXTS:=.download)
 	@
 
+cache-archives: $(SRC_EXTS:=.cache)
+	@
+
+%.cache:
+	@mkdir -p archives
+	@[ -e archives/$(notdir $(URL_$*)) ] || \
+		($(FETCH) $(URL_$*) && mv $(notdir $(URL_$*)) archives/)
+
 define cache_url
 https://opam.ocaml.org/2.0~dev/cache/md5/$(shell echo $(MD5_$(1)) | cut -c -2)/$(MD5_$(1))
 endef
@@ -65,6 +83,7 @@ endef
 
 %.download:
 	[ -e  $(notdir $(URL_$*)) ] || \
+    cp archives/$(notdir $(URL_$*)) . 2>/dev/null || \
 	$(FETCH) $(URL_$*) && $(MD5CHECK) $(notdir $(URL_$*)) $(MD5_$*) || \
 	$(call get_from_cache,$*)
 
@@ -124,6 +143,7 @@ distclean:
 	rm -f *.tar.gz *.tbz *.stamp
 	rm -f *.cm* *.o *.a *.lib *.obj
 	rm -rf lib
+	[ -d archives ] && ([ "$$(find archives -maxdepth 0 -type d -empty)" != "" ] && rmdir archives || echo "WARNING! $$(pwd)/archives/ not empty so left") || true
 
 LIB_EXTS = extlib re cmdliner graph cudf dose_common dose_versioning dose_pef dose_opam dose_algo uutf jsonm opam_file_format
 
