@@ -48,7 +48,7 @@ archives: $(SRC_EXTS:=.download)
 	@
 
 %.download:
-	[ -e  $(notdir $(URL_$*)) ] || $(FETCH) $(URL_$*)
+	[ -e  $(notdir $(URL_$*)) ] || cp archives/$(notdir $(URL_$*)) . || $(FETCH) $(URL_$*)
 	$(MD5CHECK) $(notdir $(URL_$*)) $(MD5_$*)
 
 %.stamp: %.download
@@ -81,6 +81,7 @@ distclean:
 	rm -f *.tar.gz *.tbz *.stamp
 	rm -f *.cm* *.o *.a *.lib *.obj
 	rm -rf lib
+	[ -d archives ] && ([ "$$(find archives -maxdepth 0 -type d -empty)" != "" ] && rmdir archives || echo "WARNING! $$(pwd)/archives/ not empty so left") || true
 
 LIB_EXTS = extlib re cmdliner graph cudf dose_common dose_debian dose_algo uutf jsonm
 

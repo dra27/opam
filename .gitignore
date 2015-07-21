@@ -12,6 +12,7 @@ src_ext/uutf/
 src_ext/*.stamp
 src_ext/*.tbz
 src_ext/*.tar.gz
+src_ext/archives/*
 *.tar.bz2
 *.annot
 *.tar.gz
