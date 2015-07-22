@@ -583,7 +583,7 @@ PACKAGE_STRING='opam 2.0.0~beta3'
 PACKAGE_BUGREPORT=''
 PACKAGE_URL=''
 
-ac_default_prefix=`ocamlc -config 2>/dev/null | tr -d '\r' | sed -n -e "s;^os_type: Win32;C:/OPAM;p" -e "s;^os_type:.*;/usr/local;p"`
+ac_default_prefix=`$OCAMLC -config 2>/dev/null | tr -d '\r' | sed -n -e "s;^os_type: Win32;C:/OPAM;p" -e "s;^os_type:.*;/usr/local;p"`
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 hasalldeps
@@ -1804,7 +1804,17 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+# If a bootstrap compiler has been built, always use it
+PATH_PREPEND=
+PRE_BOOTSTRAP_PATH="$PATH"
+if  test -x bootstrap/ocaml/bin/ocamlc -o -x bootstrap/ocaml/bin/ocamlopt ; then :
 
+  echo Bootstrap compiler found -- activating
+  unset OCAMLLIB
+  export PATH_PREPEND=`pwd`/bootstrap/ocaml/bin:
+  export PATH="$PATH_PREPEND:$PATH"
+
+fi
 
   # checking for ocamlc
   if test -n "$ac_tool_prefix"; then
@@ -1906,7 +1916,7 @@ fi
 $as_echo "OCaml version is $OCAMLVERSION" >&6; }
      # If OCAMLLIB is set, use it
      if test "$OCAMLLIB" = ""; then
-        OCAMLLIB=`$OCAMLC -where 2>/dev/null || $OCAMLC -v|tail -1|cut -d ' ' -f 4`
+        OCAMLLIB=`$OCAMLC -where 2>/dev/null | tr -d '\015' || $OCAMLC -v|tail -1|cut -d ' ' -f 4`
      else
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: OCAMLLIB previously set; preserving it." >&5
 $as_echo "OCAMLLIB previously set; preserving it." >&6; }
@@ -3018,6 +3028,8 @@ if test "x$OCAMLC" = "xno"; then
    as_fn_error $? "You must install the OCaml compiler" "$LINENO" 5
 fi
 
+
+
 # Check whether --enable-version_check was given.
 if test "${enable_version_check+set}" = set; then :
   enableval=$enable_version_check;
@@ -3171,7 +3183,7 @@ $as_echo_n "checking for an installed Microsoft C Compiler for ${SDK_ARCH}... " 
 else
   SDK_ARCH=x64
 fi
-    eval `./shell/findwinsdk $SDK_ARCH`
+    eval `PATH="$PRE_BOOTSTRAP_PATH" ./shell/findwinsdk $SDK_ARCH`
     if  test "x$SDK" = "x" ; then :
 
       { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3182,7 +3194,8 @@ else
       { $as_echo "$as_me:${as_lineno-$LINENO}: result: via Windows SDK SetEnv" >&5
 $as_echo "via Windows SDK SetEnv" >&6; }
       export PATH_PREPEND="${SDK}:${PATH_PREPEND}"
-      export PATH="$PATH_PREPEND$PATH"
+      # Note that we put ${SDK} here NOT ${PATH_PREPEND} so that the bootstrap path isn't repeated
+      export PATH="${SDK}:$PATH"
       LIB_PREPEND="${SDK_LIB};"
       INC_PREPEND="${SDK_INC};"
       export Lib="${SDK_LIB};$LIB"

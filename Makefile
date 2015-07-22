@@ -42,7 +42,7 @@ src/%:
 
 # Disable this rule if the only build targets are cold, download-ext or configure
 # to suppress error messages trying to build Makefile.config
-ifneq ($(or $(filter-out cold download-ext configure,$(MAKECMDGOALS)),$(filter own-goal,own-$(MAKECMDGOALS)goal)),)
+ifneq ($(or $(filter-out cold compiler download-ext configure,$(MAKECMDGOALS)),$(filter own-goal,own-$(MAKECMDGOALS)goal)),)
 %:
 	$(MAKE) -C src $@
 endif
@@ -75,7 +75,7 @@ OPAMINSTALLER_FLAGS += --mandir "$(DESTDIR)$(mandir)"
 ifdef OCAMLFIND
 ifndef DESTDIR
 ifneq ($(OCAMLFIND),no)
-    LIBINSTALL_DIR ?= $(shell $(OCAMLFIND) printconf destdir)
+    LIBINSTALL_DIR ?= $(shell PATH="$(PATH)" $(OCAMLFIND) printconf destdir)
 endif
 endif
 endif
@@ -168,8 +168,11 @@ endif
 endif
 endif
 
-cold:
+.PHONY: compiler cold
+compiler:
 	./shell/bootstrap-ocaml.sh $(OCAML_PORT)
+
+cold: compiler
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" ./configure $(CONFIGURE_ARGS)
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" $(MAKE) lib-ext
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" $(MAKE)
