@@ -106,13 +106,6 @@ release-tag:
 	git tag -a latest -m "Latest release"
 	git tag -a $(version) -m "Release $(version)"
 
-
-$(OPAM_FULL).tar.gz:
-	$(MAKE) -C src_ext distclean
-	$(MAKE) -C src_ext downloads
-	rm -f $(OPAM_FULL) $(OPAM_FULL).tar.gz
-	ln -s .
-
 fastlink:
 	@$(foreach b,opam opam-admin opam-installer opam-check,\
 	   ln -sf ../_obuild/$b/$b.asm src/$b;)
