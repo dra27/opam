@@ -154,8 +154,16 @@ release-tag:
 	git tag -a latest -m "Latest release"
 	git tag -a $(version) -m "Release $(version)"
 
+ifeq ($(OCAML_PORT),)
+ifneq ($(COMSPEC),)
+ifeq ($(shell which gcc 2>/dev/null),)
+OCAML_PORT=auto
+endif
+endif
+endif
+
 cold:
-	./shell/bootstrap-ocaml.sh
+	./shell/bootstrap-ocaml.sh $(OCAML_PORT)
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" ./configure $(CONFIGURE_ARGS)
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" $(MAKE) lib-ext
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" $(MAKE)
