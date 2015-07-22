@@ -68,7 +68,7 @@ OPAMINSTALLER_FLAGS += --mandir "$(DESTDIR)$(mandir)"
 ifdef OCAMLFIND
 ifndef DESTDIR
 ifneq ($(OCAMLFIND),no)
-    LIBINSTALL_DIR ?= $(shell $(OCAMLFIND) printconf destdir)
+    LIBINSTALL_DIR ?= $(shell PATH="$(PATH)" $(OCAMLFIND) printconf destdir)
 endif
 endif
 endif
@@ -159,8 +159,11 @@ endif
 endif
 endif
 
-cold:
+.PHONY: compiler cold
+compiler:
 	env MAKE=$(MAKE) ./shell/bootstrap-ocaml.sh $(OCAML_PORT)
+
+cold: compiler
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" ./configure $(CONFIGURE_ARGS)
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" $(MAKE) lib-ext
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" $(MAKE)
