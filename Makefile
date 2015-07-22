@@ -147,8 +147,16 @@ rmartefacts: ALWAYS
 	   $(foreach e,a cma cmxa,rm -f src/opam-$l.$e;)\
 	   $(foreach e,o cmo cmx cmxs cmi cmt cmti,rm -f $(wildcard src/$l/*.$e);))
 
+ifeq ($(OCAML_PORT),)
+ifneq ($(COMSPEC),)
+ifeq ($(shell which gcc 2>/dev/null),)
+OCAML_PORT=auto
+endif
+endif
+endif
+
 cold:
-	./shell/bootstrap-ocaml.sh
+	./shell/bootstrap-ocaml.sh $(OCAML_PORT)
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" ./configure $(CONFIGURE_ARGS)
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" $(MAKE) lib-ext
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" $(MAKE)
