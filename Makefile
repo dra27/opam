@@ -26,7 +26,7 @@ src/%:
 
 # Disable this rule if the only build targets are cold, download-ext or configure
 # to suppress error messages trying to build Makefile.config
-ifneq ($(or $(filter-out cold download-ext configure,$(MAKECMDGOALS)),$(filter own-goal,own-$(MAKECMDGOALS)goal)),)
+ifneq ($(or $(filter-out cold compiler download-ext configure,$(MAKECMDGOALS)),$(filter own-goal,own-$(MAKECMDGOALS)goal)),)
 %:
 	$(MAKE) -C src $@
 endif
@@ -150,8 +150,11 @@ endif
 endif
 endif
 
-cold:
+.PHONY: compiler cold
+compiler:
 	./shell/bootstrap-ocaml.sh $(OCAML_PORT)
+
+cold: compiler
 	env PATH="$$PATH:`pwd`/bootstrap/ocaml/bin" ./configure $(CONFIGURE_ARGS)
 	env PATH="$$PATH:`pwd`/bootstrap/ocaml/bin" $(MAKE) lib-ext
 	env PATH="$$PATH:`pwd`/bootstrap/ocaml/bin" $(MAKE)
