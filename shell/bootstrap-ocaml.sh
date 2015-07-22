@@ -1,4 +1,4 @@
-#!/bin/sh -ex
+#!/bin/sh -e
 
 V=ocaml-4.04.0
 URL=http://caml.inria.fr/pub/distrib/ocaml-4.04/${V}.tar.gz
@@ -15,7 +15,7 @@ cd bootstrap
 if [ ! -e ${V}.tar.gz ]; then
   ${CURL} ${URL}
 fi
-tar -zxvf ${V}.tar.gz
+tar -zxf ${V}.tar.gz
 cd ${V}
 if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
   PATH_PREPEND=
