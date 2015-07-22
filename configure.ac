@@ -3,6 +3,16 @@ AC_COPYRIGHT(Copyright 2012-2017 OcamlPro SAS)
 
 AC_CONFIG_MACRO_DIR([m4])
 
+# If a bootstrap compiler has been built, always use it
+PATH_PREPEND=
+PRE_BOOTSTRAP_PATH="$PATH"
+AS_IF([ test -x bootstrap/ocaml/bin/ocamlc -o -x bootstrap/ocaml/bin/ocamlopt ],[
+  echo Bootstrap compiler found -- activating
+  unset OCAMLLIB
+  export PATH_PREPEND=`pwd`/bootstrap/ocaml/bin:
+  export PATH="$PATH_PREPEND:$PATH"
+])
+
 AC_PROG_OCAML
 if test "x$OCAMLC" = "xno"; then
    AC_MSG_ERROR([You must install the OCaml compiler])
@@ -55,13 +65,14 @@ AS_IF([test ! -x ${OCAML_TEST_CC}],[
   AS_IF([test "x${CCOMP_TYPE}" = "xmsvc"],[
     AC_MSG_CHECKING([for an installed Microsoft C Compiler for ${SDK_ARCH}])
     AS_IF([test "${ARCH}" = "i386"],[SDK_ARCH=x86],[SDK_ARCH=x64])
-    eval `./shell/findwinsdk $SDK_ARCH`
+    eval `PATH="$PRE_BOOTSTRAP_PATH" ./shell/findwinsdk $SDK_ARCH`
     AS_IF([ test "x$SDK" = "x" ], [
       AC_MSG_RESULT([no])
     ],[
       AC_MSG_RESULT([via Windows SDK SetEnv])
       export PATH_PREPEND="${SDK}:${PATH_PREPEND}"
-      export PATH="$PATH_PREPEND$PATH"
+      # Note that we put ${SDK} here NOT ${PATH_PREPEND} so that the bootstrap path isn't repeated
+      export PATH="${SDK}:$PATH"
       LIB_PREPEND="${SDK_LIB};"
       INC_PREPEND="${SDK_INC};"
       export Lib="${SDK_LIB};$LIB"
