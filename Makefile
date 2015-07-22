@@ -152,8 +152,16 @@ fastclean: rmartefacts
 	@ocp-build -clean 2>/dev/null || ocp-build clean 2>/dev/null
 	@rm -rf src/*/_obuild
 
+ifeq ($(OCAML_PORT),)
+ifneq ($(COMSPEC),)
+ifeq ($(shell which gcc 2>/dev/null),)
+OCAML_PORT=auto
+endif
+endif
+endif
+
 cold:
-	./shell/bootstrap-ocaml.sh
+	./shell/bootstrap-ocaml.sh $(OCAML_PORT)
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" ./configure $(CONFIGURE_ARGS)
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" $(MAKE) lib-ext
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" $(MAKE)
