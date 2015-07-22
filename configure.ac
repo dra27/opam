@@ -3,12 +3,21 @@ AC_COPYRIGHT(Copyright 2012-2017 OcamlPro SAS)
 
 AC_CONFIG_MACRO_DIR([m4])
 
-AC_PREFIX_DEFAULT([`ocamlc -config 2>/dev/null | tr -d '\r' | sed -n -e "s;^os_type: Win32;C:/OPAM;p" -e "s;^os_type:.*;/usr/local;p"`])
+# If a bootstrap compiler has been built, always use it
+PATH_PREPEND=
+AS_IF([ test -x bootstrap/bin/ocamlc -o -x bootstrap/bin/ocamlopt ],[
+  echo Bootstrap compiler found -- activating
+  export OCAMLLIB=
+  export PATH_PREPEND=`pwd`/bootstrap/bin:
+  export PATH="$PATH_PREPEND:$PATH"
+])
 
 AC_PROG_OCAML
 if test "x$OCAMLC" = "xno"; then
    AC_MSG_ERROR([You must install the OCaml compiler])
 fi
+
+AC_PREFIX_DEFAULT([`$OCAMLC -config 2>/dev/null | tr -d '\r' | sed -n -e "s;^os_type: Win32;C:/OPAM;p" -e "s;^os_type:.*;/usr/local;p"`])
 
 AC_ARG_ENABLE([version_check],
   AS_HELP_STRING([--disable-version-check],
@@ -61,7 +70,8 @@ AS_IF([test ! -x ${OCAML_TEST_CC}],[
     ],[
       AC_MSG_RESULT([via Windows SDK SetEnv])
       export PATH_PREPEND="${SDK}:${PATH_PREPEND}"
-      export PATH="$PATH_PREPEND$PATH"
+      # Note that we put ${SDK} here NOT ${PATH_PREPEND} so that the bootstrap path isn't repeated
+      export PATH="${SDK}:$PATH"
       LIB_PREPEND="${SDK_LIB};"
       INC_PREPEND="${SDK_INC};"
       export Lib="${SDK_LIB};$LIB"
