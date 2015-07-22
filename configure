@@ -1814,6 +1814,17 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+# If a bootstrap compiler has been built, always use it
+PATH_PREPEND=
+if  test -x bootstrap/bin/ocamlc -o -x bootstrap/bin/ocamlopt ; then :
+
+  echo Bootstrap compiler found -- activating
+  export OCAMLLIB=
+  export PATH_PREPEND=`pwd`/bootstrap/bin:
+  export PATH="$PATH_PREPEND:$PATH"
+
+fi
+
   # checking for ocamlc
   if test -n "$ac_tool_prefix"; then
   # Extract the first word of "${ac_tool_prefix}ocamlc", so it can be a program name with args.
@@ -1914,7 +1925,7 @@ fi
 $as_echo "OCaml version is $OCAMLVERSION" >&6; }
      # If OCAMLLIB is set, use it
      if test "$OCAMLLIB" = ""; then
-        OCAMLLIB=`$OCAMLC -where 2>/dev/null || $OCAMLC -v|tail -1|cut -d ' ' -f 4`
+        OCAMLLIB=`$OCAMLC -where 2>/dev/null | tr -d '\015' || $OCAMLC -v|tail -1|cut -d ' ' -f 4`
      else
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: OCAMLLIB previously set; preserving it." >&5
 $as_echo "OCAMLLIB previously set; preserving it." >&6; }
@@ -3190,7 +3201,8 @@ else
       { $as_echo "$as_me:${as_lineno-$LINENO}: result: via Windows SDK SetEnv" >&5
 $as_echo "via Windows SDK SetEnv" >&6; }
       export PATH_PREPEND="${SDK}:${PATH_PREPEND}"
-      export PATH="$PATH_PREPEND$PATH"
+      # Note that we put ${SDK} here NOT ${PATH_PREPEND} so that the bootstrap path isn't repeated
+      export PATH="${SDK}:$PATH"
       LIB_PREPEND="${SDK_LIB};"
       INC_PREPEND="${SDK_INC};"
       export Lib="${SDK_LIB};$LIB"
