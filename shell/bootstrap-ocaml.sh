@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-V=ocaml-4.02.1
+V=ocaml-4.02.3
 URL=http://caml.inria.fr/pub/distrib/ocaml-4.02/${V}.tar.gz
 if command -v curl > /dev/null ; then
   CURL="curl -OL"
