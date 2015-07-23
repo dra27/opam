@@ -13,7 +13,7 @@ fi
 mkdir -p bootstrap
 cd bootstrap
 if [ ! -e ${V}.tar.gz ]; then
-  ${CURL} ${URL}
+  cp ../src_ext/archives/${V}.tar.gz . 2>/dev/null || ${CURL} ${URL}
 fi
 tar -zxf ${V}.tar.gz
 cd ${V}
@@ -97,8 +97,8 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
   mv config/m-nt.h config/m.h
   FV=0.35
   cd ..
-  if [ ! -e flexdll-bin-${FV}.zip ]; then
-    ${CURL} http://alain.frisch.fr/flexdll/flexdll-bin-${FV}.zip
+  if [ ! -e flexdll-${FV}.tar.gz ]; then
+    cp ../src_ext/archives/flexdll-${FV}.tar.gz . 2>/dev/null || ${CURL} http://alain.frisch.fr/flexdll/flexdll-${FV}.tar.gz
   fi
   cd ${V}
   tar -xzf ../flexdll-${FV}.tar.gz
