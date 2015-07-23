@@ -3,9 +3,9 @@
 V=ocaml-4.02.1
 URL=http://caml.inria.fr/pub/distrib/ocaml-4.02/${V}.tar.gz
 if command -v curl > /dev/null; then
-  CURL="curl -OL"
+  CURL="curl -OL -o"
 elif command -v wget > /dev/null; then
-  CURL=wget
+  CURL="wget -O"
 else
   echo "This script requires curl or wget"
   exit 1
@@ -13,7 +13,7 @@ fi
 mkdir -p bootstrap
 cd bootstrap
 if [ ! -e ${V}.tar.gz ]; then
-  ${CURL} ${URL}
+  cp ../src_ext/archives/${V}.tar.gz . || ${CURL} ${URL}
 fi
 tar -zxf ${V}.tar.gz
 cd ${V}
@@ -98,7 +98,7 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
   FV=0.34
   cd ..
   if [ ! -e flexdll-bin-${FV}.zip ]; then
-    ${CURL} http://alain.frisch.fr/flexdll/flexdll-bin-${FV}.zip
+    cp ../src_ext/archives/flexdll-bin-${FV}.zip . || ${CURL} http://alain.frisch.fr/flexdll/flexdll-bin-${FV}.zip
   fi
   mkdir -p bin
   unzip -od bin/ flexdll-bin-${FV}.zip
