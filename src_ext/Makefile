@@ -16,9 +16,13 @@ MD5_graph = 75dde65bfc3f9b07e795343d369aa84d
 
 URL_cudf = https://gforge.inria.fr/frs/download.php/file/33593/cudf-0.7.tar.gz
 MD5_cudf = 2047222fcf78278c6a24ac619fc39abb
+ALTURL_cudf = http://opam.ocaml.org/archives/cudf.0.7+opam.tar.gz
+ALTMD5_cudf = b12d933a96bd326e2443241faca7aa8c
 
 URL_dose = https://gforge.inria.fr/frs/download.php/file/34277/dose3-3.3.tar.gz
 MD5_dose = ea947804c636059bb8b64dbda5c1df08
+ALTURL_dose = http://opam.ocaml.org/archives/dose.3.3+opam.tar.gz
+ALTMD5_dose = 6c14696d8ab24fb88c1e592b8518c48a
 
 URL_uutf = http://erratique.ch/software/uutf/releases/uutf-0.9.3.tbz
 MD5_uutf = 708c0421e158b390c7cc341f37b40add
@@ -29,8 +33,14 @@ MD5_jsonm = 631a5dabdada83236c83056f60e42685
 ARCHIVES = $(foreach lib,$(SRC_EXTS),$(notdir $(URL_$(lib))))
 lib_of = $(foreach lib,$(SRC_EXTS),$(if $(findstring $(1),$(URL_$(lib))),$(lib),,))
 
+# Note that ALTURL doesn't have to have the same file name, but it is assumed that
+# it will be compressed the same way (i.e. .tar.gz or .tbz)
+ARCHIVE_FILE = $(1)$(patsubst %.tbz,.tbz,$(patsubst %.tar.gz,.tar.gz,$(URL_$(1))))
+DOWNLOAD_ARCHIVE = ([ -e  $(call ARCHIVE_FILE,$(1),$(2)) ] || cp archives/$(notdir $($(2)URL_$(1))) $(call ARCHIVE_FILE,$(1)) || $(call FETCH,$($(2)URL_$(1)),$(call ARCHIVE_FILE,$(1)))) && $(call MD5CHECK,$(call ARCHIVE_FILE,$(1)),$($(2)MD5_$(1)))
+DO_DOWNLOAD = $(if $(ALTURL_$(1)),($(call DOWNLOAD_ARCHIVE,$(1)) || (rm $(call ARCHIVE_FILE,$(1)) && false)) || ($(call DOWNLOAD_ARCHIVE,$(1),ALT)),$(call DOWNLOAD_ARCHIVE,$(1)))
+
 # Portable md5check
-MD5CHECK = $(OCAML) ../shell/md5check.ml
+MD5CHECK = $(OCAML) ../shell/md5check.ml $(1) $(2)
 
 lib-ext: clone build copy
 	@
@@ -48,12 +58,11 @@ archives: $(SRC_EXTS:=.download)
 	@
 
 %.download:
-	[ -e  $(notdir $(URL_$*)) ] || cp archives/$(notdir $(URL_$*)) . || $(FETCH) $(URL_$*)
-	$(MD5CHECK) $(notdir $(URL_$*)) $(MD5_$*)
+	$(call DO_DOWNLOAD,$*)
 
 %.stamp: %.download
 	mkdir -p tmp
-	cd tmp && tar xf$(if $(patsubst %.tar.gz,,$(URL_$*)),j,z) ../$(notdir $(URL_$*))
+	cd tmp && tar xf$(if $(patsubst %.tar.gz,,$(call ARCHIVE_FILE,$*)),j,z) ../$(call ARCHIVE_FILE,$*)
 	rm -rf $*
 	@for ii in tmp/*; do if [ -d $${ii} ]; then mv $${ii} $*; fi; done; \
 	rm -rf tmp
