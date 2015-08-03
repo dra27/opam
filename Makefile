@@ -42,7 +42,7 @@ src/%:
 
 # Disable this rule if the only build targets are cold, download-ext or configure
 # to suppress error messages trying to build Makefile.config
-ifneq ($(or $(filter-out cold compiler download-ext configure,$(MAKECMDGOALS)),$(filter own-goal,own-$(MAKECMDGOALS)goal)),)
+ifneq ($(or $(filter-out cold compiler download-ext lib-pkg configure,$(MAKECMDGOALS)),$(filter own-goal,own-$(MAKECMDGOALS)goal)),)
 %:
 	$(MAKE) -C src $@
 endif
@@ -50,8 +50,14 @@ endif
 lib-ext:
 	$(MAKE) -j -C src_ext lib-ext
 
+lib-pkg:
+	$(MAKE) -j -C src_ext lib-pkg
+
 download-ext:
 	$(MAKE) -C src_ext archives
+
+download-pkg:
+	$(MAKE) -C src_ext archives-pkg
 
 clean-ext:
 	$(MAKE) -C src_ext distclean
