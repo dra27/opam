@@ -1,49 +1,43 @@
-ifneq ($(filter-out archives cache-archives,$(MAKECMDGOALS)),)
+ifneq ($(filter-out archives cache-archives lib-pkg,$(MAKECMDGOALS)),)
 -include ../Makefile.config
 endif
 
-SRC_EXTS = cppo extlib re cmdliner graph cudf dose uutf jsonm opam_file_format
-
-URL_cppo = https://github.com/mjambon/cppo/archive/v1.3.2.tar.gz
-MD5_cppo = 133c9f8afadb6aa1c5ba0f5eb55c5648
-
-URL_extlib = https://github.com/ygrek/ocaml-extlib/archive/1.7.0.tar.gz
-MD5_extlib = b50b02d9e40d35cc20c82d9c881a1bf6
-
-URL_re = https://github.com/ocaml/ocaml-re/archive/ocaml-re-1.5.0.tar.gz
-MD5_re = 1e9bff3279648881be31e5ff96219f0a
-
-URL_cmdliner = http://erratique.ch/software/cmdliner/releases/cmdliner-0.9.8.tbz
-MD5_cmdliner = fc67c937447cc223722f1419fa2189da
-
-URL_graph = http://ocamlgraph.lri.fr/download/ocamlgraph-1.8.6.tar.gz
-MD5_graph = afbc24f0e0eb72c2d3eda64b68513e73
-
-URL_cudf = https://gforge.inria.fr/frs/download.php/33593/cudf-0.7.tar.gz
-MD5_cudf = 2047222fcf78278c6a24ac619fc39abb
-
-URL_dose = https://gforge.inria.fr/frs/download.php/file/35975/dose3-5.0.tar.gz
-MD5_dose = 228c6a73a0759783fd01181047046610
-
-URL_uutf = http://erratique.ch/software/uutf/releases/uutf-0.9.3.tbz
-MD5_uutf = 708c0421e158b390c7cc341f37b40add
-
-URL_jsonm = http://erratique.ch/software/jsonm/releases/jsonm-0.9.1.tbz
-MD5_jsonm = 631a5dabdada83236c83056f60e42685
-
-URL_opam_file_format = https://github.com/ocaml/opam-file-format/archive/2.0.0-beta3.tar.gz
-MD5_opam_file_format = fb461d14a44aac3a43751aa936e79143
+ifneq ($(wildcard Makefile.config),)
+include Makefile.config
+CAN_PKG=1
+else
+CAN_PKG=0
+endif
 
 ifndef FETCH
 ifneq ($(shell command -v curl > /dev/null),)
-FETCH=curl -OL
+FETCH=curl -L -o $(2) $(1)
 else
-FETCH=wget
+FETCH=wget -O $(2) $(1)
 endif
 endif
 
+# Shorthand for designating that lib-ext and lib-pkg use the same version of a library
+PKG_SAME = $(eval $(call PKG_SAME_DEFS,$(1)))
+define PKG_SAME_DEFS =
+URL_PKG_$(1) = $(URL_$(1))
+MD5_PKG_$(1) = $(MD5_$(1))
+endef
+
+SRC_EXTS = cppo extlib re cmdliner graph cudf dose uutf jsonm opam_file_format
+PKG_EXTS = findlib cppo topkg ocamlbuild result graph cmdliner uutf jsonm \
+           camlp4 extlib re cudf dose opam_file_format
+
+include Makefile.sources
+include Makefile.packages
+
 ARCHIVES = $(foreach lib,$(SRC_EXTS),$(notdir $(URL_$(lib))))
 lib_of = $(foreach lib,$(SRC_EXTS),$(if $(findstring $(1),$(URL_$(lib))),$(lib),,))
+
+ARCHIVE_FILE = $(1)$(patsubst %.tbz,.tbz,$(patsubst %.tar.gz,.tar.gz,$(URL_$(2)$(1))))
+DOWNLOAD_COOKIE = touch $(1).$(4)download && \
+                  $(if $(filter $(MD5_$(2)$(1)),$(MD5_$(3)$(1))),touch,rm -f) $(1).$(5)download && \
+                  rm -f $(call ARCHIVE_FILE,$(1),$(2)) $(1).stamp $(1).pkgbuild
 
 ifdef OCAML
 # Portable md5check
@@ -54,6 +48,16 @@ endif
 
 lib-ext: clone build copy
 	@
+
+ifeq ($(CAN_PKG),1)
+lib-pkg: clone-pkg build-pkg
+	@
+else
+lib-pkg:
+	@echo "Installation of packages is only permitted for the bootstrap compiler"
+	@echo "Run $(MAKE) [OCAML_PORT=auto|msvc|msvc64|mingw|mingw64] compiler first"
+	@false
+endif
 
 ifeq ($(OCAMLC),no)
 SUBTARGET=ncl
@@ -68,43 +72,69 @@ endif
 build: clone
 	$(MAKE) $(SUBPROJS:%=proj_%)
 
+build-pkg: clone-pkg $(PKG_EXTS:=.pkgbuild)
+	@
+
+%.pkgbuild: %.pkgstamp
+	$(MAKE) MAKEFLAGS= -f ../Makefile.packages -C $* $*-pkg-build
+	@touch $@
+	@rm -f $*.pkgstamp
+
 all: bcl ncl
 
 clone: $(SRC_EXTS:=.stamp) graph-workaround.stamp extlib-cppo.stamp dose-cppo.stamp
+	@
+
+clone-pkg: $(PKG_EXTS:=.pkgstamp)
 	@
 
 .PHONY: archives
 archives: $(SRC_EXTS:=.download)
 	@
 
-cache-archives: $(SRC_EXTS:=.cache)
+archives-pkg: $(PKG_EXTS:=.pkgdownload)
+	@
+
+cache-archives: $(SRC_EXTS:=.cache) $(PKG_EXTS:=.pkgcache)
 	@
 
 %.cache:
 	@mkdir -p archives
 	@[ -e archives/$(notdir $(URL_$*)) ] || \
-		($(FETCH) $(URL_$*) && mv $(notdir $(URL_$*)) archives/)
+		($(call FETCH,$(URL_$*),$(notdir $(URL_$*))) && mv $(notdir $(URL_$*)) archives/)
+
+%.pkgcache:
+	@mkdir -p archives
+	@[ -e archives/$(notdir $(URL_PKG_$*)) ] || \
+		($(call FETCH,$(URL_PKG_$*),$(notdir $(URL_PKG_$*))) && mv $(notdir $(URL_PKG_$*)) archives/)
 
 define cache_url
-https://opam.ocaml.org/2.0~dev/cache/md5/$(shell echo $(MD5_$(1)) | cut -c -2)/$(MD5_$(1))
+https://opam.ocaml.org/2.0~dev/cache/md5/$(shell echo $(MD5_$(2)$(1)) | cut -c -2)/$(MD5_$(2)$(1))
 endef
 
 define get_from_cache
-{ $(FETCH) $(call cache_url,$(1)) && \
-  mv $(MD5_$(1)) $(notdir $(URL_$(1))) && \
-  $(call MD5CHECK,$(notdir $(URL_$(1))),$(MD5_$(1))); }
+{ $(call FETCH,$(call cache_url,$(1),$(2)),$(MD5_$(2)$(1))) && \
+  mv $(MD5_$(2)$(1)) $(call ARCHIVE_FILE,$(1),$(2)) && \
+  $(call MD5CHECK,$(call ARCHIVE_FILE,$(1),$(2)),$(MD5_$(2)$(1))); }
 endef
 
-%.download:
-	[ -e  $(notdir $(URL_$*)) ] || \
-    cp archives/$(notdir $(URL_$*)) . 2>/dev/null || \
-	$(FETCH) $(URL_$*) && $(call MD5CHECK,$(notdir $(URL_$*)),$(MD5_$*)) || \
+%.download: Makefile.sources
+	@$(call DOWNLOAD_COOKIE,$*,,PKG_,,pkg)
+	[ -e $(call ARCHIVE_FILE,$*) ] || \
+	cp archives/$(notdir $(URL_$*)) $(call ARCHIVE_FILE,$*) 2>/dev/null || \
+	{ $(call FETCH,$(URL_$*),$(call ARCHIVE_FILE,$*)) && $(call MD5CHECK,$(call ARCHIVE_FILE,$*),$(MD5_$*)); } || \
 	$(call get_from_cache,$*)
-	@touch $@
+
+%.pkgdownload: Makefile.sources
+	@$(call DOWNLOAD_COOKIE,$*,PKG_,,pkg)
+	[ -e $(call ARCHIVE_FILE,$*,PKG_) ] || \
+	cp archives/$(notdir $(URL_PKG_$*)) $(call ARCHIVE_FILE,$*,PKG_) 2>/dev/null || \
+	{ $(call FETCH,$(URL_PKG_$*),$(call ARCHIVE_FILE,$*,PKG_)) && $(call MD5CHECK,$(call ARCHIVE_FILE,$*,PKG_),$(MD5_PKG_$*)); } || \
+	$(call get_from_cache,$*,PKG_)
 
 %.stamp: %.download
 	mkdir -p tmp-$*
-	cd tmp-$* && $(if $(patsubst %.tar.gz,,$(URL_$*)),bunzip2,gunzip) -c ../$(notdir $(URL_$*)) | tar xf -
+	cd tmp-$* && $(if $(patsubst %.tar.gz,,$(URL_$*)),bunzip2,gunzip) -c ../$(call ARCHIVE_FILE,$*) | tar xf -
 	rm -rf $*
 	@for ii in tmp-$*/*; do if [ -d $${ii} ]; then mv $${ii} $*; fi; done; \
 	rm -rf tmp-$*
@@ -114,7 +144,33 @@ endef
 	    patch -p1 < $$p; \
 	  done; \
         fi
-	@touch $@
+	@if [ -d patches/$*.common ]; then \
+          cd $* && \
+	  for p in ../patches/$*.common/*.patch; do \
+	    patch -p1 < $$p; \
+	  done; \
+        fi
+	@touch $@ && rm -f $*.pkgstamp
+
+%.pkgstamp: %.pkgdownload
+	mkdir -p tmp-$*
+	cd tmp-$* && tar xf$(if $(patsubst %.tar.gz,,$(call ARCHIVE_FILE,$*,PKG_)),j,z) ../$(call ARCHIVE_FILE,$*,PKG_)
+	rm -rf $*
+	@for ii in tmp-$*/*; do if [ -d $${ii} ]; then mv $${ii} $*; fi; done; \
+	rm -rf tmp-$*
+	@if [ -d patches/$*.pkg ]; then \
+          cd $* && \
+	  for p in ../patches/$*.pkg/*.patch; do \
+	    patch -p1 < $$p; \
+	  done; \
+        fi
+	@if [ -d patches/$*.common ]; then \
+          cd $* && \
+	  for p in ../patches/$*.common/*.patch; do \
+	    patch -p1 < $$p; \
+	  done; \
+        fi
+	@touch $@ && rm -f $*.stamp
 
 # OCamlMakefile doesn't include stand-alone mlis in the packs...
 graph-workaround.stamp: graph.stamp
@@ -161,9 +217,9 @@ clean:
 	$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=cleanup
 
 distclean:
-	rm -rf cudf extlib re graph dose cmdliner uutf jsonm opam_file_format ._ncdi ._bcdi ._d
-	rm -f depends.ocp
-	rm -f *.tar.gz *.tbz *.stamp *.download
+	rm -rf $(SRC_EXTS) $(PKG_EXTS) ._ncdi ._bcdi ._d
+	rm -f depends.ocp Makefile.config
+	rm -f *.tar.gz *.tbz *.*stamp *.*download *.pkgbuild
 	rm -f *.cm* *.o *.a *.lib *.obj
 	rm -rf lib
 	[ -d archives ] && ([ "$$(find archives -maxdepth 0 -type d -empty)" != "" ] && rmdir archives || echo "WARNING! $$(pwd)/archives/ not empty so left") || true
