@@ -106,6 +106,10 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
   mv flexdll-${FV} flexdll
   CPREFIX=`cd .. ; pwd`/bin
   PATH="${PATH_PREPEND}:${CPREFIX}:${PATH}" Lib="${LIB_PREPEND}${Lib}" Include="${INC_PREPEND}${Include}" make -f Makefile.nt flexdll world.opt install
+  echo "export PATH:=${PATH_PREPEND}:${CPREFIX}:\$(PATH)" > ../../src_ext/Makefile.config
+  echo "export Lib:=${LIB_PREPEND}\$(Lib)" >> ../../src_ext/Makefile.config
+  echo "export Include:=${INC_PREPEND}\$(Include)" >> ../../src_ext/Makefile.config
+  echo "export OCAMLLIB=" >> ../../src_ext/Makefile.config
 else
   ./configure -prefix "`pwd`/../ocaml"
   ${MAKE:-make} world opt.opt
