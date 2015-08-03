@@ -151,9 +151,9 @@ AC_CHECK_PROGS(FETCH,[curl wget],no)
 AC_CHECK_TOOL(JBUILDER,jbuilder)
 
 if test x"$FETCH" = x"curl" ; then
-  AC_SUBST(fetch, "curl $curl_certificate_check -OLSs")
+  AC_SUBST(fetch, "curl $curl_certificate_check -LSs -o \$(2) \$(1)")
 elif test x"$FETCH" = x"wget" ; then
-  AC_SUBST(fetch, "wget $wget_certificate_check")
+  AC_SUBST(fetch, "wget $wget_certificate_check -O \$(2) \$(1)")
 elif test x"${enable_checks}" != x"no" ; then
   AC_MSG_ERROR([You must have either curl or wget installed.])
 fi

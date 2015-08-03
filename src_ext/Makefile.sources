@@ -1,0 +1,61 @@
+URL_cppo = https://github.com/mjambon/cppo/archive/v1.5.0.tar.gz
+MD5_cppo = bdc99442945f6bc26e7a8096d0975239
+
+$(call PKG_SAME,cppo)
+
+URL_extlib = https://github.com/ygrek/ocaml-extlib/releases/download/1.7.2/extlib-1.7.2.tar.gz
+MD5_extlib = 0f550dd06242828399a73387c49e0eed
+
+$(call PKG_SAME,extlib)
+
+URL_re = https://github.com/ocaml/ocaml-re/archive/1.7.1.tar.gz
+MD5_re = 0e45743512b7ab5e6b175f955dc72002
+
+$(call PKG_SAME,re)
+
+URL_cmdliner = http://erratique.ch/software/cmdliner/releases/cmdliner-1.0.0.tbz
+MD5_cmdliner = 6baa375f393fbe9ca1fcb0a7a875e001
+
+$(call PKG_SAME,cmdliner)
+
+URL_ocamlgraph = http://ocamlgraph.lri.fr/download/ocamlgraph-1.8.7.tar.gz
+MD5_ocamlgraph = e733b8309b9374e89d96e907ecaf4f76
+
+$(call PKG_SAME,ocamlgraph)
+
+URL_cudf = https://gforge.inria.fr/frs/download.php/file/36602/cudf-0.9.tar.gz
+MD5_cudf = a4c0e652e56e74c7b388a43f9258d119
+
+$(call PKG_SAME,cudf)
+
+URL_dose3 = https://gforge.inria.fr/frs/download.php/file/36063/dose3-5.0.1.tar.gz
+MD5_dose3 = e7d4b1840383c6732f29a47c08ba5650
+
+$(call PKG_SAME,dose3)
+
+URL_mccs = https://github.com/AltGr/ocaml-mccs/archive/1.1+2c.tar.gz
+MD5_mccs = d3a0f2f9ed509c0bee43d21a10131c2d
+
+URL_opam-file-format = https://github.com/ocaml/opam-file-format/archive/2.0.0-beta3.tar.gz
+MD5_opam-file-format = fb461d14a44aac3a43751aa936e79143
+
+$(call PKG_SAME,opam-file-format)
+
+URL_result = https://github.com/janestreet/result/archive/1.2.tar.gz
+MD5_result = 3d5b66c5526918f0f2ca9d6811ef09c8
+
+$(call PKG_SAME,result)
+
+URL_jbuilder = https://github.com/janestreet/jbuilder/archive/1.0+beta12.tar.gz
+MD5_jbuilder = 05dcb6bdba0c99ae30b63237170e474a
+
+$(call PKG_SAME,jbuilder)
+
+URL_PKG_findlib = http://download.camlcity.org/download/findlib-1.7.3.tar.gz
+MD5_PKG_findlib = 7d57451218359f7b7dfc969e3684a6da
+
+URL_PKG_ocamlbuild = https://github.com/ocaml/ocamlbuild/archive/0.11.0.tar.gz
+MD5_PKG_ocamlbuild = e3b83c842f82ef909b6d2a2d2035f0fe
+
+URL_PKG_topkg = http://erratique.ch/software/topkg/releases/topkg-0.9.0.tbz
+MD5_PKG_topkg = 1700991f570b9aaf49e6aad7d886e154

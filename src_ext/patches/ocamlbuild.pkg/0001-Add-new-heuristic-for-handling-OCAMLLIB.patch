@@ -1,0 +1,74 @@
+From 3880f72858df6b0db6c4f1f075f29ca273ea0740 Mon Sep 17 00:00:00 2001
+From: David Allsopp <david.allsopp@metastack.com>
+Date: Thu, 8 Jun 2017 11:04:07 +0100
+Subject: [PATCH] Add new heuristic for handling OCAMLLIB
+
+ocamlbuild -where will now ignore OCAMLLIB completely if it detects that
+OCAMLBUILD_LIBDIR is not a lexical subdirectory of OCAML_LIBDIR. If it is
+a subdirectory, then instead of returning $OCAMLLIB/ocamlbuild, it will
+also include the difference between OCAMLBUILD_LIBDIR and OCAML_LIBDIR.
+
+For example, if in this normal findlib local installation:
+  OCAMLBUILD_LIBDIR=/home/dra/ocaml/lib/site-lib
+  OCAML_LIBDIR=/home/dra/ocaml/lib
+
+then ocamlbuild -where will return $OCAMLLIB/site-lib/ocamlbuild if
+OCAMLLIB is set.
+---
+ configure.make          |  2 ++
+ src/ocamlbuild_where.ml | 27 ++++++++++++++++++++++-----
+ 2 files changed, 24 insertions(+), 5 deletions(-)
+
+diff --git a/configure.make b/configure.make
+index f77a588..53d387b 100644
+--- a/configure.make
++++ b/configure.make
+@@ -94,6 +94,8 @@ src/ocamlbuild_config.ml:
+ 	echo ;\
+ 	echo 'let bindir = "$(OCAMLBUILD_BINDIR)"'; \
+ 	echo 'let libdir = "$(OCAMLBUILD_LIBDIR)"'; \
++	echo 'let ocaml_libdir = "$(abspath $(OCAML_LIBDIR))"'; \
++	echo 'let libdir_abs = "$(abspath $(OCAMLBUILD_LIBDIR))"'; \
+ 	echo 'let supports_shared_libraries = $(SUPPORTS_SHARED_LIBRARIES)';\
+ 	echo 'let a = "$(A)"'; \
+ 	echo 'let o = "$(O)"'; \
+diff --git a/src/ocamlbuild_where.ml b/src/ocamlbuild_where.ml
+index cb8b846..040ee37 100644
+--- a/src/ocamlbuild_where.ml
++++ b/src/ocamlbuild_where.ml
+@@ -11,10 +11,27 @@
+ (*                                                                     *)
+ (***********************************************************************)
+ 
+-let bindir = ref Ocamlbuild_config.bindir;;
++module O = Ocamlbuild_config;;
++
++let bindir = ref O.bindir;;
+ let libdir = ref begin
+-  Filename.concat
+-    (try Sys.getenv "OCAMLLIB"
+-     with Not_found -> Ocamlbuild_config.libdir)
+-    "ocamlbuild"
++  let root, suffix =
++    let ocaml_lib_len = String.length O.ocaml_libdir + 1 in
++    let lib_len = String.length O.libdir_abs in
++    if lib_len < ocaml_lib_len then
++      O.libdir, "ocamlbuild"
++    else
++      let prefix =
++        String.sub O.libdir_abs 0 ocaml_lib_len
++      in
++      if prefix = O.ocaml_libdir ^ "/" then
++        try
++          let root =
++            String.sub O.libdir_abs ocaml_lib_len (lib_len - ocaml_lib_len)
++          in
++          Sys.getenv "OCAMLLIB", Filename.concat root "ocamlbuild"
++        with Not_found -> O.libdir, "ocamlbuild"
++      else O.libdir, "ocamlbuild"
++  in
++  Filename.concat root suffix
+ end;;
+-- 
+1.9.1
+
