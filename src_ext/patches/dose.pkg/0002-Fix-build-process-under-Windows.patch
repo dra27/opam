@@ -1,0 +1,446 @@
+From ee9f87248b05ce6e7dc36ebcfe8f5a1ee3bb0658 Mon Sep 17 00:00:00 2001
+From: David Allsopp <david.allsopp@metastack.com>
+Date: Wed, 22 Jul 2015 16:59:37 +0100
+Subject: [PATCH] Fix build process under Windows
+
+Four fixes to allow compilation on Windows:
+1. Append .exe to binary install targets
+2. Test whether ln -s works outside Cygwin (winsymlinks:native) and
+   substitute with cp if it doesn't (test only executes on Windows)
+3. Pass --strip-program to install for the two mingw ports
+4. Convert LIBDIR using cygpath
+---
+ Makefile           |  12 +--
+ Makefile.config.in |  24 ++++++
+ configure          | 241 +++++++++++------------------------------------------
+ configure.ac       |  18 ++++
+ 4 files changed, 95 insertions(+), 200 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index bc2d4e1..7509a81 100644
+--- a/Makefile
++++ b/Makefile
+@@ -176,20 +176,20 @@ install: META installcudf
+ 	@cd _build/applications ; \
+ 	install -d $(BINDIR) ; \
+ 	for f in $$(ls *.$(OCAMLEXT)) ; do \
+-	  install $(INSTALLOPTS) $$f $(BINDIR)/$${f%.$(OCAMLEXT)} ; \
++	  install $(INSTALLOPTS) $$f $(BINDIR)/$${f%.$(OCAMLEXT)}$(EXE) ; \
+ 	done
+-	@ln -s $(BINDIR)/distcheck $(BINDIR)/debcheck
+-	@ln -s $(BINDIR)/distcheck $(BINDIR)/rpmcheck
+-	@ln -s $(BINDIR)/distcheck $(BINDIR)/eclipsecheck
++	@$(LN) $(BINDIR)/distcheck $(BINDIR)/debcheck$(EXE)
++	@$(LN) $(BINDIR)/distcheck $(BINDIR)/rpmcheck$(EXE)
++	@$(LN) $(BINDIR)/distcheck $(BINDIR)/eclipsecheck$(EXE)
+ 	@echo "Install dose librairies to $(LIBDIR)"
+ 	@echo "Install dose binaries to $(BINDIR)"
+ 
+ uninstall: uninstallcudf
+ 	@$(OCAMLFIND) remove -destdir $(LIBDIR) $(NAME)
+ 	@for f in $$(ls *.$(OCAMLEXT)) ; do \
+-	  rm -f $(BINDIR)/$${f%.$(OCAMLEXT)} ; \
++	  rm -f $(BINDIR)/$${f%.$(OCAMLEXT)}$(EXE) ; \
+ 	done
+-	@rm -f $(BINDIR)/debcheck $(BINDIR)/rpmcheck $(BINDIR)/eclipsecheck
++	@rm -f $(BINDIR)/debcheck$(EXE) $(BINDIR)/rpmcheck$(EXE) $(BINDIR)/eclipsecheck$(EXE)
+ 	@echo "Uninstall dose librairies from $(LIBDIR)"
+ 	@echo "Uninstall dose binaries from $(BINDIR)"
+ 
+diff --git a/Makefile.config.in b/Makefile.config.in
+index b0277db..0b135f7 100644
+--- a/Makefile.config.in
++++ b/Makefile.config.in
+@@ -13,7 +13,11 @@ DESTDIR =
+ ifeq ($(DESTDIR),)
+ exec_prefix=@prefix@
+ BINDIR=@bindir@
++ifeq ("@OCAML_OS_TYPE@","Win32")
++LIBDIR=$(shell ocamlfind printconf destdir | cygpath -f - -m)
++else
+ LIBDIR=$(shell ocamlfind printconf destdir)
++endif
+ 
+ INSTALL=$(OCAMLFIND) install -destdir $(LIBDIR)
+ UNINSTALL=$(OCAMLFIND) remove -destdir $(LIBDIR)
+@@ -25,6 +29,14 @@ INSTALL = $(OCAMLFIND) install -destdir $(LIBDIR)
+ UNINSTALL = $(OCAMLFIND) remove -destdir $(LIBDIR)
+ endif
+ 
++LN = @LN@
++
++ifeq ("@OCAML_OS_TYPE@","Win32")
++EXE=.exe
++else
++EXE=
++endif
++
+ ifeq ("@OCAML_OS_TYPE@","freebsd")
+   LDFLAGS += -fstack-protector
+ endif
+@@ -39,7 +51,19 @@ endif
+ 
+ ifeq ("@OCAMLEXT@","native")
+   OCAMLBUILD=@OCAMLBUILD@
++ifeq ("@OCAML_SYSTEM@","mingw")
++	INSTALLOPTS=-s --strip-program=i686-w64-mingw32-strip
++else
++ifeq ("@OCAML_SYSTEM@","mingw64")
++	INSTALLOPTS=-s --strip-program=x86_64-w64-mingw32-strip
++else
++ifeq ("@OCAML_OS_TYPE@","Win32")
++	INSTALLOPTS=
++else
+   INSTALLOPTS=-s
++endif
++endif
++endif
+ else
+   OCAMLBUILD=@OCAMLBUILD@ -byte-plugin
+   INSTALLOPTS=
+diff --git a/configure b/configure
+index c5f7a01..8785ee6 100755
+--- a/configure
++++ b/configure
+@@ -648,6 +648,8 @@ CONFIG_PARMAP
+ ZIP
+ PKG_ZIP
+ CONFIG_ZIP
++LN
++OCAML_SYSTEM
+ EGREP
+ GREP
+ CPP
+@@ -691,6 +693,7 @@ CAMLP4OOPT
+ CAMLP4O
+ CAMLP4BOOT
+ CAMLP4
++OCAML_OS_TYPE
+ OCAMLBUILD
+ OCAMLDOC
+ OCAMLMKLIB
+@@ -3090,6 +3093,19 @@ if test "$OCAMLC" = "no"; then
+  as_fn_error $? "You must install the OCaml compiler" "$LINENO" 5
+ fi
+ 
++    { $as_echo "$as_me:${as_lineno-$LINENO}: checking OCaml Sys.os_type" >&5
++$as_echo_n "checking OCaml Sys.os_type... " >&6; }
++
++  cat > conftest.ml <<EOF
++  print_string(Sys.os_type);;
++EOF
++
++  OCAML_OS_TYPE=`$OCAML conftest.ml`
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $OCAML_OS_TYPE" >&5
++$as_echo "$OCAML_OS_TYPE" >&6; }
++
++
++
+ 
+   # checking for camlp4
+   if test -n "$ac_tool_prefix"; then
+@@ -4645,203 +4661,19 @@ $as_echo "not found" >&6; }
+   PKG_BENCHMARK="pkg_benchmark"
+ fi
+ 
++if test "$OCAMLBEST" = "opt"; then :
++  OCAMLBESTCC=$OCAMLOPT
++else
++  OCAMLBESTCC=$OCAMLC
++fi
++OCAML_CC="$($OCAMLBESTCC -config | fgrep native_c_compiler | sed -e "s/native_c_compiler: \(.*\) .*/\1/")"
+ ac_ext=c
+ ac_cpp='$CPP $CPPFLAGS'
+ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ ac_compiler_gnu=$ac_cv_c_compiler_gnu
+ if test -n "$ac_tool_prefix"; then
+-  # Extract the first word of "${ac_tool_prefix}gcc", so it can be a program name with args.
+-set dummy ${ac_tool_prefix}gcc; ac_word=$2
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+-$as_echo_n "checking for $ac_word... " >&6; }
+-if ${ac_cv_prog_CC+:} false; then :
+-  $as_echo_n "(cached) " >&6
+-else
+-  if test -n "$CC"; then
+-  ac_cv_prog_CC="$CC" # Let the user override the test.
+-else
+-as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+-for as_dir in $PATH
+-do
+-  IFS=$as_save_IFS
+-  test -z "$as_dir" && as_dir=.
+-    for ac_exec_ext in '' $ac_executable_extensions; do
+-  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+-    ac_cv_prog_CC="${ac_tool_prefix}gcc"
+-    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+-    break 2
+-  fi
+-done
+-  done
+-IFS=$as_save_IFS
+-
+-fi
+-fi
+-CC=$ac_cv_prog_CC
+-if test -n "$CC"; then
+-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $CC" >&5
+-$as_echo "$CC" >&6; }
+-else
+-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+-$as_echo "no" >&6; }
+-fi
+-
+-
+-fi
+-if test -z "$ac_cv_prog_CC"; then
+-  ac_ct_CC=$CC
+-  # Extract the first word of "gcc", so it can be a program name with args.
+-set dummy gcc; ac_word=$2
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+-$as_echo_n "checking for $ac_word... " >&6; }
+-if ${ac_cv_prog_ac_ct_CC+:} false; then :
+-  $as_echo_n "(cached) " >&6
+-else
+-  if test -n "$ac_ct_CC"; then
+-  ac_cv_prog_ac_ct_CC="$ac_ct_CC" # Let the user override the test.
+-else
+-as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+-for as_dir in $PATH
+-do
+-  IFS=$as_save_IFS
+-  test -z "$as_dir" && as_dir=.
+-    for ac_exec_ext in '' $ac_executable_extensions; do
+-  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+-    ac_cv_prog_ac_ct_CC="gcc"
+-    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+-    break 2
+-  fi
+-done
+-  done
+-IFS=$as_save_IFS
+-
+-fi
+-fi
+-ac_ct_CC=$ac_cv_prog_ac_ct_CC
+-if test -n "$ac_ct_CC"; then
+-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_ct_CC" >&5
+-$as_echo "$ac_ct_CC" >&6; }
+-else
+-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+-$as_echo "no" >&6; }
+-fi
+-
+-  if test "x$ac_ct_CC" = x; then
+-    CC=""
+-  else
+-    case $cross_compiling:$ac_tool_warned in
+-yes:)
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: using cross tools not prefixed with host triplet" >&5
+-$as_echo "$as_me: WARNING: using cross tools not prefixed with host triplet" >&2;}
+-ac_tool_warned=yes ;;
+-esac
+-    CC=$ac_ct_CC
+-  fi
+-else
+-  CC="$ac_cv_prog_CC"
+-fi
+-
+-if test -z "$CC"; then
+-          if test -n "$ac_tool_prefix"; then
+-    # Extract the first word of "${ac_tool_prefix}cc", so it can be a program name with args.
+-set dummy ${ac_tool_prefix}cc; ac_word=$2
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+-$as_echo_n "checking for $ac_word... " >&6; }
+-if ${ac_cv_prog_CC+:} false; then :
+-  $as_echo_n "(cached) " >&6
+-else
+-  if test -n "$CC"; then
+-  ac_cv_prog_CC="$CC" # Let the user override the test.
+-else
+-as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+-for as_dir in $PATH
+-do
+-  IFS=$as_save_IFS
+-  test -z "$as_dir" && as_dir=.
+-    for ac_exec_ext in '' $ac_executable_extensions; do
+-  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+-    ac_cv_prog_CC="${ac_tool_prefix}cc"
+-    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+-    break 2
+-  fi
+-done
+-  done
+-IFS=$as_save_IFS
+-
+-fi
+-fi
+-CC=$ac_cv_prog_CC
+-if test -n "$CC"; then
+-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $CC" >&5
+-$as_echo "$CC" >&6; }
+-else
+-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+-$as_echo "no" >&6; }
+-fi
+-
+-
+-  fi
+-fi
+-if test -z "$CC"; then
+-  # Extract the first word of "cc", so it can be a program name with args.
+-set dummy cc; ac_word=$2
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+-$as_echo_n "checking for $ac_word... " >&6; }
+-if ${ac_cv_prog_CC+:} false; then :
+-  $as_echo_n "(cached) " >&6
+-else
+-  if test -n "$CC"; then
+-  ac_cv_prog_CC="$CC" # Let the user override the test.
+-else
+-  ac_prog_rejected=no
+-as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+-for as_dir in $PATH
+-do
+-  IFS=$as_save_IFS
+-  test -z "$as_dir" && as_dir=.
+-    for ac_exec_ext in '' $ac_executable_extensions; do
+-  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+-    if test "$as_dir/$ac_word$ac_exec_ext" = "/usr/ucb/cc"; then
+-       ac_prog_rejected=yes
+-       continue
+-     fi
+-    ac_cv_prog_CC="cc"
+-    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+-    break 2
+-  fi
+-done
+-  done
+-IFS=$as_save_IFS
+-
+-if test $ac_prog_rejected = yes; then
+-  # We found a bogon in the path, so make sure we never use it.
+-  set dummy $ac_cv_prog_CC
+-  shift
+-  if test $# != 0; then
+-    # We chose a different compiler from the bogus one.
+-    # However, it has the same basename, so the bogon will be chosen
+-    # first if we set CC to just the basename; use the full file name.
+-    shift
+-    ac_cv_prog_CC="$as_dir/$ac_word${1+' '}$@"
+-  fi
+-fi
+-fi
+-fi
+-CC=$ac_cv_prog_CC
+-if test -n "$CC"; then
+-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $CC" >&5
+-$as_echo "$CC" >&6; }
+-else
+-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+-$as_echo "no" >&6; }
+-fi
+-
+-
+-fi
+-if test -z "$CC"; then
+-  if test -n "$ac_tool_prefix"; then
+-  for ac_prog in cl.exe
++  for ac_prog in "${OCAML_CC}" gcc cl cc
+   do
+     # Extract the first word of "$ac_tool_prefix$ac_prog", so it can be a program name with args.
+ set dummy $ac_tool_prefix$ac_prog; ac_word=$2
+@@ -4885,7 +4717,7 @@ fi
+ fi
+ if test -z "$CC"; then
+   ac_ct_CC=$CC
+-  for ac_prog in cl.exe
++  for ac_prog in "${OCAML_CC}" gcc cl cc
+ do
+   # Extract the first word of "$ac_prog", so it can be a program name with args.
+ set dummy $ac_prog; ac_word=$2
+@@ -4940,8 +4772,6 @@ esac
+   fi
+ fi
+ 
+-fi
+-
+ 
+ test -z "$CC" && { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+ $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+@@ -5926,6 +5756,29 @@ done
+   HAS_RPM=yes
+ fi
+ 
++OCAML_SYSTEM="$($OCAMLBESTCC -config | fgrep system | sed -e "s/system: \(.*\)/\1/")"
++
++
++if test "${OCAML_OS_TYPE}" = "Win32"; then :
++
++  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for a workable solution for ln -s" >&5
++$as_echo_n "checking for a workable solution for ln -s... " >&6; }
++  ln -s configure conftestLink
++  if test "`cmd /c dir conftestLink 2>/dev/null | fgrep SYMLINK`" = ""; then :
++  LN=cp
++else
++  LN="ln -s"
++fi
++  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $LN" >&5
++$as_echo "$LN" >&6; }
++
++else
++
++  LN="ln -s"
++
++fi
++
++
+ #AC_CHECK_HEADERS([sched.h],,AC_MSG_ERROR([missing sched.h]))
+ #AC_CHECK_DECLS([sched_setaffinity], [], [], [[
+ #                #define _GNU_SOURCE 1
+diff --git a/configure.ac b/configure.ac
+index b4dfb95..6af06df 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -6,6 +6,8 @@ if test "$OCAMLC" = "no"; then
+  AC_MSG_ERROR([You must install the OCaml compiler])
+ fi
+ 
++AC_CHECK_OCAML_OS_TYPE
++
+ AC_PROG_CAMLP4
+ if test "$CAMLP4" = "no"; then
+  AC_MSG_ERROR([You must install the Camlp4 pre-processor])
+@@ -206,6 +208,9 @@ if test "$HAS_BENCHMARK" = "yes" ; then
+   PKG_BENCHMARK="pkg_benchmark"
+ fi
+ 
++AS_IF([test "$OCAMLBEST" = "opt"],[OCAMLBESTCC=$OCAMLOPT],[OCAMLBESTCC=$OCAMLC])
++OCAML_CC="$($OCAMLBESTCC -config | fgrep native_c_compiler | sed -e "s/native_c_compiler: \(.*\) .*/\1/")"
++AC_PROG_CC(["${OCAML_CC}" gcc cl cc])
+ AC_HEADER_STDC
+ 
+ RPMPATH="-I/usr/include/rpm"
+@@ -252,6 +257,19 @@ if test "$HAS_RPM5" = "yes"; then
+   HAS_RPM=yes
+ fi
+ 
++OCAML_SYSTEM="$($OCAMLBESTCC -config | fgrep system | sed -e "s/system: \(.*\)/\1/")"
++AC_SUBST(OCAML_SYSTEM)
++
++AS_IF([test "${OCAML_OS_TYPE}" = "Win32"],[
++  AC_MSG_CHECKING([for a workable solution for ln -s])
++  ln -s configure conftestLink
++  AS_IF([test "`cmd /c dir conftestLink 2>/dev/null | fgrep SYMLINK`" = ""],[LN=cp],[LN="ln -s"])
++  AC_MSG_RESULT([$LN])
++],[
++  LN="ln -s"
++])
++AC_SUBST(LN)
++
+ #AC_CHECK_HEADERS([sched.h],,AC_MSG_ERROR([missing sched.h]))
+ #AC_CHECK_DECLS([sched_setaffinity], [], [], [[
+ #                #define _GNU_SOURCE 1
+-- 
+2.4.4.windows.2
+

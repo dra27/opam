@@ -1,0 +1,57 @@
+From 91b00f9ba21c09014d10b451fe76e9f768ca5126 Mon Sep 17 00:00:00 2001
+From: "Martin R. Neuhaeusser" <post@marneu.com>
+Date: Thu, 25 Jun 2015 22:55:34 +0200
+Subject: [PATCH 1/2] * Rewrote configuration script to rewrite directory
+ separators in a uniform   way under Linux and Windows.
+
+---
+ configure.in | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/configure.in b/configure.in
+index cbb3f6f..5448bc6 100644
+--- a/configure.in
++++ b/configure.in
+@@ -59,7 +59,7 @@ esac
+ 
+ # OCAMLLIB=`$OCAMLC -v | tail -n 1 | cut -f 4 -d " "`
+ # OCAMLLIB=`$OCAMLC -v | tail -n 1 | sed -e 's|[[^:]]*: \(.*\)|\1|' `
+-OCAMLLIB=`$OCAMLC -where | tr -d '\r'`
++OCAMLLIB=`$OCAMLC -where | tr -d '\\r' | tr '\\\\' '/'`
+ echo "ocaml library path is $OCAMLLIB"
+ 
+ # then we look for ocamlopt; if not present, we issue a warning
+@@ -146,7 +146,7 @@ AC_CHECK_PROG(OCAMLFIND,ocamlfind,ocamlfind)
+ if test "$OCAMLFIND" = "" ; then
+    echo "No ocamlfind detected"
+ else
+-   OCAMLLIB_BY_FINDLIB=`ocamlfind printconf stdlib | tr -d '\\r'`
++   OCAMLLIB_BY_FINDLIB=`ocamlfind printconf stdlib | tr -d '\\r' | tr '\\\\' '/'`
+    if test "$OCAMLLIB_BY_FINDLIB" = "$OCAMLLIB" ; then
+       echo "OCamlfind detected and enabled"
+    else
+-- 
+diff --git a/configure b/configure
+--- a/configure
++++ b/configure
+@@ -1745,7 +1745,7 @@
+
+ # OCAMLLIB=`$OCAMLC -v | tail -n 1 | cut -f 4 -d " "`
+ # OCAMLLIB=`$OCAMLC -v | tail -n 1 | sed -e 's|[[^:]]*: \(.*\)|\1|' `
+-OCAMLLIB=`$OCAMLC -where | tr -d '\r'`
++OCAMLLIB=`$OCAMLC -where | tr -d '\\r' | tr '\\\\' '/'`
+ echo "ocaml library path is $OCAMLLIB"
+
+ # then we look for ocamlopt; if not present, we issue a warning
+@@ -2249,7 +2249,7 @@
+ if test "$OCAMLFIND" = "" ; then
+    echo "No ocamlfind detected"
+ else
+-   OCAMLLIB_BY_FINDLIB=`ocamlfind printconf stdlib | tr -d '\\r'`
++   OCAMLLIB_BY_FINDLIB=`ocamlfind printconf stdlib | tr -d '\\r' | tr '\\\\' '/'`
+    if test "$OCAMLLIB_BY_FINDLIB" = "$OCAMLLIB" ; then
+       echo "OCamlfind detected and enabled"
+    else
+-- 
+2.4.4.windows.2
+

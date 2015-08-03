@@ -1,0 +1,69 @@
+EXT_LIB=$(shell ocamlc -config | fgrep ext_lib | sed -e "s/ext_lib: \.//")
+EXT_EXE=$(if $(filter Win32,$(shell ocamlc -config | fgrep os_type)),.exe)
+OCAMLBIN=$(dir $(shell which ocamlc))
+ifeq ($(shell which cygpath 2>/dev/null),)
+OCAMLROOT=$(dir $(OCAMLBIN))
+else
+OCAMLROOT=$(shell echo $(dir $(OCAMLBIN)) | cygpath -f - -m)
+endif
+
+# Package dependencies
+graph.pkgbuild: findlib.pkgbuild
+
+cmdliner.pkgbuild: findlib.pkgbuild
+
+uutf.pkgbuild: cmdliner.pkgbuild
+
+jsonm.pkgbuild: uutf.pkgbuild
+
+camlp4.pkgbuild: findlib.pkgbuild
+
+extlib.pkgbuild: findlib.pkgbuild camlp4.pkgbuild
+
+re.pkgbuild: findlib.pkgbuild
+
+cudf.pkgbuild: camlp4.pkgbuild findlib.pkgbuild extlib.pkgbuild
+
+dose.pkgbuild: camlp4.pkgbuild findlib.pkgbuild extlib.pkgbuild re.pkgbuild graph.pkgbuild cudf.pkgbuild
+
+findlib-pkg-build:
+	./configure
+	make all opt install
+
+graph-pkg-build:
+	./configure
+	make all install-findlib
+
+cmdliner-pkg-build:
+	ocaml pkg/build.ml native=true native-dynlink=true
+	ocamlfind install cmdliner _build/pkg/META _build/src/cmdliner.{$(EXT_LIB),mli} _build/src/cmdliner.cm{a,i,x,xa,xs}
+
+uutf-pkg-build:
+	ocaml pkg/build.ml native=true native-dynlink=true cmdliner=true
+	ocamlfind install uutf _build/pkg/META _build/src/uutf.{$(EXT_LIB),mli} _build/src/uutf.cm{a,i,ti,x,xa,xs}
+	cp _build/test/utftrip.native $(OCAMLBIN)/utftrip$(EXT_EXE)
+
+jsonm-pkg-build:
+	ocaml setup.ml -configure --prefix $(OCAMLROOT)
+	ocaml setup.ml -build
+	ocaml setup.ml -install
+
+camlp4-pkg-build:
+	./configure
+	make all install install-META
+
+extlib-pkg-build:
+	make all opt cmxs install
+
+re-pkg-build:
+	ocaml setup.ml -configure --prefix $(OCAMLROOT)
+	ocaml setup.ml -build
+	ocaml setup.ml -install
+
+cudf-pkg-build:
+	make BINDIR=$(OCAMLBIN) all opt install
+
+dose-pkg-build:
+	./configure --prefix=$(OCAMLROOT) --with-ocamlgraph
+	make all
+	make install
