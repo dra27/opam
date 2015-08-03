@@ -1,0 +1,147 @@
+From 8c1dda8c39924fb6520dbcd90332791527447fb3 Mon Sep 17 00:00:00 2001
+From: David Allsopp <david.allsopp@metastack.com>
+Date: Wed, 22 Jul 2015 15:30:22 +0100
+Subject: [PATCH] Correct DESTDIR and install target for Windows
+
+Append .exe to programs when installing/uninstall on Windows. Use
+cygpath to process OCAMLLIBDIR. Note that this doesn't affect the
+Cygwin build of OCaml, only the native Windows ports.
+
+If DESTDIR isn't defined, various directories in the Makefile end up
+prefixed //. While this shouldn't be a problem on most Unices, POSIX
+does allow // to have special meaning and Cygwin uses it represent the
+network environment (i.e. // is not the same as /).
+
+Alter DESTDIR so that the trailing slash is added only if DESTDIR has
+been defined.
+---
+ Makefile       | 34 +++++++++++++++++++++-------------
+ c-lib/Makefile | 28 ++++++++++++++++------------
+ 2 files changed, 37 insertions(+), 25 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index f503631..edf24c4 100644
+--- a/Makefile
++++ b/Makefile
+@@ -2,6 +2,13 @@ include Makefile.config
+ 
+ NAME = cudf
+ 
++ifeq ("$(shell (ocamlc -config 2>/dev/null || ocamlopt -config) | fgrep os_type)","os_type: Win32")
++EXE=.exe
++OCAMLLIBDIR := $(shell cygpath $(OCAMLLIBDIR))
++else
++EXE=
++endif
++
+ LIBS = _build/cudf.cma
+ LIBS_OPT = _build/cudf.cmxa
+ PROGS = _build/main_cudf_check _build/main_cudf_parse_822
+@@ -22,8 +29,9 @@ ifeq ($(DESTDIR),)
+ INSTALL = $(OCAMLFIND) install
+ UNINSTALL = $(OCAMLFIND) remove
+ else
+-INSTALL = $(OCAMLFIND) install -destdir $(DESTDIR)/$(OCAMLLIBDIR)
+-UNINSTALL = $(OCAMLFIND) remove -destdir $(DESTDIR)/$(OCAMLLIBDIR)
++DESTDIR:=$(DESTDIR)/
++INSTALL = $(OCAMLFIND) install -destdir $(DESTDIR)$(OCAMLLIBDIR)
++UNINSTALL = $(OCAMLFIND) remove -destdir $(DESTDIR)$(OCAMLLIBDIR)
+ endif
+ 
+ DIST_DIR = $(NAME)-$(VERSION)
+@@ -79,17 +87,17 @@ INSTALL_STUFF += $(wildcard _build/cudf_*.cmx _build/cudf_*.o _build/cudf_*.a)
+ INSTALL_STUFF += $(wildcard _build/cudf.o _build/cudf.cmx _build/cudf.cmi)
+ 
+ install:
+-	test -d $(DESTDIR)/$(OCAMLLIBDIR) || mkdir -p $(DESTDIR)/$(OCAMLLIBDIR)
++	test -d $(DESTDIR)$(OCAMLLIBDIR) || mkdir -p $(DESTDIR)$(OCAMLLIBDIR)
+ 	$(INSTALL) -patch-version $(VERSION) $(NAME) $(INSTALL_STUFF)
+-	test -d $(DESTDIR)/$(BINDIR) || mkdir -p $(DESTDIR)/$(BINDIR)
++	test -d $(DESTDIR)$(BINDIR) || mkdir -p $(DESTDIR)$(BINDIR)
+ 	for p in $(notdir $(PROGS)) ; do \
+-		tgt=`echo $$p | sed -e 's/^main.//' -e 's/_/-/g'` ; \
++		tgt=`echo $$p | sed -e 's/^main.//' -e 's/_/-/g'`$(EXE) ; \
+ 		if [ -f _build/$$p.native ] ; then \
+-			cp _build/$$p.native $(DESTDIR)/$(BINDIR)/$$tgt ; \
++			cp _build/$$p.native $(DESTDIR)$(BINDIR)/$$tgt ; \
+ 		else \
+-			cp _build/$$p.byte $(DESTDIR)/$(BINDIR)/$$tgt ; \
++			cp _build/$$p.byte $(DESTDIR)$(BINDIR)/$$tgt ; \
+ 		fi ; \
+-		echo "Installed $(DESTDIR)/$(BINDIR)/$$tgt" ; \
++		echo "Installed $(DESTDIR)$(BINDIR)/$$tgt" ; \
+ 	done
+ 	if [ -f $(C_LIB_DIR)/cudf.o ] ; then \
+ 		$(MAKE) -C c-lib/ -e install ; \
+@@ -98,13 +106,13 @@ install:
+ uninstall:
+ 	$(UNINSTALL) $(NAME)
+ 	for p in $(notdir $(PROGS)) ; do \
+-		tgt=`echo $$p | sed -e 's/^main.//' -e 's/_/-/g'` ; \
+-		if [ -f $(DESTDIR)/$(BINDIR)/$$tgt ] ; then \
+-			rm $(DESTDIR)/$(BINDIR)/$$tgt ; \
++		tgt=`echo $$p | sed -e 's/^main.//' -e 's/_/-/g'`$(EXE) ; \
++		if [ -f $(DESTDIR)$(BINDIR)/$$tgt ] ; then \
++			rm $(DESTDIR)$(BINDIR)/$$tgt ; \
+ 		fi ; \
+-		echo "Removed $(DESTDIR)/$(BINDIR)/$$tgt" ; \
++		echo "Removed $(DESTDIR)$(BINDIR)/$$tgt" ; \
+ 	done
+-	-rmdir -p $(DESTDIR)/$(OCAMLLIBDIR) $(DESTDIR)/$(BINDIR)
++	-rmdir -p $(DESTDIR)$(OCAMLLIBDIR) $(DESTDIR)$(BINDIR)
+ 
+ dist: ./$(DIST_TARBALL)
+ ./$(DIST_TARBALL):
+diff --git a/c-lib/Makefile b/c-lib/Makefile
+index e660811..e7bd1a3 100644
+--- a/c-lib/Makefile
++++ b/c-lib/Makefile
+@@ -3,6 +3,10 @@ all: libcudf.a c-test
+ opt: libcudf-opt.a c-test-opt
+ include Makefile.variants
+ 
++ifneq ($(DESTDIR),)
++DESTDIR:=$(DESTDIR)/
++endif
++
+ NULL =
+ CFLAGS = -Wall -DG_LOG_DOMAIN=\"libCUDF\"
+ PROG_CFLAGS = -Wall
+@@ -60,22 +64,22 @@ clean:
+ 	rm -f cudf.pc
+ 
+ install: cudf.pc
+-	test -d $(DESTDIR)/$(LIBDIR) || mkdir -p $(DESTDIR)/$(LIBDIR)
+-	test -d $(DESTDIR)/$(INCDIR) || mkdir -p $(DESTDIR)/$(INCDIR)
+-	test -d $(DESTDIR)/$(PCDIR) || mkdir -p $(DESTDIR)/$(PCDIR)
++	test -d $(DESTDIR)$(LIBDIR) || mkdir -p $(DESTDIR)$(LIBDIR)
++	test -d $(DESTDIR)$(INCDIR) || mkdir -p $(DESTDIR)$(INCDIR)
++	test -d $(DESTDIR)$(PCDIR) || mkdir -p $(DESTDIR)$(PCDIR)
+ 	if [ -f libcudf-opt.a ] ; then \
+-		cp libcudf-opt.a $(DESTDIR)/$(LIBDIR)/libcudf.a ; \
++		cp libcudf-opt.a $(DESTDIR)$(LIBDIR)/libcudf.a ; \
+ 	else \
+-		cp libcudf.a $(DESTDIR)/$(LIBDIR)/libcudf.a ; \
++		cp libcudf.a $(DESTDIR)$(LIBDIR)/libcudf.a ; \
+ 	fi
+-	cp libcudf.a $(DESTDIR)/$(LIBDIR)
+-	cp cudf.h $(DESTDIR)/$(INCDIR)
+-	cp cudf.pc $(DESTDIR)/$(PCDIR)
++	cp libcudf.a $(DESTDIR)$(LIBDIR)
++	cp cudf.h $(DESTDIR)$(INCDIR)
++	cp cudf.pc $(DESTDIR)$(PCDIR)
+ 
+ uninstall:
+-	rm $(DESTDIR)/$(LIBDIR)/libcudf.a
+-	rm $(DESTDIR)/$(INCDIR)/cudf.h
+-	rm $(DESTDIR)/$(PCDIR)/cudf.pc
+-	-rmdir -p $(DESTDIR)/$(LIBDIR) $(DESTDIR)/$(INCDIR) $(DESTDIR)/$(PCDIR)
++	rm $(DESTDIR)$(LIBDIR)/libcudf.a
++	rm $(DESTDIR)$(INCDIR)/cudf.h
++	rm $(DESTDIR)$(PCDIR)/cudf.pc
++	-rmdir -p $(DESTDIR)$(LIBDIR) $(DESTDIR)$(INCDIR) $(DESTDIR)$(PCDIR)
+ 
+ .PHONY: all opt clean test install uninstall
+-- 
+2.4.4.windows.2
+
