@@ -1,0 +1,25 @@
+From fe5351c60857306842ddafaf82317f1157838926 Mon Sep 17 00:00:00 2001
+From: David Allsopp <david.allsopp@metastack.com>
+Date: Sun, 19 Mar 2017 07:54:27 +0000
+Subject: [PATCH] Fix installation with MSVC ports
+
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index eb00ff2..5274fe5 100644
+--- a/Makefile
++++ b/Makefile
+@@ -17,7 +17,7 @@ LIBDIR ?= $(PREFIX)/lib
+ install:
+ 	mkdir -p $(DESTDIR)$(LIBDIR)/opam-file-format
+ 	install -m 0644 \
+-	  $(wildcard $(addprefix src/*.,cmi cmo cmx cmti a cma cmxa)) src/META \
++	  $(wildcard $(addprefix src/*.,cmi cmo cmx cmti lib a cma cmxa)) src/META \
+ 	  $(DESTDIR)$(LIBDIR)/opam-file-format/
+ 
+ uninstall:
+-- 
+2.12.0.windows.1
+
