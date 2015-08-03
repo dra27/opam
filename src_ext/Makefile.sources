@@ -1,0 +1,73 @@
+URL_PKG_findlib = http://download.camlcity.org/download/findlib-1.7.2.tar.gz
+MD5_PKG_findlib = b2ced422ea53192bd046faa7bcbcd4a3
+
+URL_opam_file_format = https://github.com/ocaml/opam-file-format/archive/2.0.0-beta3.tar.gz
+MD5_opam_file_format = fb461d14a44aac3a43751aa936e79143
+
+$(call PKG_SAME,opam_file_format)
+
+URL_cppo = https://github.com/mjambon/cppo/archive/v1.3.2.tar.gz
+MD5_cppo = 133c9f8afadb6aa1c5ba0f5eb55c5648
+
+URL_PKG_cppo = https://github.com/mjambon/cppo/archive/v1.4.1.tar.gz
+MD5_PKG_cppo = 2100b34907caa350d3026a3ed13b08d5
+
+URL_extlib = https://github.com/ygrek/ocaml-extlib/archive/1.7.0.tar.gz
+MD5_extlib = b50b02d9e40d35cc20c82d9c881a1bf6
+
+URL_PKG_extlib = https://github.com/ygrek/ocaml-extlib/releases/download/1.7.1/extlib-1.7.1.tar.gz
+MD5_PKG_extlib = 381b8f3099f26eec0e8b3597361d5645
+
+URL_PKG_ocamlbuild = https://github.com/ocaml/ocamlbuild/archive/0.11.0.tar.gz
+MD5_PKG_ocamlbuild = e3b83c842f82ef909b6d2a2d2035f0fe
+
+URL_re = https://github.com/ocaml/ocaml-re/archive/ocaml-re-1.5.0.tar.gz
+MD5_re = 1e9bff3279648881be31e5ff96219f0a
+
+URL_PKG_re = http://github.com/ocaml/ocaml-re/archive/1.7.1.tar.gz
+MD5_PKG_re = 0e45743512b7ab5e6b175f955dc72002
+
+URL_graph = http://ocamlgraph.lri.fr/download/ocamlgraph-1.8.6.tar.gz
+MD5_graph = afbc24f0e0eb72c2d3eda64b68513e73
+
+URL_PKG_graph = http://ocamlgraph.lri.fr/download/ocamlgraph-1.8.7.tar.gz
+MD5_PKG_graph = e733b8309b9374e89d96e907ecaf4f76
+
+URL_PKG_result = http://github.com/janestreet/result/archive/1.2.tar.gz
+MD5_PKG_result = 3d5b66c5526918f0f2ca9d6811ef09c8
+
+URL_PKG_topkg = http://erratique.ch/software/topkg/releases/topkg-0.9.0.tbz
+MD5_PKG_topkg = 1700991f570b9aaf49e6aad7d886e154
+
+URL_cmdliner = http://erratique.ch/software/cmdliner/releases/cmdliner-0.9.8.tbz
+MD5_cmdliner = fc67c937447cc223722f1419fa2189da
+
+URL_PKG_cmdliner = http://erratique.ch/software/cmdliner/releases/cmdliner-1.0.0.tbz
+MD5_PKG_cmdliner = 6baa375f393fbe9ca1fcb0a7a875e001
+
+URL_uutf = http://erratique.ch/software/uutf/releases/uutf-0.9.3.tbz
+MD5_uutf = 708c0421e158b390c7cc341f37b40add
+
+URL_PKG_uutf = http://erratique.ch/software/uutf/releases/uutf-1.0.1.tbz
+MD5_PKG_uutf = b8535f974027357094c5cdb4bf03a21b
+
+URL_jsonm = http://erratique.ch/software/jsonm/releases/jsonm-0.9.1.tbz
+MD5_jsonm = 631a5dabdada83236c83056f60e42685
+
+URL_PKG_jsonm = http://erratique.ch/software/jsonm/releases/jsonm-1.0.1.tbz
+MD5_PKG_jsonm = e2ca39eaefd55b8d155c4f1ec5885311
+
+URL_PKG_camlp4 = https://github.com/ocaml/camlp4/archive/4.04+1.tar.gz
+MD5_PKG_camlp4 = 305f61ffd98c4c03eb0d9b7749897e59
+
+URL_cudf = https://gforge.inria.fr/frs/download.php/file/33593/cudf-0.7.tar.gz
+MD5_cudf = 2047222fcf78278c6a24ac619fc39abb
+
+URL_PKG_cudf = https://gforge.inria.fr/frs/download.php/file/34659/cudf-0.8.tar.gz
+MD5_PKG_cudf = abf34d3daedd81580b7b32a871341b2f
+
+URL_dose = https://gforge.inria.fr/frs/download.php/file/35975/dose3-5.0.tar.gz
+MD5_dose = 228c6a73a0759783fd01181047046610
+
+URL_PKG_dose = https://gforge.inria.fr/frs/download.php/file/36063/dose3-5.0.1.tar.gz
+MD5_PKG_dose = e7d4b1840383c6732f29a47c08ba5650
