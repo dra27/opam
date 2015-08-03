@@ -1,0 +1,72 @@
+URL_PKG_findlib = http://download.camlcity.org/download/findlib-1.7.3.tar.gz
+MD5_PKG_findlib = 7d57451218359f7b7dfc969e3684a6da
+
+URL_opam-file-format = https://github.com/ocaml/opam-file-format/archive/2.0.0-beta3.tar.gz
+MD5_opam-file-format = fb461d14a44aac3a43751aa936e79143
+
+$(call PKG_SAME,opam-file-format)
+
+URL_cppo = https://github.com/mjambon/cppo/archive/v1.5.0.tar.gz
+MD5_cppo = bdc99442945f6bc26e7a8096d0975239
+
+$(call PKG_SAME,cppo)
+
+URL_extlib = https://github.com/ygrek/ocaml-extlib/releases/download/1.7.2/extlib-1.7.2.tar.gz
+MD5_extlib = 0f550dd06242828399a73387c49e0eed
+
+$(call PKG_SAME,extlib)
+
+URL_PKG_ocamlbuild = https://github.com/ocaml/ocamlbuild/archive/0.11.0.tar.gz
+MD5_PKG_ocamlbuild = e3b83c842f82ef909b6d2a2d2035f0fe
+
+URL_re = http://github.com/ocaml/ocaml-re/archive/1.7.1.tar.gz
+MD5_re = 0e45743512b7ab5e6b175f955dc72002
+
+$(call PKG_SAME,re)
+
+URL_ocamlgraph = http://ocamlgraph.lri.fr/download/ocamlgraph-1.8.7.tar.gz
+MD5_ocamlgraph = e733b8309b9374e89d96e907ecaf4f76
+
+$(call PKG_SAME,ocamlgraph)
+
+URL_result = http://github.com/janestreet/result/archive/1.2.tar.gz
+MD5_result = 3d5b66c5526918f0f2ca9d6811ef09c8
+
+$(call PKG_SAME,result)
+
+URL_PKG_topkg = http://erratique.ch/software/topkg/releases/topkg-0.9.0.tbz
+MD5_PKG_topkg = 1700991f570b9aaf49e6aad7d886e154
+
+URL_cmdliner = http://erratique.ch/software/cmdliner/releases/cmdliner-1.0.0.tbz
+MD5_cmdliner = 6baa375f393fbe9ca1fcb0a7a875e001
+
+$(call PKG_SAME,cmdliner)
+
+URL_uutf = http://erratique.ch/software/uutf/releases/uutf-1.0.1.tbz
+MD5_uutf = b8535f974027357094c5cdb4bf03a21b
+
+$(call PKG_SAME,uutf)
+
+URL_jsonm = http://erratique.ch/software/jsonm/releases/jsonm-1.0.1.tbz
+MD5_jsonm = e2ca39eaefd55b8d155c4f1ec5885311
+
+$(call PKG_SAME,jsonm)
+
+URL_PKG_camlp4 = https://github.com/ocaml/camlp4/archive/4.04+1.tar.gz
+MD5_PKG_camlp4 = 305f61ffd98c4c03eb0d9b7749897e59
+
+URL_cudf = https://gforge.inria.fr/frs/download.php/file/36602/cudf-0.9.tar.gz
+MD5_cudf = abf34d3daedd81580b7b32a871341b2f
+
+$(call PKG_SAME,cudf)
+
+URL_dose3 = https://gforge.inria.fr/frs/download.php/file/36063/dose3-5.0.1.tar.gz
+MD5_dose3 = e7d4b1840383c6732f29a47c08ba5650
+
+$(call PKG_SAME,dose3)
+
+URL_uchar = https://github.com/ocaml/uchar/releases/download/v0.0.1/uchar-0.0.1.tbz
+MD5_uchar = 3a7e5de4c4f7f25f55d50693f92f1960
+
+URL_jbuilder = https://github.com/dra27/jbuilder/archive/more-reads.tar.gz
+MD5_jbuilder = 89f0b0fb8d1d53d6c6111f399cca0332

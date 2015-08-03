@@ -1,0 +1,104 @@
+EXT_LIB:=$(shell PATH="$(PATH)" ocamlc -config | fgrep ext_lib | sed -e "s/ext_lib: \.//")
+EXT_EXE:=$(if $(filter Win32,$(shell PATH="$(PATH)" ocamlc -config | fgrep os_type)),.exe)
+OCAMLBIN:=$(dir $(shell PATH="$(PATH)" which ocamlc))
+ifeq ($(shell which cygpath 2>/dev/null),)
+OCAMLROOT:=$(dir $(abspath $(OCAMLBIN)))
+SITELIB=$(shell PATH="$(PATH)" ocamlfind printconf path)
+else
+OCAMLROOT:=$(shell PATH="$(PATH)" echo $(dir $(abspath $(OCAMLBIN))) | cygpath -f - -m)
+SITELIB=$(shell PATH="$(PATH)" ocamlfind printconf path | cygpath -f - -m)
+endif
+
+# Package dependencies
+opam-file-format.pkgbuild: findlib.pkgbuild
+
+cppo.pkgbuild: findlib.pkgbuild
+
+extlib.pkgbuild: findlib.pkgbuild cppo.pkgbuild
+
+ocamlbuild.pkgbuild: findlib.pkgbuild
+
+re.pkgbuild: findlib.pkgbuild ocamlbuild.pkgbuild
+
+ocamlgraph.pkgbuild: findlib.pkgbuild
+
+result.pkgbuild: findlib.pkgbuild
+
+topkg.pkgbuild: findlib.pkgbuild ocamlbuild.pkgbuild result.pkgbuild
+
+cmdliner.pkgbuild: findlib.pkgbuild ocamlbuild.pkgbuild result.pkgbuild topkg.pkgbuild
+
+uutf.pkgbuild: ocamlbuild.pkgbuild topkg.pkgbuild cmdliner.pkgbuild
+
+jsonm.pkgbuild: findlib.pkgbuild ocamlbuild.pkgbuild topkg.pkgbuild uutf.pkgbuild
+
+camlp4.pkgbuild: findlib.pkgbuild ocamlbuild.pkgbuild
+
+cudf.pkgbuild: findlib.pkgbuild ocamlbuild.pkgbuild camlp4.pkgbuild extlib.pkgbuild
+
+dose3.pkgbuild: findlib.pkgbuild ocamlbuild.pkgbuild cppo.pkgbuild extlib.pkgbuild re.pkgbuild ocamlgraph.pkgbuild cudf.pkgbuild
+
+opam-file-format-pkg-build:
+	make LIBDIR=$(SITELIB) all install
+
+findlib-pkg-build:
+	./configure
+	make all opt install
+
+cppo-pkg-build:
+	make PREFIX=$(OCAMLROOT) opt install-bin
+
+extlib-pkg-build:
+	make minimal=1 build install
+
+ocamlbuild-pkg-build:
+	make -f configure.make all OCAMLBUILD_PREFIX=$(OCAMLROOT) OCAMLBUILD_BINDIR=$(OCAMLBIN) OCAMLBUILD_LIBDIR=$(SITELIB) OCAML_NATIVE=true OCAML_NATIVE_TOOLS=true
+	make all findlib-install
+
+re-pkg-build:
+	ocaml setup.ml -configure --prefix $(OCAMLROOT)
+	ocaml setup.ml -build
+	ocaml setup.ml -install
+
+ocamlgraph-pkg-build:
+	./configure
+	make all install-findlib
+
+result-pkg-build:
+	make byte native install
+
+EXTS1=$(EXT_LIB) mli
+EXTS2=a i ti xa xs
+
+topkg-pkg-build:
+	ocaml pkg/pkg.ml build --pkg-name topkg --dev-pkg false
+	ocamlfind install topkg _build/pkg/META $(addprefix _build/src/topkg.,$(EXTS1)) $(addprefix _build/src/topkg.cm,$(EXTS2)) _build/src/topkg*.cmx
+
+cmdliner-pkg-build:
+	ocaml pkg/pkg.ml build --pinned false
+	ocamlfind install cmdliner _build/pkg/META $(addprefix _build/src/cmdliner.,$(EXTS1)) $(addprefix _build/src/cmdliner.cm,$(EXTS2)) _build/src/cmdliner*.cmx
+
+uutf-pkg-build:
+	echo "description = \"Compatibility library for OCaml's Uchar module\"" > META
+	echo "version = \"distributed with OCaml 4.03 or above\"" >> META
+	ocamlfind install uchar META
+	ocaml pkg/pkg.ml build --pinned false --with-cmdliner true
+	ocamlfind install uutf _build/pkg/META $(addprefix _build/src/uutf.,$(EXTS1)) $(addprefix _build/src/uutf.cm,$(EXTS2) x)
+	cp _build/test/utftrip.native $(OCAMLBIN)/utftrip$(EXT_EXE)
+
+jsonm-pkg-build:
+	ocaml pkg/pkg.ml build --pinned false
+	ocamlfind install jsonm _build/pkg/META $(addprefix _build/src/jsonm.,$(EXTS1)) $(addprefix _build/src/jsonm.cm,$(EXTS2) x)
+	cp _build/test/jsontrip.native $(OCAMLBIN)/jsontrip$(EXT_EXE)
+
+camlp4-pkg-build:
+	./configure --pkgdir=$(SITELIB)
+	make all install install-META
+
+cudf-pkg-build:
+	make DOC= BINDIR=$(OCAMLBIN) all opt install
+
+dose3-pkg-build:
+	./configure $(if $(EXT_EXE),--prefix=$(OCAMLROOT),--bindir=/../../$(OCAMLBIN))
+	make libs apps
+	make install

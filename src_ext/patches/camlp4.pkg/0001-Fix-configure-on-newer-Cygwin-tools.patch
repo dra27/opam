@@ -1,0 +1,35 @@
+From 73f41bfe6a29476e5439f70e97d042ca3747e84c Mon Sep 17 00:00:00 2001
+From: David Allsopp <david.allsopp@metastack.com>
+Date: Sun, 4 Jun 2017 11:00:34 +0100
+Subject: [PATCH] Fix configure on newer Cygwin tools
+
+The Cygwin packages for awk, grep and sed were updated on 20 February
+2017 so that they no longer automatically strip \r characters on binary
+mounts.
+
+References:
+  * https://cygwin.com/ml/cygwin/2017-02/msg00152.html
+  * https://cygwin.com/ml/cygwin/2017-02/msg00189.html
+  * https://cygwin.com/ml/cygwin/2017-02/msg00188.html
+---
+ configure | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/configure b/configure
+index fb89f1deb..7bcf6744b 100755
+--- a/configure
++++ b/configure
+@@ -41,8 +41,8 @@ elif [ $major -ne 4 -o $minor -ne 4 ]; then
+     exit 2
+ fi
+ 
+-ocamlc -config | sed 's/: /="/;s/$/"/' > config.sh
+-ocamlc -config | sed 's/^/let /;s/: / = "/;s/$/"/' > myocamlbuild_config.ml
++ocamlc -config | tr -d '\015' | sed 's/: /="/;s/$/"/' > config.sh
++ocamlc -config | tr -d '\015' | sed 's/^/let /;s/: / = "/;s/$/"/' > myocamlbuild_config.ml
+ 
+ # Add a few things to config.sh
+ 
+-- 
+2.12.0.windows.1
+
