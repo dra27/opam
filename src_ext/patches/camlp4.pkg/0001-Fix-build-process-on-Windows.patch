@@ -1,0 +1,39 @@
+From ae24ba54498371f4a7b9a2dc74be162c42057785 Mon Sep 17 00:00:00 2001
+From: David Allsopp <david.allsopp@metastack.com>
+Date: Wed, 24 Jun 2015 16:48:32 +0100
+Subject: [PATCH] Fix build process on Windows
+
+ocamlbuild makes things quite hard for itself by invoking bash via
+Sys.command and so needing to worry about both bash escaping *and* cmd
+escaping.
+
+Patch allows camlp4 to build even while this isn't working properly -
+change has no effect on Unix and will continue to work even once
+ocamlbuild itself is fixed.
+---
+ myocamlbuild.ml | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/myocamlbuild.ml b/myocamlbuild.ml
+index 621a902..7264df1 100644
+--- a/myocamlbuild.ml
++++ b/myocamlbuild.ml
+@@ -86,7 +86,14 @@ let () =
+         let dep = "camlp4"/"boot"/exe in
+         let cmd =
+           let ( / ) = Filename.concat in
+-          "camlp4"/"boot"/exe
++          (*
++           * Workaround ocamlbuild problems on Windows by double-escaping.
++           * On systems using forward-slash, the calls to String.escaped will be
++           * no-ops anyway and the code will continue to work even once ocamlbuild
++           * correctly escapes output (the issue is trying to escape output for both cmd
++           * and bash)
++           *)
++          String.escaped (String.escaped ("camlp4"/"boot"/exe))
+         in
+         (Some dep, cmd)
+     in
+-- 
+2.4.4.windows.2
+

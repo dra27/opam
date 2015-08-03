@@ -1,0 +1,35 @@
+From b53ef60f1d063a1a8578e81b6b46f631c7dce5fb Mon Sep 17 00:00:00 2001
+From: David Allsopp <david.allsopp@metastack.com>
+Date: Thu, 23 Jul 2015 16:21:00 +0100
+Subject: [PATCH] Fix lack of test for Config.ext_lib
+
+---
+ pkg/topkg.ml | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/pkg/topkg.ml b/pkg/topkg.ml
+index bd85d68..64eb31c 100644
+--- a/pkg/topkg.ml
++++ b/pkg/topkg.ml
+@@ -4,6 +4,9 @@
+    %%NAME%% release %%VERSION%%
+   ---------------------------------------------------------------------------*)
+ 
++#directory "+compiler-libs";;
++#load "ocamlcommon.cma";;
++
+ (* Public api *) 
+ 
+ (** Build environment access *) 
+@@ -143,7 +146,7 @@ end
+ module Exts : Exts = struct
+   let interface = [".mli"; ".cmi"; ".cmti"]
+   let interface_opt = ".cmx" :: interface 
+-  let library = [".cma"; ".cmxa"; ".cmxs"; ".a"]
++  let library = [".cma"; ".cmxa"; ".cmxs"; Config.ext_lib]
+   let module_library = (interface_opt @ library)
+ end
+ 
+-- 
+2.4.4.windows.2
+

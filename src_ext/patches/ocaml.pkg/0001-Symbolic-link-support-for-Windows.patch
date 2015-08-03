@@ -1,0 +1,855 @@
+From c62ad0b959812f3a931b9d3e4315b488872303d2 Mon Sep 17 00:00:00 2001
+From: David Allsopp <david.allsopp@metastack.com>
+Date: Wed, 29 Jul 2015 12:20:11 +0200
+Subject: [PATCH] Symbolic link support for Windows
+
+Use _stat64 instead of _stati64 on Windows
+
+The mingw64 headers create an inconsistency between the MSVC and MinGW
+ports - mingw64 automatically defines _USE_32BIT_TIME_T on 32-bit
+Windows, where the Microsoft CRT docs state that should be a user
+define. The effect is that the mingw64 32-bit port suffers from the year
+2038 bug, where the MSVC 32-bit port does not. Given that OCaml uses a
+double for the time fields anyway and OCaml requires sufficiently modern
+compilers to be able to rely on a working _stat64 (64-bit time_t and
+64-bit st_size), switch from the *i64 to the *64 variants.
+
+Support symbolic links in Win32 Unix.stat and Unix.lstat. Unix.readlink
+and Unix.symlink implemented for Windows. Compatibility maintained for
+Windows XP.
+---
+ otherlibs/threads/unix.ml         |   3 +-
+ otherlibs/unix/symlink.c          |  18 ++-
+ otherlibs/unix/unix.ml            |   3 +-
+ otherlibs/unix/unix.mli           |  33 ++++-
+ otherlibs/unix/unixLabels.mli     |  10 +-
+ otherlibs/win32unix/Makefile.nt   |   9 +-
+ otherlibs/win32unix/readlink.c    |  82 ++++++++++
+ otherlibs/win32unix/stat.c        | 304 +++++++++++++++++++++++++++++++++++---
+ otherlibs/win32unix/symlink.c     |  96 ++++++++++++
+ otherlibs/win32unix/unix.ml       |  23 ++-
+ otherlibs/win32unix/unixsupport.h |  38 +++++
+ 11 files changed, 579 insertions(+), 40 deletions(-)
+ create mode 100644 otherlibs/win32unix/readlink.c
+ create mode 100644 otherlibs/win32unix/symlink.c
+
+diff --git a/otherlibs/threads/unix.ml b/otherlibs/threads/unix.ml
+index a397ec4..225c236 100644
+--- a/otherlibs/threads/unix.ml
++++ b/otherlibs/threads/unix.ml
+@@ -356,7 +356,8 @@ let pipe() =
+   set_nonblock out_fd;
+   fd_pair
+ 
+-external symlink : string -> string -> unit = "unix_symlink"
++external symlink : ?is_dir:bool -> string -> string -> unit = "unix_symlink"
++external has_symlink : unit -> bool = "unix_has_symlink"
+ external readlink : string -> string = "unix_readlink"
+ external mkfifo : string -> file_perm -> unit = "unix_mkfifo"
+ 
+diff --git a/otherlibs/unix/symlink.c b/otherlibs/unix/symlink.c
+index dbbd266..6a99f69 100644
+--- a/otherlibs/unix/symlink.c
++++ b/otherlibs/unix/symlink.c
+@@ -19,9 +19,9 @@
+ 
+ #ifdef HAS_SYMLINK
+ 
+-CAMLprim value unix_symlink(value path1, value path2)
++CAMLprim value unix_symlink(value is_dir, value path1, value path2)
+ {
+-  CAMLparam2(path1, path2);
++  CAMLparam3(is_dir, path1, path2);
+   char * p1;
+   char * p2;
+   int ret;
+@@ -37,9 +37,21 @@ CAMLprim value unix_symlink(value path1, value path2)
+   CAMLreturn(Val_unit);
+ }
+ 
++CAMLprim value unix_has_symlink(value unit)
++{
++  CAMLparam0();
++  CAMLreturn(Val_true);
++}
++
+ #else
+ 
+-CAMLprim value unix_symlink(value path1, value path2)
++CAMLprim value unix_symlink(value is_dir, value path1, value path2)
+ { invalid_argument("symlink not implemented"); }
+ 
++CAMLprim value unix_has_symlink(value unit)
++{
++  CAMLparam0();
++  CAMLreturn(Val_false);
++}
++
+ #endif
+diff --git a/otherlibs/unix/unix.ml b/otherlibs/unix/unix.ml
+index d18b338..29989fc 100644
+--- a/otherlibs/unix/unix.ml
++++ b/otherlibs/unix/unix.ml
+@@ -378,7 +378,8 @@ external rewinddir : dir_handle -> unit = "unix_rewinddir"
+ external closedir : dir_handle -> unit = "unix_closedir"
+ 
+ external pipe : unit -> file_descr * file_descr = "unix_pipe"
+-external symlink : string -> string -> unit = "unix_symlink"
++external symlink : ?is_dir:bool -> string -> string -> unit = "unix_symlink"
++external has_symlink : unit -> bool = "unix_has_symlink"
+ external readlink : string -> string = "unix_readlink"
+ external mkfifo : string -> file_perm -> unit = "unix_mkfifo"
+ external select :
+diff --git a/otherlibs/unix/unix.mli b/otherlibs/unix/unix.mli
+index dea5cb3..cbe8b7c 100644
+--- a/otherlibs/unix/unix.mli
++++ b/otherlibs/unix/unix.mli
+@@ -632,9 +632,36 @@ val close_process_full :
+ (** {6 Symbolic links} *)
+ 
+ 
+-val symlink : string -> string -> unit
+-(** [symlink source dest] creates the file [dest] as a symbolic link
+-   to the file [source]. *)
++val symlink : ?is_dir:bool -> string -> string -> unit
++(** [symlink ?is_dir source dest] creates the file [dest] as a symbolic link
++   to the file [source]. On Windows, [~is_dir] indicates if the symbolic link
++   points to a directory or a file; if omitted, [symlink] examines [source] using
++   [stat] and picks appropriately, if [source] does not exist then [false] is
++   assumed. On Unix, [~is_dir] ignored.
++
++   Windows symbolic links are available in Windows Vista onwards. There are some
++   important differences between Windows symlinks and their POSIX counterparts.
++
++   Windows symbolic links come in two flavours: directory and regular, which designate
++   whether the symbolic link points to a directory or a file. The type must be correct -
++   a directory symlink which actually points to a file cannot be selected with chdir and
++   a file symlink which actually points to a directory cannot be read or written (note
++   that Cygwin's emulation layer ignores this distinction).
++
++   When symbolic links are created to existing targets, this distinction doesn't matter
++   and [symlink] will automatically create the correct kind of symbolic link. The
++   distinction matters when a symbolic link is created to a non-existent target.
++
++   The other caveat is that by default symbolic links are a privileged operation.
++   Administrators will always need to be running elevated (or with UAC disabled) and
++   by default normal user accounts need to be created the SeCreateSymbolicLinkPrivilege
++   via Local Security Policy (secpol.msc) or via Active Directory. *)
++
++val has_symlink : unit -> bool
++(** Returns [true] if the user is able to create symbolic links. On Windows,
++   this indicates that the user not only has the SeCreateSymbolicLinkPrivilege
++   but is also running elevated, if necessary. On other platforms, this is
++   simply indicates that the symlink system call is available. *)
+ 
+ val readlink : string -> string
+ (** Read the contents of a link. *)
+diff --git a/otherlibs/unix/unixLabels.mli b/otherlibs/unix/unixLabels.mli
+index 76ff890..4e488b4 100644
+--- a/otherlibs/unix/unixLabels.mli
++++ b/otherlibs/unix/unixLabels.mli
+@@ -618,9 +618,15 @@ val close_process_full :
+ (** {6 Symbolic links} *)
+ 
+ 
+-val symlink : src:string -> dst:string -> unit
++val symlink : ?is_dir:bool -> src:string -> dst:string -> unit
+ (** [symlink source dest] creates the file [dest] as a symbolic link
+-   to the file [source]. *)
++   to the file [source]. See {!Unix.symlink} for details of [~is_dir] *)
++
++val has_symlink : unit -> bool
++(** Returns [true] if the user is able to create symbolic links. On Windows,
++   this indicates that the user not only has the SeCreateSymbolicLinkPrivilege
++   but is also running elevated, if necessary. On other platforms, this is
++   simply indicates that the symlink system call is available. *)
+ 
+ val readlink : string -> string
+ (** Read the contents of a link. *)
+diff --git a/otherlibs/win32unix/Makefile.nt b/otherlibs/win32unix/Makefile.nt
+index 77555b2..96aa95d 100644
+--- a/otherlibs/win32unix/Makefile.nt
++++ b/otherlibs/win32unix/Makefile.nt
+@@ -16,10 +16,10 @@ WIN_FILES = accept.c bind.c channels.c close.c \
+   close_on.c connect.c createprocess.c dup.c dup2.c errmsg.c \
+   getpeername.c getpid.c getsockname.c gettimeofday.c \
+   link.c listen.c lockf.c lseek.c nonblock.c \
+-  mkdir.c open.c pipe.c read.c rename.c \
++  mkdir.c open.c pipe.c read.c readlink.c rename.c \
+   select.c sendrecv.c \
+   shutdown.c sleep.c socket.c sockopt.c startup.c stat.c \
+-  system.c times.c unixsupport.c windir.c winwait.c write.c \
++  symlink.c system.c times.c unixsupport.c windir.c winwait.c write.c \
+   winlist.c winworker.c windbug.c
+ 
+ # Files from the ../unix directory
+@@ -34,12 +34,13 @@ UNIX_CAML_FILES = unix.mli unixLabels.mli unixLabels.ml
+ 
+ ALL_FILES=$(WIN_FILES) $(UNIX_FILES)
+ WSOCKLIB=$(call SYSLIB,ws2_32)
++ADVAPI32LIB=$(call SYSLIB,advapi32)
+ 
+ LIBNAME=unix
+ COBJS=$(ALL_FILES:.c=.$(O))
+ CAMLOBJS=unix.cmo unixLabels.cmo
+-LINKOPTS=-cclib $(WSOCKLIB)
+-LDOPTS=-ldopt $(WSOCKLIB)
++LINKOPTS=-cclib $(WSOCKLIB) -cclib $(ADVAPI32LIB)
++LDOPTS=-ldopt $(WSOCKLIB) -ldopt $(ADVAPI32LIB)
+ EXTRACAMLFLAGS=-nolabels
+ EXTRACFLAGS=-I../unix
+ HEADERS=unixsupport.h socketaddr.h
+diff --git a/otherlibs/win32unix/readlink.c b/otherlibs/win32unix/readlink.c
+new file mode 100644
+index 0000000..397f94a
+--- /dev/null
++++ b/otherlibs/win32unix/readlink.c
+@@ -0,0 +1,82 @@
++/***********************************************************************/
++/*                                                                     */
++/*                                OCaml                                */
++/*                                                                     */
++/*            Xavier Leroy, projet Cristal, INRIA Rocquencourt         */
++/*                                                                     */
++/*  Copyright 1996 Institut National de Recherche en Informatique et   */
++/*  en Automatique.  All rights reserved.  This file is distributed    */
++/*  under the terms of the GNU Library General Public License, with    */
++/*  the special exception on linking described in file ../../LICENSE.  */
++/*                                                                     */
++/***********************************************************************/
++
++#include <caml/mlvalues.h>
++#include <caml/memory.h>
++#include <caml/alloc.h>
++#include <caml/fail.h>
++#include <caml/signals.h>
++#include "unixsupport.h"
++#include <errno.h>
++#include <winioctl.h>
++
++CAMLprim value unix_readlink(value opath)
++{
++  CAMLparam1(opath);
++  CAMLlocal1(result);
++  HANDLE h;
++  char* path = String_val(opath);
++  DWORD attributes;
++  
++  caml_enter_blocking_section();
++  attributes = GetFileAttributes(path);
++  caml_leave_blocking_section();
++
++  if (attributes == INVALID_FILE_ATTRIBUTES) {
++    win32_maperr(GetLastError());
++    uerror("readlink", opath);
++  }
++  else if (!(attributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
++    errno = EINVAL;
++    uerror("readlink", opath);
++  }
++  else {
++    caml_enter_blocking_section();
++    if ((h = CreateFile(path, FILE_READ_ATTRIBUTES, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, NULL)) == INVALID_HANDLE_VALUE) {
++      caml_leave_blocking_section();
++      errno = ENOENT;
++      uerror("readlink", opath);
++    }
++    else {
++      char buffer[16384];
++      DWORD read;
++      REPARSE_DATA_BUFFER* point;
++    
++      if (DeviceIoControl(h, FSCTL_GET_REPARSE_POINT, NULL, 0, buffer, 16384, &read, NULL)) {
++        caml_leave_blocking_section();
++        point = (REPARSE_DATA_BUFFER*)buffer;
++        if (point->ReparseTag == IO_REPARSE_TAG_SYMLINK) {
++          int cbLen = point->SymbolicLinkReparseBuffer.SubstituteNameLength / sizeof(WCHAR);
++          int len;
++          len = WideCharToMultiByte(CP_THREAD_ACP, 0, point->SymbolicLinkReparseBuffer.PathBuffer + point->SymbolicLinkReparseBuffer.SubstituteNameOffset / 2, cbLen, NULL, 0, NULL, NULL);
++          result = caml_alloc_string(len);
++          WideCharToMultiByte(CP_THREAD_ACP, 0, point->SymbolicLinkReparseBuffer.PathBuffer + point->SymbolicLinkReparseBuffer.SubstituteNameOffset / 2, cbLen, String_val(result), len, NULL, NULL);
++          CloseHandle(h);
++        }
++        else {
++          errno = EINVAL;
++          CloseHandle(h);
++          uerror("readline", opath);
++        }
++      }
++      else {
++        caml_leave_blocking_section();
++        win32_maperr(GetLastError());
++        CloseHandle(h);
++        uerror("readlink", opath);
++      }
++    }
++  }
++
++  CAMLreturn(result);
++}
+diff --git a/otherlibs/win32unix/stat.c b/otherlibs/win32unix/stat.c
+index 46fc984..50da744 100644
+--- a/otherlibs/win32unix/stat.c
++++ b/otherlibs/win32unix/stat.c
+@@ -15,14 +15,22 @@
+ #include <caml/mlvalues.h>
+ #include <caml/memory.h>
+ #include <caml/alloc.h>
++#include <caml/signals.h>
+ #include "unixsupport.h"
+ #include "cst2constr.h"
+ #define _INTEGRAL_MAX_BITS 64
+ #include <sys/types.h>
+ #include <sys/stat.h>
++#include <time.h>
++#include <winioctl.h>
+ 
+ #ifndef S_IFLNK
+-#define S_IFLNK 0
++/*
++ * The Microsoft CRT doesn't support lstat and so has no S_IFLNK
++ * The implementation uses comparison, so rather than allocating another bit, in a
++ * potentially future-incompatible way, just create a value with multiple bits set
++ */
++#define S_IFLNK (S_IFDIR | S_IFREG)
+ #endif
+ #ifndef S_IFIFO
+ #define S_IFIFO 0
+@@ -38,14 +46,14 @@ static int file_kind_table[] = {
+   S_IFREG, S_IFDIR, S_IFCHR, S_IFBLK, S_IFLNK, S_IFIFO, S_IFSOCK
+ };
+ 
+-static value stat_aux(int use_64, struct _stati64 *buf)
++static value stat_aux(int use_64, __int64 st_ino, struct _stat64 *buf)
+ {
+   CAMLparam0 ();
+   CAMLlocal1 (v);
+ 
+   v = caml_alloc (12, 0);
+   Store_field (v, 0, Val_int (buf->st_dev));
+-  Store_field (v, 1, Val_int (buf->st_ino));
++  Store_field (v, 1, Val_int (st_ino ? st_ino & Max_long : buf->st_ino));
+   Store_field (v, 2, cst_to_constr (buf->st_mode & S_IFMT, file_kind_table,
+                                     sizeof(file_kind_table) / sizeof(int), 0));
+   Store_field (v, 3, Val_int(buf->st_mode & 07777));
+@@ -61,49 +69,301 @@ static value stat_aux(int use_64, struct _stati64 *buf)
+   CAMLreturn (v);
+ }
+ 
+-CAMLprim value unix_stat(value path)
++/*
++ * The long and ugly story of Microsoft CRT stat and symbolic links
++ *
++ * msvcrt.dll - which is now a core Windows component - is basically Visual Studio .NET 2003 CRT (Version 7). It is
++ * the version usually linked against by mingw64-gcc
++ * Its behaviour is as follows:
++ *   a) st_mode is correctly populated
++ *   b) st_atime, st_mtime and st_ctime are those for the symbolic link, not the target
++ *   c) stat incorrectly returns information even if the target doesn't exist
++ *
++ * The next CRT of interest is Visual Studio 2008 (Version 9 - msvcr900.dll), as that's included with the Windows 7 SDK
++ * This worked until 2011 when Microsoft produced security advisory KB2467174 (see https://bugs.python.org/issue6727) at
++ * which point stat returns ENOENT for symbolic links.
++ *
++ * This persists until Visual Studio 2010, when a hotfix (https://support.microsoft.com/en-gb/kb/2890375) was produced which
++ * was supposed to fix this behaviour. This CRT has one problem: it returns S_REG instead of S_DIR for directory symbolic links
++ * because of a subtle error in its implementation (it calls fstat which quite reasonably always assumes its looking at a
++ * regular file).
++ *
++ * The bug persists in Visual Studio 2012. Visual Studio 2015 features the "great refactored" CRT (written in C++!). This
++ * CRT correctly returns st_mode for directory symbolic links. Its two limitations is that it doesn't return the st_size
++ * correctly for symbolic links and it doesn't populate st_nlink correctly.
++ *
++ * However, even if fixed, mingw64 is limited to msvcrt.dll (by default, anyway) and that's a lot of buggy CRTs out there.
++ *
++ * There is also no implementation given for lstat in any CRT.
++ *
++ * do_stat therefore reimplements stat - but the algorithms for populating the resulting _stat64 are identical to Microsoft's
++ * (with the exception of correct handling of st_nlink for symbolic links), being based upon the code for the Microsoft CRT
++ * given in Microsoft Visual Studio 2013 Express
++ */
++
++static int convert_time(FILETIME* time, __time64_t* result, __time64_t def)
+ {
+-  int ret;
+-  struct _stati64 buf;
++  SYSTEMTIME sys;
++  FILETIME local;
+ 
+-  ret = _stati64(String_val(path), &buf);
+-  if (ret == -1) uerror("stat", path);
+-  if (buf.st_size > Max_long) {
+-    win32_maperr(ERROR_ARITHMETIC_OVERFLOW);
++  if (time->dwLowDateTime || time->dwHighDateTime) {
++    if (!FileTimeToLocalFileTime(time, &local) || !FileTimeToSystemTime(&local, &sys))
++    {
++      win32_maperr(GetLastError());
++      return 0;
++    }
++    else
++    {
++      struct tm stamp = {sys.wSecond, sys.wMinute, sys.wHour, sys.wDay, sys.wMonth - 1, sys.wYear - 1900, 0, 0, 0};
++      *result = _mktime64(&stamp);
++    }
++  }
++  else {
++    *result = def;
++  }
++
++  return 1;
++}
++
++#define SLASH(c) (c == '\\' || c == '/')
++
++int IsRootUNCName(char* path)
++{
++  char c;
++  if (SLASH(*path++) && SLASH(*path++) && !SLASH(*path))
++  {
++    /*
++     * Search for the next slash
++     */
++    while ((c = *++path) && !SLASH(c));
++
++    if (*path++ && *path) {
++      while ((c = *++path) && !SLASH(c));
++
++      if (!*path++ || !*path) {
++        return 1;
++      }
++    }
++  }
++
++  return 0;
++}
++
++static int do_stat(int do_lstat, int use_64, char* path, mlsize_t l, __int64* st_ino, struct _stat64* res)
++{
++  BY_HANDLE_FILE_INFORMATION info;
++  int i;
++  char* ptr;
++  char c;
++  HANDLE h;
++  unsigned short mode;
++  int is_symlink = 0;
++
++  caml_enter_blocking_section();
++  h = CreateFile(path, FILE_READ_ATTRIBUTES, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
++  caml_leave_blocking_section();
++  if (h == INVALID_HANDLE_VALUE) {
++    if (strpbrk(path, "./\\")) {
++      /*
++       * FindFirstFileEx can't return information about root drives or UNC paths. Ensure that the
++       * root given is valid and if so, return a simulated record for it.
++       */
++
++      caml_enter_blocking_section();
++      ptr = _fullpath(NULL, path, 0);
++      if (!(((l = strlen(ptr)) == 3 || (l > 4 && IsRootUNCName(ptr))) && GetDriveType(ptr) > 1)) {
++        caml_leave_blocking_section();
++        errno = ENOENT;
++        free(ptr);
++        return 0;
++      }
++      caml_leave_blocking_section();
++      free(ptr);
++
++      info.dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
++      res->st_size = 0;
++      res->st_nlink = 1;
++
++      /*
++       * Get the drive number
++       */
++      if (l > 1 && path[1] == ':') {
++        if (path[2]) {
++          res->st_dev = tolower(*path) - 'a';
++        }
++        else {
++          errno = ENOENT;
++          return 0;
++        }
++      }
++      else {
++        res->st_dev = _getdrive() - 1;
++      }
++
++      /*
++       * January 1, 1980 UTC
++       */
++      res->st_atime = res->st_ctime = res->st_mtime = 315532800.;
++    }
++    else {
++      errno = ENOENT;
++      return 0;
++    }
++  }
++  else {
++    caml_enter_blocking_section();
++    if (!GetFileInformationByHandle(h, &info)) {
++      win32_maperr(GetLastError());
++      caml_leave_blocking_section();
++      CloseHandle(h);
++      return 0;
++    }
++    caml_leave_blocking_section();
++
++    if (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
++      /*
++       * Only symbolic links should be processed specially. The call to DeviceIoControl solves two
++       * problems at the same time:
++       *   a) Although FindFirstFileEx gives the reparse tag in dwReserved0, GetFileInformationByHandle does not
++       *      and using the Ex version (or GetFileAttributesEx) makes Windows XP support harder
++       *   b) Windows returns 0 for the size of a symbolic link - reading the reparse point allows a POSIX-compatible value
++       *      to be returned in st_size
++       */
++      char buffer[16384];
++      DWORD read;
++      REPARSE_DATA_BUFFER* point;
++
++      caml_enter_blocking_section();
++      if (DeviceIoControl(h, FSCTL_GET_REPARSE_POINT, NULL, 0, buffer, 16384, &read, NULL)) {
++        if (((REPARSE_DATA_BUFFER*)buffer)->ReparseTag == IO_REPARSE_TAG_SYMLINK) {
++          is_symlink = do_lstat;
++          res->st_size = ((REPARSE_DATA_BUFFER*)buffer)->SymbolicLinkReparseBuffer.SubstituteNameLength / 2;
++        }
++      }
++      caml_leave_blocking_section();
++
++      if (!is_symlink) {
++        CloseHandle(h);
++        caml_enter_blocking_section();
++        if ((h = CreateFile(path, FILE_READ_ATTRIBUTES, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL)) == INVALID_HANDLE_VALUE) {
++          errno = ENOENT;
++          caml_leave_blocking_section();
++          return 0;
++        }
++        else {
++          if (!GetFileInformationByHandle(h, &info)) {
++            win32_maperr(GetLastError());
++            caml_leave_blocking_section();
++            CloseHandle(h);
++            return 0;
++          }
++          caml_leave_blocking_section();
++        }
++      }
++    }
++
++    CloseHandle(h);
++
++    if (!is_symlink) {
++      /*
++       * The size returned seems to vary depending on whether it's a directory (in which case it's 0) or a symbolic link (in which
++       * case it looks like allocated sector size).
++       * Neither is interesting, so return 0.
++       */
++      res->st_size = (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ? 0 : ((__int64)(info.nFileSizeHigh)) << 32 | ((__int64)info.nFileSizeLow));
++    }
++
++    if (!use_64 && res->st_size > Max_long) {
++      win32_maperr(ERROR_ARITHMETIC_OVERFLOW);
++      return 0;
++    }
++
++    if (!convert_time(&info.ftLastWriteTime, &res->st_mtime, 0) || !convert_time(&info.ftLastAccessTime, &res->st_atime, res->st_mtime) || !convert_time(&info.ftCreationTime, &res->st_ctime, res->st_mtime)) {
++      win32_maperr(GetLastError());
++      return 0;
++    }
++
++    /*
++     * Note MS CRT (still) puts st_nlink = 1 and gives st_ino = 0
++     */
++    res->st_nlink = info.nNumberOfLinks;
++    res->st_dev = info.dwVolumeSerialNumber;
++    *st_ino = ((__int64)(info.nFileIndexHigh)) << 32 | ((__int64)info.nFileIndexLow);
++  }
++
++  mode = (do_lstat && is_symlink ? S_IFLNK | S_IEXEC | S_IWRITE : (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ? _S_IFDIR | _S_IEXEC : _S_IFREG)) | (info.dwFileAttributes & FILE_ATTRIBUTE_READONLY ? _S_IREAD : _S_IREAD | _S_IWRITE);
++  if ((ptr = strrchr(path, '.')) && (!_stricmp(ptr, ".exe") || !_stricmp(ptr, ".cmd") || !_stricmp(ptr, ".bat") || !_stricmp(ptr, ".com"))) {
++    mode |= _S_IEXEC;
++  }
++  mode |= (mode & 0700) >> 3;
++  mode |= (mode & 0700) >> 6;
++  res->st_mode = mode;
++  res->st_uid = res->st_gid = res->st_ino = 0;
++  res->st_rdev = res->st_dev;
++
++  return 1;
++}
++
++CAMLprim value unix_stat(value path)
++{
++  struct _stat64 buf;
++  __int64 st_ino;
++  if (!do_stat(0, 0, String_val(path), caml_string_length(path), &st_ino, &buf)) {
+     uerror("stat", path);
+   }
+-  return stat_aux(0, &buf);
++  return stat_aux(0, st_ino, &buf);
+ }
+ 
+ CAMLprim value unix_stat_64(value path)
+ {
+-  int ret;
+-  struct _stati64 buf;
+-  ret = _stati64(String_val(path), &buf);
+-  if (ret == -1) uerror("stat", path);
+-  return stat_aux(1, &buf);
++  struct _stat64 buf;
++  __int64 st_ino;
++  if (!do_stat(0, 1, String_val(path), caml_string_length(path), &st_ino, &buf)) {
++    uerror("stat", path);
++  }
++  return stat_aux(1, st_ino, &buf);
++}
++
++CAMLprim value unix_lstat(value path)
++{
++  struct _stat64 buf;
++  __int64 st_ino;
++  if (!do_stat(1, 0, String_val(path), caml_string_length(path), &st_ino, &buf)) {
++    uerror("lstat", path);
++  }
++  return stat_aux(0, st_ino, &buf);
++}
++
++CAMLprim value unix_lstat_64(value path)
++{
++  struct _stat64 buf;
++  __int64 st_ino;
++  if (!do_stat(1, 1, String_val(path), caml_string_length(path), &st_ino, &buf)) {
++    uerror("lstat", path);
++  }
++  return stat_aux(1, st_ino, &buf);
+ }
+ 
+ CAMLprim value unix_fstat(value handle)
+ {
+   int ret;
+-  struct _stati64 buf;
++  struct _stat64 buf;
+ 
+-  ret = _fstati64(win_CRT_fd_of_filedescr(handle), &buf);
++  ret = _fstat64(win_CRT_fd_of_filedescr(handle), &buf);
+   if (ret == -1) uerror("fstat", Nothing);
+   if (buf.st_size > Max_long) {
+     win32_maperr(ERROR_ARITHMETIC_OVERFLOW);
+     uerror("fstat", Nothing);
+   }
+-  return stat_aux(0, &buf);
++  return stat_aux(0, 0, &buf);
+ }
+ 
+ CAMLprim value unix_fstat_64(value handle)
+ {
+   int ret;
+-  struct _stati64 buf;
++  struct _stat64 buf;
+ 
+-  ret = _fstati64(win_CRT_fd_of_filedescr(handle), &buf);
++  ret = _fstat64(win_CRT_fd_of_filedescr(handle), &buf);
+   if (ret == -1) uerror("fstat", Nothing);
+-  return stat_aux(1, &buf);
++  return stat_aux(1, 0, &buf);
+ }
+diff --git a/otherlibs/win32unix/symlink.c b/otherlibs/win32unix/symlink.c
+new file mode 100644
+index 0000000..cff402e
+--- /dev/null
++++ b/otherlibs/win32unix/symlink.c
+@@ -0,0 +1,96 @@
++/***********************************************************************/
++/*                                                                     */
++/*                                OCaml                                */
++/*                                                                     */
++/*            Xavier Leroy, projet Cristal, INRIA Rocquencourt         */
++/*                                                                     */
++/*  Copyright 1996 Institut National de Recherche en Informatique et   */
++/*  en Automatique.  All rights reserved.  This file is distributed    */
++/*  under the terms of the GNU Library General Public License, with    */
++/*  the special exception on linking described in file ../../LICENSE.  */
++/*                                                                     */
++/***********************************************************************/
++
++/*
++ * Windows Vista functions enabled
++ */
++#define _WIN32_WINNT 0x0600
++
++#include <caml/mlvalues.h>
++#include <caml/memory.h>
++#include <caml/alloc.h>
++#include <caml/fail.h>
++#include <caml/signals.h>
++#include "unixsupport.h"
++
++typedef BOOL (WINAPI *LPFN_CREATESYMBOLICLINK) (LPTSTR, LPTSTR, DWORD);
++
++static LPFN_CREATESYMBOLICLINK pCreateSymbolicLink = NULL;
++static int no_symlink = 0;
++
++CAMLprim value unix_symlink(value is_dir, value source, value dest)
++{
++  CAMLparam3(is_dir, source, dest);
++  DWORD flags = (Bool_val(is_dir) ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0);
++  BOOL result;
++
++again:
++  if (no_symlink) {
++    invalid_argument("symlink not available");
++  }
++
++  if (!pCreateSymbolicLink) {
++    pCreateSymbolicLink = (LPFN_CREATESYMBOLICLINK)GetProcAddress(GetModuleHandle("kernel32"), "CreateSymbolicLinkA");
++    no_symlink = !pCreateSymbolicLink;
++    goto again;
++  }
++
++  caml_enter_blocking_section();
++  result = pCreateSymbolicLink(String_val(dest), String_val(source), flags);
++  caml_leave_blocking_section();
++
++  if (!result) {
++    win32_maperr(GetLastError());
++    uerror("symlink", dest);
++  }
++
++  CAMLreturn(Val_unit);
++}
++
++#define luid_eq(l, r) (l.LowPart == r.LowPart && l.HighPart == r.HighPart)
++
++CAMLprim value unix_has_symlink(value unit)
++{
++  CAMLparam1(unit);
++  HANDLE hProcess = GetCurrentProcess();
++  BOOL result = FALSE;
++
++  if (OpenProcessToken(hProcess, TOKEN_READ, &hProcess)) {
++    LUID seCreateSymbolicLinkPrivilege;
++
++    if (LookupPrivilegeValue(NULL, SE_CREATE_SYMBOLIC_LINK_NAME, &seCreateSymbolicLinkPrivilege)) {
++      DWORD length;
++
++      if (!GetTokenInformation(hProcess, TokenPrivileges, NULL, 0, &length)) {
++        if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
++          TOKEN_PRIVILEGES* privileges = (TOKEN_PRIVILEGES*)malloc(length);
++          if (GetTokenInformation(hProcess, TokenPrivileges, privileges, length, &length)) {
++            DWORD count = privileges->PrivilegeCount;
++
++            if (count) {
++              LUID_AND_ATTRIBUTES* privs = privileges->Privileges;
++              while (count-- && !(result = luid_eq(privs->Luid, seCreateSymbolicLinkPrivilege)))
++                privs++;
++            }
++          }
++
++          free(privileges);
++        }
++      }
++    }
++
++    CloseHandle(hProcess);
++  }
++
++  CAMLreturn(Val_bool(result));
++}
+diff --git a/otherlibs/win32unix/unix.ml b/otherlibs/win32unix/unix.ml
+index b74f063..f17f9db 100644
+--- a/otherlibs/win32unix/unix.ml
++++ b/otherlibs/win32unix/unix.ml
+@@ -251,7 +251,7 @@ type stats =
+     st_ctime : float }
+ 
+ external stat : string -> stats = "unix_stat"
+-let lstat = stat
++external lstat : string -> stats = "unix_lstat"
+ external fstat : file_descr -> stats = "unix_fstat"
+ let isatty fd =
+   match (fstat fd).st_kind with S_CHR -> true | _ -> false
+@@ -287,7 +287,7 @@ module LargeFile =
+         st_ctime : float;
+       }
+     external stat : string -> stats = "unix_stat_64"
+-    let lstat = stat
++    external lstat : string -> stats = "unix_lstat_64"
+     external fstat : file_descr -> stats = "unix_fstat_64"
+   end
+ 
+@@ -373,8 +373,23 @@ let mkfifo name perm = invalid_arg "Unix.mkfifo not implemented"
+ 
+ (* Symbolic links *)
+ 
+-let readlink path = invalid_arg "Unix.readlink not implemented"
+-let symlink path1 path2 = invalid_arg "Unix.symlink not implemented"
++external readlink : string -> string = "unix_readlink"
++external symlink_stub : bool -> string -> string -> unit = "unix_symlink"
++
++let symlink ?is_dir source dest =
++  let is_dir =
++    match is_dir with
++      Some is_dir ->
++        is_dir
++    | None ->
++        try
++          LargeFile.((stat source).st_kind = S_DIR)
++        with _ ->
++          false
++  in
++    symlink_stub is_dir source dest
++
++external has_symlink : unit -> bool = "unix_has_symlink"
+ 
+ (* Locking *)
+ 
+diff --git a/otherlibs/win32unix/unixsupport.h b/otherlibs/win32unix/unixsupport.h
+index b8efb27..d7ad166 100644
+--- a/otherlibs/win32unix/unixsupport.h
++++ b/otherlibs/win32unix/unixsupport.h
+@@ -74,4 +74,42 @@ extern value unix_freeze_buffer (value);
+ }
+ #endif
+ 
++/*
++ * This structure is defined inconsistently. mingw64 has it in ntdef.h (which doesn't look like a primary header)
++ * and technically it's part of ntifs.h in the WDK. Requiring the WDK is a bit extreme, so the definition is
++ * taken from ntdef.h. Both ntdef.h and ntifs.h define REPARSE_DATA_BUFFER_HEADER_SIZE
++ */
++#ifndef REPARSE_DATA_BUFFER_HEADER_SIZE
++typedef struct _REPARSE_DATA_BUFFER
++{
++  ULONG  ReparseTag;
++  USHORT ReparseDataLength;
++  USHORT Reserved;
++  union
++  {
++    struct
++    {
++      USHORT SubstituteNameOffset;
++      USHORT SubstituteNameLength;
++      USHORT PrintNameOffset;
++      USHORT PrintNameLength;
++      ULONG  Flags;
++      WCHAR  PathBuffer[1];
++    } SymbolicLinkReparseBuffer;
++    struct
++    {
++      USHORT SubstituteNameOffset;
++      USHORT SubstituteNameLength;
++      USHORT PrintNameOffset;
++      USHORT PrintNameLength;
++      WCHAR  PathBuffer[1];
++    } MountPointReparseBuffer;
++    struct
++    {
++      UCHAR  DataBuffer[1];
++    } GenericReparseBuffer;
++  };
++} REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
++#endif
++
+ #endif /* CAML_UNIXSUPPORT_H */
+-- 
+2.4.4.windows.2
+

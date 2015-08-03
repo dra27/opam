@@ -19,6 +19,7 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
   LIB_PREPEND=
   INC_PREPEND=
 
+  patch -p1 -i ../../src_ext/patches/ocaml.pkg/0001-Symbolic-link-support-for-Windows.patch
   case "$1" in
     "mingw"|"mingw64")
       BUILD=$1
@@ -102,6 +103,10 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
   cd ${V}
   CPREFIX=`cd .. ; pwd`/bin
   PATH="${PATH_PREPEND}:${CPREFIX}:${PATH}" Lib="${LIB_PREPEND}${Lib}" Include="${INC_PREPEND}${Include}" make -f Makefile.nt world opt opt.opt install
+  echo "export PATH:=${PATH_PREPEND}:${CPREFIX}:\$(PATH)" > ../../src_ext/Makefile.config
+  echo "export Lib:=${LIB_PREPEND}\$(Lib)" >> ../../src_ext/Makefile.config
+  echo "export Include:=${INC_PREPEND}\$(Include)" >> ../../src_ext/Makefile.config
+  echo "export OCAMLLIB=" >> ../../src_ext/Makefile.config
 else
   ./configure -prefix `pwd`/../ocaml
   make world opt

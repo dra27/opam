@@ -1,0 +1,74 @@
+From fdd9c931368cd9311247056f3781baa83d2d8d9b Mon Sep 17 00:00:00 2001
+From: David Allsopp <david.allsopp@metastack.com>
+Date: Wed, 22 Jul 2015 18:27:32 +0100
+Subject: [PATCH] Also support mingw64 as system type (Matthieu Dubuget)
+
+git-svn-id: https://godirepo.camlcity.org/svn/lib-findlib/trunk@251 5e68ba05-c9cc-0310-a7d4-dca2aa431786
+---
+ doc/README.xml                 | 4 ++++
+ src/findlib/findlib_config.mlp | 2 +-
+ src/findlib/frontend.ml        | 6 +++---
+ 3 files changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/doc/README.xml b/doc/README.xml
+index a40531d..7453d1d 100644
+--- a/doc/README.xml
++++ b/doc/README.xml
+@@ -110,6 +110,10 @@ configuration files, and library routines in detail.</p>
+     <ul>
+ 
+     <li>
++      <p><em>SVN:</em> Also support mingw64 as system type (Matthieu Dubuget).</p>
++    </li>
++
++    <li>
+       <p><em>1.5.5:</em> fixes a build problem for BSD systens</p>
+     </li>
+ 
+diff --git a/src/findlib/findlib_config.mlp b/src/findlib/findlib_config.mlp
+index 6ba5dad..64b4840 100644
+--- a/src/findlib/findlib_config.mlp
++++ b/src/findlib/findlib_config.mlp
+@@ -14,7 +14,7 @@ let ocaml_has_autolinking = @AUTOLINK@;;
+ let libexec_name = "stublibs";;
+ 
+ let system = "@SYSTEM@";;
+-(* - "mingw", "win32", "cygwin", "linux_elf", ... *)
++(* - "mingw", "mingw64", "win32", "cygwin", "linux_elf", ... *)
+ 
+ let dll_suffix =
+   match Sys.os_type with
+diff --git a/src/findlib/frontend.ml b/src/findlib/frontend.ml
+index 2e00ccd..04d30d8 100644
+--- a/src/findlib/frontend.ml
++++ b/src/findlib/frontend.ml
+@@ -28,7 +28,7 @@ and modifier =
+ 
+ let slashify s =
+   match Findlib_config.system with
+-    | "mingw" | "cygwin" ->
++    | "mingw" | "mingw64" | "cygwin" ->
+ 	let u = String.copy s in
+ 	for k = 0 to String.length u - 1 do
+ 	  if u.[k] = '\\' then u.[k] <- '/'
+@@ -40,7 +40,7 @@ let slashify s =
+ 
+ let out_path ?(prefix="") s =
+   match Findlib_config.system with
+-    | "mingw" | "cygwin" ->
++    | "mingw" | "mingw64" | "cygwin" ->
+ 	let u = slashify s in
+ 	prefix ^ 
+ 	  (if String.contains u ' ' then
+@@ -372,7 +372,7 @@ let run_command ?filter verbose cmd args =
+     Sys.signal Sys.sigint Sys.Signal_ignore in
+ 
+   let need_exe =
+-    List.mem Findlib_config.system [ "win32"; "win64"; "mingw" ] in
++    List.mem Findlib_config.system [ "win32"; "win64"; "mingw"; "mingw64" ] in
+ 
+   let fixed_cmd =
+     if need_exe then (
+-- 
+2.4.4.windows.2
+
