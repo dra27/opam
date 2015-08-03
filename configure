@@ -4631,10 +4631,10 @@ test -n "$FETCH" || FETCH="no"
 
 
 if test x"$FETCH" = x"curl" ; then
-  fetch="curl $curl_certificate_check -OL"
+  fetch="curl $curl_certificate_check -L -o \$(2) \$(1)"
 
 elif test x"$FETCH" = x"wget" ; then
-  fetch="wget $wget_certificate_check"
+  fetch="wget $wget_certificate_check -O \$(2) \$(1)"
 
 elif test x"${enable_checks}" != x"no" ; then
   as_fn_error $? "You must have either curl or wget installed." "$LINENO" 5
