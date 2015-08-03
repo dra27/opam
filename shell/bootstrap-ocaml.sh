@@ -91,8 +91,9 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
   if [ -n "${PATH_PREPEND}" ] ; then
     PATH_PREPEND="${PATH_PREPEND}:"
   fi
-  PREFIX=`cd .. ; pwd | cygpath -f - -m`/ocaml
-  sed -e "s|^PREFIX=.*|PREFIX=${PREFIX}|" config/Makefile.${BUILD} > config/Makefile
+  PREFIX=`cd .. ; pwd`/ocaml
+  WINPREFIX=`echo ${PREFIX} | cygpath -f - -m`
+  sed -e "s|^PREFIX=.*|PREFIX=${WINPREFIX}|" config/Makefile.${BUILD} > config/Makefile
   mv config/s-nt.h config/s.h
   mv config/m-nt.h config/m.h
   FV=0.35
@@ -105,8 +106,15 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
   rm -rf flexdll
   mv flexdll-${FV} flexdll
   PATH="${PATH_PREPEND}${PREFIX}/bin:${PATH}" Lib="${LIB_PREPEND}${Lib}" Include="${INC_PREPEND}${Include}" make -f Makefile.nt flexdll world.opt install
+  echo "export PATH:=${PATH_PREPEND}${PREFIX}/bin:\$(PATH)" > ../../src_ext/Makefile.config
+  echo "export Lib:=${LIB_PREPEND}\$(Lib)" >> ../../src_ext/Makefile.config
+  echo "export Include:=${INC_PREPEND}\$(Include)" >> ../../src_ext/Makefile.config
+  echo "export OCAMLLIB=${WINPREFIX}/lib" >> ../../src_ext/Makefile.config
 else
-  ./configure -prefix "`pwd`/../ocaml"
+  PREFIX=`cd .. ; pwd`/ocaml
+  echo "export PATH:=${PREFIX}/bin:\$(PATH)" > ../../src_ext/Makefile.config
+  echo "export OCAMLLIB=${PREFIX}/lib/ocaml" >> ../../src_ext/Makefile.config
+  ./configure -prefix "${PREFIX}"
   ${MAKE:-make} world opt.opt
   ${MAKE:-make} install
 fi

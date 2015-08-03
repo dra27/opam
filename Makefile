@@ -50,8 +50,14 @@ opam opam-installer opam-admin.top opam-lib opam-lib.native opam-lib.byte: $(JBU
 lib-ext:
 	$(MAKE) -j -C src_ext lib-ext
 
+lib-pkg:
+	$(MAKE) -j -C src_ext lib-pkg
+
 download-ext:
 	$(MAKE) -C src_ext archives
+
+download-pkg:
+	$(MAKE) -C src_ext archives-pkg
 
 clean-ext:
 	$(MAKE) -C src_ext distclean

@@ -1,0 +1,25 @@
+From a8d2e8ddf9891d2994bc47d2d3fd6a08db51443a Mon Sep 17 00:00:00 2001
+From: David Allsopp <david.allsopp@metastack.com>
+Date: Sat, 18 Mar 2017 16:37:57 +0000
+Subject: [PATCH] Don't hard-code object file extension...
+
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 588a190..a4eaedc 100644
+--- a/Makefile
++++ b/Makefile
+@@ -163,7 +163,7 @@ src/ocamlbuild_pack.cmx: $(PACK_CMX)
+ 	mkdir -p tmp
+ 	$(OCAMLOPT) -pack $^ -o tmp/ocamlbuild_pack.cmx
+ 	mv tmp/ocamlbuild_pack.cmx src/ocamlbuild_pack.cmx
+-	mv tmp/ocamlbuild_pack.o src/ocamlbuild_pack.o
++	mv tmp/ocamlbuild_pack$(EXT_OBJ) src/ocamlbuild_pack$(EXT_OBJ)
+ 
+ # The lexers
+ 
+-- 
+2.12.0.windows.1
+
