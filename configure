@@ -583,6 +583,7 @@ PACKAGE_STRING='opam 2.0.0~beta2'
 PACKAGE_BUGREPORT=''
 PACKAGE_URL=''
 
+ac_default_prefix=C:/OPAM
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 hasalldeps
@@ -4013,6 +4014,7 @@ fi
 if  test "${OS_TYPE}" = "Win32"; then :
 
   WIN32=1
+
   EXE=.exe
 
 else
