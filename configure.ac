@@ -108,6 +108,7 @@ fi
 
 AS_IF([ test "${OS_TYPE}" = "Win32"],[
   WIN32=1
+  AC_PREFIX_DEFAULT([C:/OPAM])
   EXE=.exe
 ],[
   EXE=
