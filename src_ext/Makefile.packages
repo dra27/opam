@@ -36,6 +36,8 @@ cudf.pkgbuild: findlib.pkgbuild ocamlbuild.pkgbuild camlp4.pkgbuild extlib.pkgbu
 
 dose3.pkgbuild: findlib.pkgbuild ocamlbuild.pkgbuild cppo.pkgbuild extlib.pkgbuild re.pkgbuild ocamlgraph.pkgbuild cudf.pkgbuild
 
+jbuilder.pkgbuild:
+
 opam-file-format-pkg-build:
 	make LIBDIR=$(SITELIB) all install
 
@@ -87,3 +89,8 @@ dose3-pkg-build:
 	./configure $(if $(EXT_EXE),--prefix=$(OCAMLROOT),--bindir=/../../$(OCAMLBIN))
 	make libs apps
 	make install
+
+jbuilder-pkg-build:
+	ocaml bootstrap.ml
+	./boot.exe
+	cp _build/default/bin/main.exe $(OCAMLBIN)/jbuilder$(EXT_EXE)
