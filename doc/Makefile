@@ -15,8 +15,8 @@ DUNE_PROFILE ?= release
 DUNE_ARGS ?= 
 
 ifndef OPAM
-  OPAM = $(DUNE) exec --no-print-directory --profile=$(DUNE_PROFILE) -- opam
-  OPAM_DEP := $(shell $(DUNE) exec -- which opam)
+  OPAM = $(DUNE) exec --root=.. --no-print-directory --profile=$(DUNE_PROFILE) -- opam
+  OPAM_DEP := $(shell $(DUNE) exec --root=.. -- which opam)
 endif
 
 TOPICS  = $(shell $(OPAM) help topics)
@@ -25,8 +25,8 @@ TOPICS_ADMIN = cache filter index lint list upgrade
 HELPFMT = --help=groff
 
 ifndef OPAM_INSTALLER
-  OPAM_INSTALLER = $(DUNE) exec --no-print-directory --profile=$(DUNE_PROFILE) -- opam-installer
-  OPAM_INSTALLER_DEP := $(shell $(DUNE) exec -- which opam-installer)
+  OPAM_INSTALLER = $(DUNE) exec --root=.. --no-print-directory --profile=$(DUNE_PROFILE) -- opam-installer
+  OPAM_INSTALLER_DEP := $(shell $(DUNE) exec --root=.. -- which opam-installer)
 endif
 
 .PHONY: man html pages
