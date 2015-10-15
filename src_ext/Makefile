@@ -26,7 +26,7 @@ endef
 
 SRC_EXTS = cppo extlib re cmdliner ocamlgraph cudf dose3 uutf jsonm opam-file-format result uchar
 PKG_EXTS = findlib cppo topkg ocamlbuild result ocamlgraph cmdliner uutf jsonm \
-           camlp4 extlib re cudf dose3 opam-file-format
+           camlp4 extlib re cudf dose3 opam-file-format jbuilder
 
 include Makefile.sources
 include Makefile.packages

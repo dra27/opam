@@ -85,6 +85,7 @@ aclocal.m4
 autom4te.cache
 .merlin
 src/ocaml-flags-standard.sexp
+opam-*.zip
 # doc
 doc/dev-manual/*aux
 doc/dev-manual/*.html

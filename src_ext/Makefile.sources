@@ -70,3 +70,5 @@ MD5_uchar = 3a7e5de4c4f7f25f55d50693f92f1960
 
 URL_jbuilder = https://github.com/dra27/jbuilder/archive/more-reads.tar.gz
 MD5_jbuilder = 89f0b0fb8d1d53d6c6111f399cca0332
+
+$(call PKG_SAME,jbuilder)
