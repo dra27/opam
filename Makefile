@@ -1,5 +1,8 @@
 ifeq ($(findstring clean,$(MAKECMDGOALS)),)
+# Makefile.config exports cause recursive invocations to configure to fail
+ifeq ($(findstring win-compilers win-zips win-builds,$(MAKECMDGOALS)),)
 -include Makefile.config
+endif
 endif
 
 all: opam-lib opam opam-admin opam-installer
@@ -49,6 +52,7 @@ clean-ext:
 clean:
 	$(MAKE) -C src $@
 	$(MAKE) -C doc $@
+	rm -f opam-*.zip
 
 distclean: clean clean-ext
 	rm -rf autom4te.cache bootstrap
@@ -152,6 +156,23 @@ endif
 .PHONY: compiler cold
 compiler:
 	./shell/bootstrap-ocaml.sh $(OCAML_PORT)
+
+win-compilers: bootstrap/Makefile
+	rm -rf bootstrap/{msvc,msvc64,mingw,mingw64,source,archives} bootstrap/source
+	$(MAKE) -C bootstrap -j win-compilers
+
+bootstrap/Makefile:
+	mkdir -p bootstrap
+	ln -sf ../Makefile.win-compilers bootstrap/Makefile
+
+JOBS=$(shell expr 4 \* $(NUMBER_OF_PROCESSORS))
+
+win-builds: bootstrap/Makefile
+	rm -rf bootstrap/{msvc,msvc64,mingw,mingw64}/{src,src_ext,opam} bootstrap/source
+	$(MAKE) -C bootstrap -j $(JOBS) win-builds
+
+win-zips: bootstrap/Makefile
+	$(MAKE) -C bootstrap -j $(JOBS) win-zips
 
 cold: compiler
 	env PATH="$$PATH:`pwd`/bootstrap/ocaml/bin" ./configure $(CONFIGURE_ARGS)

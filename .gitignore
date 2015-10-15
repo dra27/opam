@@ -83,3 +83,4 @@ doc/tutorials/opam.wiki
 doc/dev-manual/*.out
 doc/man
 .merlin
+opam-*.zip
