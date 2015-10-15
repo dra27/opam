@@ -2,20 +2,33 @@
 
 V=ocaml-4.04.1
 URL=http://caml.inria.fr/pub/distrib/ocaml-4.04/${V}.tar.gz
+FV=0.35
+FV_URL=http://alain.frisch.fr/flexdll/flexdll-${FV}.tar.gz
 if command -v curl > /dev/null; then
-  CURL="curl -OL"
+  CURL="curl -L -o"
 elif command -v wget > /dev/null; then
-  CURL=wget
+  CURL="wget -O"
 else
   echo "This script requires curl or wget"
   exit 1
 fi
 mkdir -p bootstrap
 cd bootstrap
-if [ ! -e ${V}.tar.gz ]; then
-  cp ../src_ext/archives/${V}.tar.gz . 2>/dev/null || ${CURL} ${URL}
+if [ -z "$2" ]; then
+  ROOT=
+else
+  ROOT=../../
 fi
-tar -zxf ${V}.tar.gz
+if [ ! -e ${ROOT}${V}.tar.gz ]; then
+  cp ${ROOT}../src_ext/archives/${V}.tar.gz ${ROOT}. 2>/dev/null || ${CURL} ${ROOT}${V}.tar.gz ${URL}
+fi
+if [ "$1" = "download" ]; then
+  if [ ! -e ${ROOT}flexdll-${FV}.tar.gz ]; then
+    cp ${ROOT}../src_ext/archives/flexdll-${FV}.tar.gz ${ROOT}. 2>/dev/null || ${CURL} ${ROOT}flexdll-${FV}.tar.gz ${FV_URL}
+  fi
+  exit 0
+fi
+tar -zxf ${ROOT}${V}.tar.gz
 cd ${V}
 PATH_PREPEND=
 if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
@@ -29,7 +42,7 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
     "msvc")
       BUILD=$1
       if ! command -v ml > /dev/null ; then
-        eval `../../shell/findwinsdk x86`
+        eval `${ROOT}../../shell/findwinsdk x86`
         if [ -n "${SDK}" ] ; then
           PATH_PREPEND="${SDK}"
           LIB_PREPEND="${SDK_LIB};"
@@ -40,7 +53,7 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
     "msvc64")
       BUILD=$1
       if ! command -v ml64 > /dev/null ; then
-        eval `../../shell/findwinsdk x64`
+        eval `${ROOT}../../shell/findwinsdk x64`
         if [ -n "${SDK}" ] ; then
           PATH_PREPEND="${SDK}"
           LIB_PREPEND="${SDK_LIB};"
@@ -64,10 +77,10 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
         BUILD=mingw
       elif [ ${TRY64} -eq 1 ] && command -v ml64 > /dev/null ; then
         BUILD=msvc64
-        PATH_PREPEND=`bash ../../shell/check_linker`
+        PATH_PREPEND=`bash ${ROOT}../../shell/check_linker`
       elif command -v ml > /dev/null ; then
         BUILD=msvc
-        PATH_PREPEND=`bash ../../shell/check_linker`
+        PATH_PREPEND=`bash ${ROOT}../../shell/check_linker`
       else
         if [ ${TRY64} -eq 1 ] ; then
           BUILD=msvc64
@@ -76,7 +89,7 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
           BUILD=msvc
           BUILD_ARCH=x86
         fi
-        eval `../../shell/findwinsdk ${BUILD_ARCH}`
+        eval `${ROOT}../../shell/findwinsdk ${BUILD_ARCH}`
         if [ -z "${SDK}" ] ; then
           echo "No appropriate C compiler was found -- unable to build OCaml"
           exit 1
@@ -95,16 +108,16 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
   sed -e "s|^PREFIX=.*|PREFIX=${PREFIX}|" config/Makefile.${BUILD} > config/Makefile
   mv config/s-nt.h config/s.h
   mv config/m-nt.h config/m.h
-  FV=0.35
   cd ..
-  if [ ! -e flexdll-${FV}.tar.gz ]; then
-    cp ../src_ext/archives/flexdll-${FV}.tar.gz . 2>/dev/null || ${CURL} http://alain.frisch.fr/flexdll/flexdll-${FV}.tar.gz
+  if [ ! -e ${ROOT}flexdll-${FV}.tar.gz ]; then
+    cp ${ROOT}../src_ext/archives/flexdll-${FV}.tar.gz . 2>/dev/null || ${CURL} ${ROOT}flexdll-${FV}.tar.gz ${FV_URL}
   fi
   cd ${V}
-  tar -xzf ../flexdll-${FV}.tar.gz
+  tar -xzf ${ROOT}../flexdll-${FV}.tar.gz
   rm -rf flexdll
   mv flexdll-${FV} flexdll
   PATH="${PATH_PREPEND}${PREFIX}/bin:${PATH}" Lib="${LIB_PREPEND}${Lib}" Include="${INC_PREPEND}${Include}" make -f Makefile.nt flexdll world.opt install
+  mkdir -p ../../src_ext
   echo "export PATH:=${PATH_PREPEND}${PREFIX}/bin:\$(PATH)" > ../../src_ext/Makefile.config
   echo "export Lib:=${LIB_PREPEND}\$(Lib)" >> ../../src_ext/Makefile.config
   echo "export Include:=${INC_PREPEND}\$(Include)" >> ../../src_ext/Makefile.config
