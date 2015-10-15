@@ -1,0 +1,52 @@
+win-compilers: msvc/bootstrap/bin/ocamlopt.exe msvc64/bootstrap/bin/ocamlopt.exe mingw/bootstrap/bin/ocamlopt.exe mingw64/bootstrap/bin/ocamlopt.exe
+	@
+
+win-builds: msvc/opam/bin/opam.exe msvc64/opam/bin/opam.exe mingw/opam/bin/opam.exe mingw64/opam/bin/opam.exe
+	@
+
+win-zips: ../opam-msvc.zip ../opam-msvc64.zip ../opam-mingw.zip ../opam-mingw64.zip
+	@
+
+SYMLINKS=shell configure Makefile OCamlMakefile Makefile.config.in META.in .merlin.in opam.install.in
+
+LIB_PKG=1
+
+ifeq ($(LIB_PKG),1)
+ARCHIVES=-pkg
+BUILD_LIB_EXT=true
+BUILD_LIB_PKG=false
+else
+ARCHIVES=
+BUILD_LIB_EXT=false
+BUILD_LIB_PKG=true
+endif
+
+source:
+# Why does this not work?
+#	cp -R ../src mingw/
+	mkdir -p $@/src $@/src_ext
+	cp -R ../src/* $@/src/
+	for i in archives patches Makefile Makefile.packages Makefile.sources ; do ln -sf ../../../src_ext/$$i $@/src_ext/$$i ; done
+	for i in $(SYMLINKS) ; do ln -sf ../../$$i $@/$$i ; done
+	$(MAKE) -j 1 -C $@/src clean
+	$(MAKE) -C $@/src_ext archives$(ARCHIVES)
+
+archives:
+	mkdir -p mingw
+	cd mingw ; ../../shell/bootstrap-ocaml.sh download win
+	touch $@
+
+%/opam/bin/opam.exe: source %/bootstrap/bin/ocamlopt.exe
+	mkdir -p $*/src $*/src_ext ; cp -R source/src/* $*/src/ ; cp -R source/src_ext/* $*/src_ext/ ; for i in $(SYMLINKS) ; do ln -sf ../../$$i $*/$$i ; done
+	+$(BUILD_LIB_PKG) || $(MAKE) -C $* lib-pkg
+	cd $* ; ./configure --prefix=$(shell pwd | cygpath -f - -m)/$*/opam
+	+$(BUILD_LIB_EXT) || $(MAKE) -C $* lib-ext
+	$(MAKE) -j 1 -C $* all
+	$(MAKE) -j 1 -C $* install
+
+%/bootstrap/bin/ocamlopt.exe: archives
+	mkdir -p $*
+	cd $* ; MAKEFLAGS= ../../shell/bootstrap-ocaml.sh $* win
+
+../opam-%.zip: %/opam/bin/opam.exe
+	cd $*/opam/bin ; zip -u ../../../$@ *
