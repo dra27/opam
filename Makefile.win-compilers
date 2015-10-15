@@ -1,0 +1,69 @@
+win-compilers: msvc/bootstrap/bin/ocamlopt.exe \
+               msvc64/bootstrap/bin/ocamlopt.exe \
+               mingw/bootstrap/bin/ocamlopt.exe \
+               mingw64/bootstrap/bin/ocamlopt.exe
+	@
+
+win-builds: msvc/opam/bin/opam.exe msvc64/opam/bin/opam.exe \
+            mingw/opam/bin/opam.exe mingw64/opam/bin/opam.exe
+	@
+
+win-zips: ../opam-msvc.zip ../opam-msvc64.zip ../opam-mingw.zip \
+          ../opam-mingw64.zip
+	@
+
+SYMLINKS=configure Makefile Makefile.ocp-build OCamlMakefile \
+         Makefile.config.in .merlin.in opam.opam opam-admin.opam \
+         opam-client.opam opam-core.opam opam-format.opam opam-repository.opam \
+         opam-solver.opam opam-state.opam jbuild-ignore
+
+LIB_PKG=1
+
+ifeq ($(LIB_PKG),1)
+ARCHIVES=-pkg
+BUILD_LIB_EXT=true
+BUILD_LIB_PKG=false
+else
+ARCHIVES=
+BUILD_LIB_EXT=false
+BUILD_LIB_PKG=true
+endif
+
+source:
+# Why does this not work?
+#	cp -R ../src mingw/
+	mkdir -p $@/src $@/src_ext $@/shell
+	cp -R ../src/* $@/src/
+	cp -R ../shell/* $@/shell/
+	for i in $(wildcard ../src_ext/jbuild-*) archives patches Makefile \
+           Makefile.packages Makefile.sources ; \
+  do \
+    ln -sf ../../../src_ext/$$i $@/src_ext/$$i ; \
+  done
+	for i in $(SYMLINKS) ; do ln -sf ../../$$i $@/$$i ; done
+	$(MAKE) -C $@/src_ext archives$(ARCHIVES)
+
+archives:
+	mkdir -p mingw
+	cd mingw ; ../../shell/bootstrap-ocaml.sh download win
+	touch $@
+
+%/opam/bin/opam.exe: source %/bootstrap/bin/ocamlopt.exe
+	echo "(context default)" > $*/jbuild-workspace
+	mkdir -p $*/src $*/src_ext $*/shell
+	cp -R source/shell/* $*/shell/
+	cp -R source/src/* $*/src/
+	cp -R source/src_ext/* $*/src_ext/
+	for i in $(SYMLINKS) ; do ln -sf ../../$$i $*/$$i ; done
+	+$(BUILD_LIB_PKG) || $(MAKE) -C $* lib-pkg
+	cd $* ; ./configure --prefix=$(shell pwd | cygpath -f - -m)/$*/opam
+	+$(BUILD_LIB_EXT) || $(MAKE) -C $*/src_ext clone
+	+$(MAKE) -C $* jbuilder
+	+$(MAKE) -C $* install
+
+%/bootstrap/bin/ocamlopt.exe: archives
+	mkdir -p $*
+	cd $* ; MAKEFLAGS= ../../shell/bootstrap-ocaml.sh $* win
+
+../opam-%.zip: %/opam/bin/opam.exe
+	cd $*/opam/bin ; zip -u ../../../$@ *
