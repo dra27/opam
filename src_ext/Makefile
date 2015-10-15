@@ -56,9 +56,18 @@ lib-pkg:
 	@false
 endif
 
+ifeq ($(OCAMLC),no)
+SUBTARGET=ncl
+else
+ifeq ($(OCAMLOPT),no)
+SUBTARGET=bcl
+else
+SUBTARGET="bcl ncl"
+endif
+endif
+
 build: clone
-	[ $(OCAMLC) = no ] || $(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=bcl
-	[ $(OCAMLOPT) = no ] || $(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=ncl
+	$(MAKE) $(SUBPROJS:%=proj_%)
 
 build-pkg: clone-pkg $(PKG_EXTS:=.pkgbuild)
 	@
@@ -160,7 +169,7 @@ endef
 	@touch $@ && rm -f $*.stamp
 
 # OCamlMakefile doesn't include stand-alone mlis in the packs...
-graph-workaround.stamp:
+graph-workaround.stamp: graph.stamp
 	cp graph/src/sig.mli graph/src/sig.ml
 	cp graph/src/sig_pack.mli graph/src/sig_pack.ml
 	cp graph/src/dot_ast.mli graph/src/dot_ast.ml
@@ -169,7 +178,7 @@ graph-workaround.stamp:
 SRC_cppo = cppo_version.ml cppo_types.ml cppo_parser.mli cppo_parser.ml cppo_lexer.ml \
 					 cppo_command.ml cppo_eval.ml cppo_main.ml
 
-cppo/cppo$(EXE):
+cppo/cppo$(EXE): cppo.stamp
 	echo 'let cppo_version = "$(VERSION)"' > cppo/cppo_version.ml
 	ocamllex cppo/cppo_lexer.mll
 	ocamlyacc cppo/cppo_parser.mly
@@ -181,14 +190,14 @@ else
 CPPOVARS=-D OCAML4
 endif
 
-extlib-cppo.stamp: cppo/cppo$(EXE)
+extlib-cppo.stamp: cppo/cppo$(EXE) extlib.stamp
 	cppo/cppo$(EXE) $(CPPOVARS) extlib/src/extBytes.mlpp -o extlib/src/extBytes.ml
 	cppo/cppo$(EXE) $(CPPOVARS) extlib/src/extHashtbl.mlpp -o extlib/src/extHashtbl.ml
 	cppo/cppo$(EXE) $(CPPOVARS) extlib/src/extString.mlpp -o extlib/src/extString.ml
 	cppo/cppo$(EXE) $(CPPOVARS) extlib/src/extBuffer.mlpp -o extlib/src/extBuffer.ml
 	@touch $@
 
-dose-cppo.stamp:
+dose-cppo.stamp: dose.stamp
 	for f in `find dose -regex ".*.mli*"`; do\
 		T=`mktemp`; \
 		echo "(*pp cppo$(if $(filter 1,$(WIN32)),\,/)cppo$(EXE) -V OCAML:$(OCAMLVERSION) *)" > $$T; \
@@ -212,6 +221,22 @@ distclean:
 	[ -d archives ] && ([ "$$(find archives -maxdepth 0 -type d -empty)" != "" ] && rmdir archives || echo "WARNING! $$(pwd)/archives/ not empty so left") || true
 
 LIB_EXTS = extlib re cmdliner graph cudf dose_common dose_versioning dose_pef dose_opam dose_algo uutf jsonm opam_file_format
+
+proj_uutf: proj_cmdliner
+
+proj_jsonm: proj_uutf
+
+proj_cudf: proj_extlib
+
+proj_dose_common: proj_extlib proj_re proj_cudf
+
+proj_dose_versioning: proj_extlib proj_dose_common proj_re proj_cudf
+
+proj_dose_pef: proj_extlib proj_dose_common proj_re proj_cudf
+
+proj_dose_opam: proj_extlib proj_dose_pef proj_re proj_cudf
+
+proj_dose_algo: proj_extlib proj_dose_common proj_graph proj_cudf
 
 inst_objs = cp $(1)/*.cm*i lib
 
@@ -386,9 +411,8 @@ ifndef SUBROJS
   export SUBPROJS = $(LIB_EXTS)
 endif
 
-
-%:
-	$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=$@
+proj_%:
+	+$(MAKE) -f $(OCAMLMAKEFILE) subproj_$* SUBTARGET=$(SUBTARGET) make_deps=yes
 
 OCAMLMAKEFILE = ../OCamlMakefile
 export OCAMLMAKEFILE
