@@ -62,9 +62,18 @@ lib-pkg:
 	@false
 endif
 
+ifeq ($(OCAMLC),no)
+SUBTARGET=ncl
+else
+ifeq ($(OCAMLOPT),no)
+SUBTARGET=bcl
+else
+SUBTARGET="bcl ncl"
+endif
+endif
+
 build: clone
-	[ $(OCAMLC) = no ] || $(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=bcl
-	[ $(OCAMLOPT) = no ] || $(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=ncl
+	$(MAKE) $(SUBPROJS:%=proj_%)
 
 build-pkg: clone-pkg $(PKG_EXTS:=.pkgbuild)
 	@
@@ -155,6 +164,18 @@ distclean:
 	[ -d archives ] && ([ "$$(find archives -maxdepth 0 -type d -empty)" != "" ] && rmdir archives || echo "WARNING! $$(pwd)/archives/ not empty so left") || true
 
 LIB_EXTS = extlib re cmdliner graph cudf dose_common dose_debian dose_algo uutf jsonm
+
+proj_uutf: proj_cmdliner
+
+proj_jsonm: proj_uutf
+
+proj_cudf: proj_extlib
+
+proj_dose_common: proj_extlib proj_re proj_cudf
+
+proj_dose_debian: proj_extlib proj_dose_common proj_re proj_cudf
+
+proj_dose_algo: proj_extlib proj_dose_common proj_graph proj_cudf
 
 inst_objs = cp $(1)/*.cm*i lib
 
@@ -259,7 +280,7 @@ define PROJ_dose_debian
   SOURCES = $(call addmli,dose/deb,$(SRC_dose_debian))
   RESULT = dose_debian
   LIB_PACK_NAME = debian
-  INCDIRS = extlib cudf re/lib
+  INCDIRS = extlib cudf dose/common re/lib
 endef
 export PROJ_dose_debian
 
@@ -296,9 +317,8 @@ ifndef SUBROJS
   export SUBPROJS = $(LIB_EXTS)
 endif
 
-
-%:
-	$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=$@
+proj_%:
+	+$(MAKE) -f $(OCAMLMAKEFILE) subproj_$* SUBTARGET=$(SUBTARGET) make_deps=yes
 
 OCAMLMAKEFILE = ../OCamlMakefile
 export OCAMLMAKEFILE
