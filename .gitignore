@@ -71,6 +71,7 @@ src/tools/opam-putenv.inc
 src/client/manifest.inc
 src/client/opamManifest.inc
 src/client/*.dll
+opam-*.zip
 # doc
 doc/dev-manual/*aux
 doc/dev-manual/*.html

@@ -1,0 +1,84 @@
+PORTS=msvc msvc64 mingw mingw64
+COMPILERS=$(addsuffix /bootstrap/ocaml/bin/ocamlopt.exe,$(PORTS))
+OPAMS=$(addsuffix /opam/bin/opam.exe,$(PORTS))
+ZIPS=$(addsuffix .zip,$(addprefix ../opam-,$(PORTS)))
+
+win-compilers: $(COMPILERS)
+	@
+
+win-builds: $(OPAMS)
+	@
+
+win-zips: $(ZIPS)
+	@
+
+SYMLINKS=configure Makefile Makefile.config.in opam.opam opam-admin.opam \
+         opam-client.opam opam-core.opam opam-format.opam opam-installer.opam \
+         opam-repository.opam opam-solver.opam opam-state.opam jbuild-ignore
+
+# Set to 0 to build with lib-ext or 1 to build with lib-pkg
+LIB_PKG=1
+
+source:
+	mkdir -p $@/src $@/src_ext $@/shell
+	cp -R ../src/* $@/src/
+	cp -R ../shell/* $@/shell/
+	for i in $(wildcard ../src_ext/jbuild-*) archives patches Makefile \
+           Makefile.packages Makefile.sources ; \
+  do \
+    ln -sf ../../../src_ext/$$i $@/src_ext/$$i ; \
+  done
+	for i in $(SYMLINKS) ; do ln -sf ../../$$i $@/$$i ; done
+	$(MAKE) -C $@/src_ext archives$(if $(subst 1,,$(LIB_PKG)),,-pkg)
+
+archives:
+	mkdir -p mingw
+	cd mingw ; ../../shell/bootstrap-ocaml.sh download win
+	touch $@
+
+reset-lib-pkg:
+	@+for i in $(PORTS) ; do make -C $$i/src_ext reset-lib-pkg; done
+
+$(addsuffix /built-with-lib-ext,$(PORTS)): %/built-with-lib-ext: %/jbuild-workspace
+	@rm -f $*/built-with-lib-pkg
+	touch $@
+
+.PRECIOUS: %/src_ext/Makefile.packages
+%/src_ext/Makefile.packages: %/jbuild-workspace
+	@
+
+.PRECIOUS: %/src_ext/Makefile.sources
+%/src_ext/Makefile.sources: source %/src_ext/Makefile.packages
+	mkdir -p $*/src $*/src_ext $*/shell
+	cp -R source/shell/* $*/shell/
+	cp -R source/src/* $*/src/
+	cp -R source/src_ext/* $*/src_ext/
+	for i in $(SYMLINKS) ; do ln -sf ../../$$i $*/$$i ; done
+
+$(addsuffix /lib-pkg-installed,$(PORTS)): %/lib-pkg-installed: %/src_ext/Makefile.sources
+	@+$(MAKE) -C $*/src_ext reset-lib-pkg
+	+$(MAKE) -C $* lib-pkg
+	touch $@
+
+$(addsuffix /built-with-lib-pkg,$(PORTS)): %/built-with-lib-pkg: source %/lib-pkg-installed
+	@rm -f $*/built-with-lib-ext
+	+$(MAKE) -C $*/src_ext pkg-ignore
+	touch $@
+
+$(addsuffix /jbuild-workspace,$(PORTS)): %/jbuild-workspace: source %/bootstrap/ocaml/bin/ocamlopt.exe
+	echo "(context default)" > $*/jbuild-workspace
+
+$(OPAMS): %/opam/bin/opam.exe: %/built-with-lib-$(if $(subst 1,,$(LIB_PKG)),ext,pkg)
+	cd $* ; ./configure --prefix=$(shell pwd | cygpath -f - -m)/$*/opam
+	+$(if $(subst 1,,$(LIB_PKG)),false,true) || $(MAKE) -C $*/src_ext clone
+	+$(MAKE) -C $* jbuilder
+	mkdir -p $*/opam/bin
+# @@DRA opam-installer doesn't work at this stage (needs a fix for OpamSystem.install applied later)
+	cp $*/_build/install/default/bin/*.exe $*/opam/bin/
+
+$(COMPILERS): %/bootstrap/ocaml/bin/ocamlopt.exe: archives
+	mkdir -p $*
+	cd $* ; MAKEFLAGS= ../../shell/bootstrap-ocaml.sh $* win
+
+$(ZIPS): ../opam-%.zip: %/opam/bin/opam.exe
+	cd $*/opam/bin ; zip -u ../../../$@ *

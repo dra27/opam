@@ -3,24 +3,35 @@
 GEN_CONFIG_ONLY=${GEN_CONFIG_ONLY:-0}
 
 if command -v curl > /dev/null; then
-  CURL="curl -OLSfs"
+  CURL="curl -LSfs -o"
 elif command -v wget > /dev/null; then
-  CURL=wget
+  CURL="wget -O"
 else
   echo "This script requires curl or wget"
   exit 1
 fi
 mkdir -p bootstrap
 cd bootstrap
-URL=`sed -ne 's/URL_ocaml *= *//p' ../src_ext/Makefile | tr -d '\r'`
+if [ -z "$2" ]; then
+  ROOT=
+else
+  ROOT=../../
+fi
+URL=`sed -ne 's/URL_ocaml *= *//p' ${ROOT}../src_ext/Makefile | tr -d '\r'`
 V=`echo ${URL}| sed -e 's/.*\/\([^\/]\+\)\.tar\.gz/\1/'`
 FV_URL=`sed -ne 's/URL_flexdll *= *//p' ../src_ext/Makefile | tr -d '\r'`
 FLEXDLL=`echo ${FV_URL}| sed -e 's/.*\/\([^\/]*\)/\1/'`
-if [ ! -e ${V}.tar.gz ]; then
-  cp ../src_ext/archives/${V}.tar.gz . 2>/dev/null || ${CURL} ${URL}
+if [ ! -e ${ROOT}${V}.tar.gz ]; then
+  cp ${ROOT}../src_ext/archives/${V}.tar.gz ${ROOT}. 2>/dev/null || ${CURL} ${ROOT}${V}.tar.gz ${URL}
+fi
+if [ "$1" = "download" ]; then
+  if [ ! -e ${ROOT}flexdll-${FLEXDLL} ]; then
+    cp ${ROOT}../src_ext/archives/${FLEXDLL} ${ROOT}flexdll-${FLEXDLL} 2>/dev/null || ${CURL} ${ROOT}flexdll-${FLEXDLL} ${FV_URL}
+  fi
+  exit 0
 fi
 if [ ${GEN_CONFIG_ONLY} -eq 0 ] ; then
-  tar -zxf ${V}.tar.gz
+  tar -zxf ${ROOT}${V}.tar.gz
 else
   mkdir -p ${V}
 fi
@@ -36,7 +47,7 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
     "msvc")
       BUILD=$1
       if ! command -v ml > /dev/null ; then
-        eval `../../shell/msvs-detect --arch=x86`
+        eval `${ROOT}../../shell/msvs-detect --arch=x86`
         if [ -n "${MSVS_NAME}" ] ; then
           PATH_PREPEND="${MSVS_PATH}"
           LIB_PREPEND="${MSVS_LIB};"
@@ -47,7 +58,7 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
     "msvc64")
       BUILD=$1
       if ! command -v ml64 > /dev/null ; then
-        eval `../../shell/msvs-detect --arch=x64`
+        eval `${ROOT}../../shell/msvs-detect --arch=x64`
         if [ -n "${MSVS_NAME}" ] ; then
           PATH_PREPEND="${MSVS_PATH}"
           LIB_PREPEND="${MSVS_LIB};"
@@ -71,10 +82,10 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
         BUILD=mingw
       elif [ ${TRY64} -eq 1 ] && command -v ml64 > /dev/null ; then
         BUILD=msvc64
-        PATH_PREPEND=`bash ../../shell/check_linker`
+        PATH_PREPEND=`bash ${ROOT}../../shell/check_linker`
       elif command -v ml > /dev/null ; then
         BUILD=msvc
-        PATH_PREPEND=`bash ../../shell/check_linker`
+        PATH_PREPEND=`bash ${ROOT}../../shell/check_linker`
       else
         if [ ${TRY64} -eq 1 ] ; then
           BUILD=msvc64
@@ -83,7 +94,7 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
           BUILD=msvc
           BUILD_ARCH=x86
         fi
-        eval `../../shell/msvs-detect --arch=${BUILD_ARCH}`
+        eval `${ROOT}../../shell/msvs-detect --arch=${BUILD_ARCH}`
         if [ -z "${MSVS_NAME}" ] ; then
           echo "No appropriate C compiler was found -- unable to build OCaml"
           exit 1
@@ -106,12 +117,12 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
     cp config/m-nt.h byterun/caml/m.h
   fi
   cd ..
-  if [ ! -e ${FLEXDLL} ]; then
-    cp ../src_ext/archives/${FLEXDLL} . 2>/dev/null || ${CURL} ${FV_URL}
+  if [ ! -e ${ROOT}flexdll-${FLEXDLL} ]; then
+    cp ${ROOT}../src_ext/archives/${FLEXDLL} flexdll-${FLEXDLL} 2>/dev/null || ${CURL} ${ROOT}flexdll-${FLEXDLL} ${FV_URL}
   fi
   cd ${V}
   if [ ${GEN_CONFIG_ONLY} -eq 0 ] ; then
-    tar -xzf ../${FLEXDLL}
+    tar -xzf ${ROOT}../flexdll-${FLEXDLL}
     rm -rf flexdll
     mv flexdll-* flexdll
     PATH="${PATH_PREPEND}${PREFIX}/bin:${PATH}" Lib="${LIB_PREPEND}${Lib}" Include="${INC_PREPEND}${Include}" make flexdll world.opt install
@@ -132,6 +143,7 @@ if [ ${GEN_CONFIG_ONLY} -eq 0 ] ; then
 fi
 
 # Generate src_ext/Makefile.config
+mkdir -p ../../src_ext
 PATH_PREPEND=`echo "${PATH_PREPEND}" | sed -e 's/#/\\\\#/g' -e 's/\\$/$$/g'`
 echo "export PATH:=${PATH_PREPEND}${PREFIX}/bin:\$(PATH)" > ../../src_ext/Makefile.config
 if [ -n "${LIB_PREPEND}" ] ; then
