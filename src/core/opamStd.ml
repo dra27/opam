@@ -561,8 +561,8 @@ module Win32 = struct
 
   type handle
 
-  type ('a, 'b, 'c) winmessage =
-  | WM_SETTINGCHANGE : (int, string, int) winmessage
+  type winmessage =
+  | WM_SETTINGCHANGE
 
   external getStdHandle : int -> handle = "OPAMW_GetStdHandle"
   external getConsoleScreenBufferInfo : handle -> console_screen_buffer_info = "OPAMW_GetConsoleScreenBufferInfo"
@@ -577,7 +577,7 @@ module Win32 = struct
   external isWoW64Mismatch_stub : unit -> int = "OPAMW_IsWoW64Mismatch"
   external parent_putenv_stub : string -> string -> bool = "OPAMW_parent_putenv"
   external shGetFolderPath : int -> int -> string = "OPAMW_SHGetFolderPath"
-  external sendMessageTimeout : int -> int -> int -> ('a, 'b, 'c) winmessage -> 'a -> 'b -> int * 'c = "OPAMW_SendMessageTimeout_byte" "OPAMW_SendMessageTimeout"
+  external sendMessageTimeout : int -> int -> int -> winmessage -> 'a -> 'b -> int * 'c = "OPAMW_SendMessageTimeout_byte" "OPAMW_SendMessageTimeout"
 
   let parent_putenv =
     let ppid =

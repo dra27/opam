@@ -344,8 +344,8 @@ module Win32 : sig
   type handle
 
   (** Windows Messages (at least, one of them!) *)
-  type ('a, 'b, 'c) winmessage =
-  | WM_SETTINGCHANGE : (int, string, int) winmessage
+  type winmessage =
+  | WM_SETTINGCHANGE
     (** See https://msdn.microsoft.com/en-us/library/windows/desktop/ms725497.aspx *)
 
   external getStdHandle : int -> handle = "OPAMW_GetStdHandle"
@@ -399,7 +399,7 @@ module Win32 : sig
    * See https://msdn.microsoft.com/en-us/library/windows/desktop/bb762181.aspx
    *)
 
-  external sendMessageTimeout : int -> int -> int -> ('a, 'b, 'c) winmessage -> 'a -> 'b -> int * 'c = "OPAMW_SendMessageTimeout_byte" "OPAMW_SendMessageTimeout"
+  external sendMessageTimeout : int -> int -> int -> winmessage -> 'a -> 'b -> int * 'c = "OPAMW_SendMessageTimeout_byte" "OPAMW_SendMessageTimeout"
   (** [sendMessageTimeout hwnd timeout flags message wParam lParam] sends a message to the given hwnd
    * but is guaranteed to return within [timeout] milliseconds. The result consists of two parts, [fst]
    * is the return value from SendMessageTimeout, [snd] depends on both the message and [fst].
