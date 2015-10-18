@@ -40,6 +40,8 @@ let eval_variables = [
 
 let os_filter os =
   FOp (FIdent ([], OpamVariable.of_string "os", None), `Eq, FString os)
+let nos_filter os =
+  FOp (FIdent ([], OpamVariable.of_string "os", None), `Neq, FString os)
 
 let linux_filter = os_filter "linux"
 let macos_filter = os_filter "macos"
@@ -48,6 +50,7 @@ let freebsd_filter = os_filter "freebsd"
 let not_open_free_bsd_filter =
   FNot (FOr (openbsd_filter,  freebsd_filter))
 let win32_filter = os_filter "win32"
+let not_win32_filter = nos_filter "win32"
 let sandbox_filter = FOr (linux_filter, macos_filter)
 
 let gpatch_filter = FOr (openbsd_filter, freebsd_filter)
@@ -116,7 +119,7 @@ let recommended_tools () =
   [
     [make], None, None;
     ["m4"], None, None;
-    ["cc"], None, None;
+    ["cc"], None, Some not_win32_filter;
   ]
 
 let required_tools ~sandboxing () =

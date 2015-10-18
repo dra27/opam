@@ -825,6 +825,7 @@ let shell_opt =
       "csh",SH_csh;
       "zsh",SH_zsh;
       "fish",SH_fish;
+      "cmd",SH_cmd;
     ] in
   mk_opt ["shell"] "SHELL"
     (Printf.sprintf

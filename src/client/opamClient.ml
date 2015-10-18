@@ -802,6 +802,48 @@ let init
   let root_empty =
     not (OpamFilename.exists_dir root) || OpamFilename.dir_is_empty root in
 
+    if Sys.win32 then begin
+      match Sys.getenv "HOME" with
+      | h ->
+        OpamConsole.note "Your HOME directory is %s which opam will refer to as %s" (OpamConsole.colorise `cyan h) (OpamConsole.colorise `cyan "~");
+      | exception Not_found ->
+        if (try ignore (Sys.getenv "HOME"); false with Not_found -> true) then
+        let home = OpamStd.Sys.home () in
+        let persistHomeDirectory home =
+          OpamConsole.msg "Persisting HOME (this may take a few seconds)...";
+          OpamStd.Win32.persistHomeDirectory home;
+          OpamConsole.msg " done\n\n"
+        in
+          let action =
+            if update_config = None then
+              if OpamCoreConfig.(!r.answer) = None then
+                let query = OpamConsole.read
+                  "The HOME environment variable is not set, so opam has defaulted to:\n\
+                   \n\
+                  \  %s\n\
+                   \n\
+                   OCaml ideally requires $HOME to be set properly (in order to find .ocamlinit)\n\
+                   Do you want opam to alter your persistent environment so that HOME is always set?\n\
+                   (default is 'yes')\n\
+                  \    [Y/n]"
+                in
+                match query (OpamConsole.colorise `cyan @@ home) with
+                | Some ("y" | "Y" | "yes"  | "YES") -> Some true
+                | _ -> None
+              else
+                Some false
+            else
+              update_config
+          in
+          match action with
+          | Some true ->
+              persistHomeDirectory home
+          | Some false ->
+              OpamConsole.warning "HOME not updated in non-interactive mode: use --shell-setup"
+          | None ->
+              ()
+  end;
+
   let gt, rt, default_compiler =
     if OpamFile.exists config_f then (
       OpamConsole.msg "Opam has already been initialized.\n";
