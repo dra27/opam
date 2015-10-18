@@ -754,7 +754,20 @@ module OpamSys = struct
         else default_columns
 
   let home =
-    let home = lazy (try Env.get "HOME" with Not_found -> Sys.getcwd ()) in
+    let home = lazy (
+      try
+        Env.get "HOME"
+      with Not_found ->
+        if Sys.os_type = "Win32" then
+          (*
+           * Windows setups will rarely have $HOME set, so cwd is a poor default. Instead, return
+           * the value of the user's My Documents folder.
+           *
+           * CSIDL_PERSONAL = 0x5
+           *)
+          OpamStubs.shGetFolderPath 5 OpamStubsTypes.SHGFP_TYPE_CURRENT
+        else
+          Sys.getcwd ()) in
     fun () -> Lazy.force home
 
   let etc () = "/etc"
