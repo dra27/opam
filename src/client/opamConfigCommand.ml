@@ -139,13 +139,24 @@ let rec print_fish_env env =
            k (OpamStd.Env.escape_single_quotes ~using_backslashes:true v));
     print_fish_env r
 
-let print_eval_env ~csh ~sexp ~fish env =
+let print_cmd_env env =
+  List.iter (fun (k, v, _) -> OpamConsole.msg "set %s=%s\n" k v) env
+
+let print_eval_env ~cmd ~csh ~sexp ~fish env =
   if sexp then
     print_sexp_env env
   else if csh then
     print_csh_env env
   else if fish then
     print_fish_env env
+  else if cmd then
+    if OpamStd.Sys.tty_out then begin
+      log "parent-putenv";
+      OpamEnv.set_cmd_env env
+    end else begin
+      log "cmd-stdout";
+      print_cmd_env env
+    end
   else
     print_env env
 
@@ -169,7 +180,7 @@ let ensure_env_aux ?(set_opamroot=false) ?(set_opamswitch=false) ?(force_path=tr
 let ensure_env gt switch = ignore (ensure_env_aux gt switch)
 
 let env gt switch ?(set_opamroot=false) ?(set_opamswitch=false)
-    ~csh ~sexp ~fish ~inplace_path =
+    ~cmd ~csh ~sexp ~fish ~inplace_path =
   log "config-env";
   let opamroot_not_current =
     let current = gt.root in
@@ -214,7 +225,7 @@ let env gt switch ?(set_opamroot=false) ?(set_opamswitch=false)
         ~set_opamroot ~set_opamswitch ~force_path
         gt.root switch
   in
-  print_eval_env ~csh ~sexp ~fish env
+  print_eval_env ~cmd ~csh ~sexp ~fish env
 [@@ocaml.warning "-16"]
 
 let subst gt fs =

@@ -834,11 +834,25 @@ module OpamSys = struct
         else Lazy.force default_columns
 
   let home =
-    (* Note: we ask Unix.getenv instead of Env.get to avoid
-       forcing the environment in this function that is used
-       before the .init() functions are called -- see
-       OpamStateConfig.default. *)
-    let home = lazy (try Unix.getenv "HOME" with Not_found -> Sys.getcwd ()) in
+    let home = lazy (
+      try
+        (* Note: we ask Unix.getenv instead of Env.get to avoid
+           forcing the environment in this function that is used
+           before the .init() functions are called -- see
+           OpamStateConfig.default. *)
+        Unix.getenv "HOME"
+      with Not_found ->
+        if Sys.os_type = "Win32" then
+          (*
+           * Windows setups will rarely have $HOME set, so cwd is a poor default. Instead, return
+           * the value of the user's My Documents folder.
+           *
+           * CSIDL_PERSONAL = 0x5
+           *)
+          (* XXX Check recent PRs for latest thinking on this! *)
+          OpamStubs.shGetFolderPath 5 OpamStubsTypes.SHGFP_TYPE_CURRENT
+        else
+          Sys.getcwd ()) in
     fun () -> Lazy.force home
 
   let etc () = "/etc"
@@ -891,7 +905,7 @@ module OpamSys = struct
     ) in
     fun () -> Lazy.force os
 
-  type shell = SH_sh | SH_bash | SH_zsh | SH_csh | SH_fish
+  type shell = SH_sh | SH_bash | SH_zsh | SH_csh | SH_fish | SH_cmd
 
   let shell_of_string = function
     | "tcsh"
@@ -901,7 +915,11 @@ module OpamSys = struct
     | "bash" -> Some SH_bash
     | "fish" -> Some SH_fish
     | "sh"   -> Some SH_sh
-    | _      -> None
+    | _      ->
+        if Sys.win32 then
+          Some SH_cmd
+        else
+          None
 
   let executable_name =
     if Sys.win32 then
@@ -954,7 +972,7 @@ module OpamSys = struct
       | some ->
           some
     in
-    Option.default SH_sh shell
+    Option.default (if Sys.win32 then SH_cmd else SH_sh) shell
 
   let guess_dot_profile shell =
     let home f =
@@ -986,6 +1004,7 @@ module OpamSys = struct
       let tcshrc = home ".tcshrc" in
       if Sys.file_exists cshrc then cshrc else tcshrc
     | SH_sh -> home ".profile"
+    | SH_cmd -> "<cmd>"
 
 
   let registered_at_exit = ref []

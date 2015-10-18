@@ -140,3 +140,6 @@ val check_and_print_env_warning: 'a switch_state -> unit
 (** Hook directory environment *)
 val hook_env:
   OpamPath.t -> OpamVariable.variable_contents option OpamVariable.Map.t
+
+(** Set the environment in the parent process (Windows only) *)
+val set_cmd_env : env -> unit

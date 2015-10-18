@@ -16,14 +16,14 @@ open OpamStateTypes
 
 (** {2 `opam config` subcommand and their associated commands } *)
 
-(** Display the current environment. Booleans csh, sexp and fish set an
+(** Display the current environment. Booleans cmd, csh, sexp and fish set an
     alternative output (unspecified if more than one is true, sh-style by
     default). [inplace_path] changes how the PATH variable is updated when there
     is already an opam entry: either at the same rank, or pushed in front. *)
 val env:
   'a global_state -> switch ->
   ?set_opamroot:bool -> ?set_opamswitch:bool ->
-  csh:bool -> sexp:bool -> fish:bool -> inplace_path:bool ->
+  cmd:bool -> csh:bool -> sexp:bool -> fish:bool -> inplace_path:bool ->
   unit
 
 (** Ensures that the environment file exists in the given switch, regenerating
@@ -32,7 +32,7 @@ val ensure_env: 'a global_state -> switch -> unit
 
 (** Like [env] but allows one to specify the precise env to print rather than
     compute it from a switch state *)
-val print_eval_env: csh:bool -> sexp:bool -> fish:bool -> env -> unit
+val print_eval_env: cmd:bool -> csh:bool -> sexp:bool -> fish:bool -> env -> unit
 
 (** Display the content of all available packages variables *)
 val list: 'a switch_state -> name list -> unit
