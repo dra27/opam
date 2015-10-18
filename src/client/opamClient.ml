@@ -690,6 +690,30 @@ module API = struct
       if not updated then
         OpamState.print_env_warning_at_init t user in
 
+    if update_config <> `no && (OpamStd.Sys.(os () = Win32) && (try ignore (Sys.getenv "HOME"); false with Not_found -> true)) then begin
+      let home = OpamStd.Sys.home () in
+      let persistHomeDirectory home =
+        OpamConsole.msg "Persisting HOME (this may take a few seconds)...";
+        OpamStd.Win32.persistHomeDirectory home;
+        OpamConsole.msg " done\n" in
+      let get_action () =
+        if update_config = `yes || OpamCoreConfig.(!r.answer <> None) then
+          Some "y"
+        else
+          OpamConsole.read
+            "The HOME environment variable is not set, so OPAM has defaulted to:\n\
+            \  %s\n\
+             OCaml ideally requires $HOME to be set properly (in order to find .ocamlinit)\n\
+             Do you want OPAM to alter your persistent environment so that HOME is always set?\n\
+             (default is 'yes')\n\
+            \    [Y/n]" home in
+      match get_action () with
+      | Some ("y" | "Y" | "yes"  | "YES") ->
+          persistHomeDirectory home
+      | _ ->
+          ()
+    end;
+
     if OpamFilename.exists config_f then (
       OpamConsole.msg "OPAM has already been initialized.%s" (if update_config = `ask then "" else "\n");
     ) else (
