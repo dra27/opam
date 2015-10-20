@@ -15,7 +15,7 @@ let () = out {|
 
 (rule
   ((targets (opamScript.ml))
-   (deps    (../../shell/crunch.ml complete.sh complete.zsh prompt.sh))
+   (deps    (../../shell/crunch.ml complete.sh complete.lua complete.zsh prompt.sh))
    (action  (with-stdout-to ${@} (run ocaml ${!^})))))
 
 (rule
