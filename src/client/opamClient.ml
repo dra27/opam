@@ -665,7 +665,10 @@ let init
               (OpamStd.Format.pretty_list ~last:"or"
                  (List.map (OpamConsole.colorise `bold) external_solvers));
           let advised_deps =
-            [OpamStateConfig.(Lazy.force !r.makecmd); "m4"; "cc"]
+            if OpamStd.Sys.(os () = Win32) then
+              []
+            else
+              [OpamStateConfig.(Lazy.force !r.makecmd); "m4"; "cc"]
           in
           (match List.filter (not @* check_external_dep) advised_deps with
            | [] -> ()
