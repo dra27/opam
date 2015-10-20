@@ -622,49 +622,56 @@ module Win32 = struct
   external getCurrentConsoleFontEx : handle -> bool -> console_font_infoex = "OPAMW_GetCurrentConsoleFontEx"
   external checkGlyphs : WSTR.t -> int list -> int -> bool list = "OPAMW_CheckGlyphs"
   external writeWindowsConsole : handle -> string -> unit = "OPAMW_output"
-  external isWoW64Mismatch_stub : unit -> int = "OPAMW_IsWoW64Mismatch"
-  external parent_putenv_stub : string -> string -> bool = "OPAMW_parent_putenv"
+  external isWoW64Mismatch_stub : int32 -> bool = "OPAMW_IsWoW64Mismatch"
+  external getParentProcess_stub : bool -> int32 = "OPAMW_GetParentProcess"
+  external inject_putenv_stub : int32 -> string -> string -> bool = "OPAMW_parent_putenv"
   external shGetFolderPath : int -> int -> string = "OPAMW_SHGetFolderPath"
   external sendMessageTimeout : int -> int -> int -> ('a, 'b, 'c) winmessage -> 'a -> 'b -> int * 'c = "OPAMW_SendMessageTimeout_byte" "OPAMW_SendMessageTimeout"
+  external getConsoleAlias : string -> string -> string = "OPAMW_GetConsoleAlias"
+
+  let parent = ref false
+  let parent_of_parent () = parent := true
 
   let parent_putenv =
-    let ppid =
-      if Sys.os_type = "Win32" then
-        isWoW64Mismatch_stub ()
+    let parent_putenv = lazy (
+      let ppid =
+        getParentProcess_stub !parent in
+      let isWoW64Mismatch = isWoW64Mismatch_stub ppid in
+      if isWoW64Mismatch then
+        (*
+         * Expect to see opam-putenv.exe in the same directory as opam.exe, rather than the path
+         * (allow for crazy users like developers who may have both builds of opam)
+         *)
+        let putenv_exe = Filename.concat (Filename.dirname Sys.executable_name) "opam-putenv.exe" in
+        let ppid = Int32.to_string ppid in
+        let ctrl = ref stdout in
+        at_exit (fun () -> if !ctrl <> stdout then begin Printf.fprintf !ctrl "::QUIT\n%!"; ctrl := stdout end);
+        if Sys.file_exists putenv_exe then
+          fun key value ->
+            if !ctrl = stdout then begin
+              let (inCh, outCh) = Unix.pipe () in
+              let _ = (Unix.create_process putenv_exe [| putenv_exe; ppid |] inCh Unix.stdout Unix.stderr) in
+              ctrl := (Unix.out_channel_of_descr outCh);
+              set_binary_mode_out !ctrl true;
+            end;
+            Printf.fprintf !ctrl "%s\n%s\n%!" key value;
+            if key = "::QUIT" then ctrl := stdout;
+            true
+        else
+          let shownWarning = ref false in
+          fun _ _ ->
+            if not !shownWarning then begin
+              shownWarning := true;
+              Printf.eprintf "opam-putenv was not found - OPAM is unable to alter environment variables\n%!";
+              false
+            end else
+              false
       else
-        0 in
-    if ppid > 0 then
-      (*
-       * Expect to see opam-putenv.exe in the same directory as opam.exe, rather than the path
-       * (allow for crazy users like developers who may have both builds of opam)
-       *)
-      let putenv_exe = Filename.concat (Filename.dirname Sys.executable_name) "opam-putenv.exe" in
-      let ppid = string_of_int ppid in
-      let ctrl = ref stdout in
-      at_exit (fun () -> if !ctrl <> stdout then begin Printf.fprintf !ctrl "::QUIT\n%!"; ctrl := stdout end);
-      if Sys.file_exists putenv_exe then
-        fun key value ->
-          if !ctrl = stdout then begin
-            let (inCh, outCh) = Unix.pipe () in
-            let _ = (Unix.create_process putenv_exe [| putenv_exe; ppid |] inCh Unix.stdout Unix.stderr) in
-            ctrl := (Unix.out_channel_of_descr outCh);
-            set_binary_mode_out !ctrl true;
-          end;
-          Printf.fprintf !ctrl "%s\n%s\n%!" key value;
-          if key = "::QUIT" then ctrl := stdout;
-          true
-      else
-        let shownWarning = ref false in
-        fun _ _ ->
-          if not !shownWarning then begin
-            shownWarning := true;
-            Printf.eprintf "opam-putenv was not found - OPAM is unable to alter environment variables\n%!";
-            false
-          end else
-            false
-    else
-      function "::QUIT" -> fun _ -> true
-        | key -> parent_putenv_stub key
+        function "::QUIT" -> fun _ -> true
+        | key -> inject_putenv_stub ppid key)
+    in
+      fun key value ->
+        (Lazy.force parent_putenv) key value
 
   let persistHomeDirectory home =
     (* Update our environment *)
@@ -834,6 +841,37 @@ module OpamSys = struct
   let os_string () =
     string_of_os (os ())
 
+  let clink_scripts =
+    if os () = Win32 then
+      let detect = lazy (
+        let s = Win32.getConsoleAlias "clink" "cmd.exe" in
+        if OpamString.ends_with ~suffix:"\" $*" s then
+          try
+            let i = String.rindex_from s (String.length s - 5) '"' + 1 in
+            let s = String.sub s i (String.length s - i - 4) in
+            (* clink allows ~ to refer to the user's local AppData folder, but the logic which expands it
+               erroneously adds a ".", resulting in the directory appearing to be C:\Users\DRA\AppData\Local.\clink
+               While this causes no problems (since the directory cannot be prefixed \\?\, the dot is always parsed away)
+               but it looks strange. The simplest way to eliminate it is to change to the directory and call Sys.getcwd ()
+               See https://github.com/mridgers/clink/issues/233 *)
+            let cwd = Sys.getcwd ()
+            in
+            try
+              Sys.chdir s;
+              let r = Some (Sys.getcwd ()) in
+              Sys.chdir cwd;
+              r
+            with Sys_error _ ->
+              Sys.chdir cwd;
+              raise Not_found
+          with Not_found ->
+            None
+        else
+          None) in
+      fun () -> Lazy.force detect
+    else
+      fun () -> None
+
   let shell_of_string = function
     | "tcsh"
     | "csh"  -> `csh
@@ -860,7 +898,11 @@ module OpamSys = struct
     try shell_of_string (Filename.basename (Env.get "SHELL"))
     with Not_found ->
       if os () = Win32 then
-        `cmd
+        match clink_scripts () with
+          Some _ ->
+            `clink
+        | None ->
+            `cmd
       else
         `sh
 
@@ -895,6 +937,15 @@ module OpamSys = struct
       if Sys.file_exists cshrc then cshrc else tcshrc
     | `cmd ->
         "Software\\Microsoft\\Command Processor\\AutoRun"
+    | `clink ->
+        begin
+          match clink_scripts () with
+            Some clink_dir ->
+              Filename.concat clink_dir "opam.lua"
+          | None ->
+              (* The user is not able to say --shell=clink, so this is not supposed to be possible *)
+              assert false
+        end
     | _     -> home ".profile"
 
 
