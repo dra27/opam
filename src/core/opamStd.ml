@@ -820,7 +820,38 @@ module OpamSys = struct
     ) in
     fun () -> Lazy.force os
 
-  type shell = SH_sh | SH_bash | SH_zsh | SH_csh | SH_fish | SH_cmd
+  type shell = SH_sh | SH_bash | SH_zsh | SH_csh | SH_fish | SH_cmd | SH_clink
+
+  let clink_scripts =
+    if os () = Win32 then
+      let detect = lazy (
+        let s = Win32.getConsoleAlias "clink" "cmd.exe" in
+        if OpamString.ends_with ~suffix:"\" $*" s then
+          try
+            let i = String.rindex_from s (String.length s - 5) '"' + 1 in
+            let s = String.sub s i (String.length s - i - 4) in
+            (* clink allows ~ to refer to the user's local AppData folder, but the logic which expands it
+               erroneously adds a ".", resulting in the directory appearing to be C:\Users\DRA\AppData\Local.\clink
+               While this causes no problems (since the directory cannot be prefixed \\?\, the dot is always parsed away)
+               but it looks strange. The simplest way to eliminate it is to change to the directory and call Sys.getcwd ()
+               See https://github.com/mridgers/clink/issues/233 *)
+            let cwd = Sys.getcwd ()
+            in
+            try
+              Sys.chdir s;
+              let r = Some (Sys.getcwd ()) in
+              Sys.chdir cwd;
+              r
+            with Sys_error _ ->
+              Sys.chdir cwd;
+              raise Not_found
+          with Not_found ->
+            None
+        else
+          None) in
+      fun () -> Lazy.force detect
+    else
+      fun () -> None
 
   let shell_of_string = function
     | "tcsh"
@@ -849,7 +880,11 @@ module OpamSys = struct
   let guess_shell_compat () =
     let parent_guess =
       if Sys.win32 then
-        None
+        match clink_scripts () with
+          Some _ ->
+            Some SH_clink
+        | None ->
+            Some SH_cmd
       else
         let ppid = Unix.getppid () in
         let dir = Filename.concat "/proc" (string_of_int ppid) in
@@ -921,6 +956,15 @@ module OpamSys = struct
     | SH_sh -> home ".profile"
     | SH_cmd ->
         "Software\\Microsoft\\Command Processor\\AutoRun"
+    | SH_clink ->
+        begin
+          match clink_scripts () with
+            Some clink_dir ->
+              Filename.concat clink_dir "opam.lua"
+          | None ->
+              (* The user is not able to say --shell=clink, so this is not supposed to be possible *)
+              assert false
+        end
     | _     -> home ".profile"
 
 

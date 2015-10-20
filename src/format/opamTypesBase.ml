@@ -48,6 +48,7 @@ let string_of_shell = function
   | SH_sh   -> "sh"
   | SH_bash -> "bash"
   | SH_cmd  -> "Windows Command Processor"
+  | SH_clink -> "Windows Command Processor/Clink"
 
 let file_null = ""
 let pos_file filename = OpamFilename.to_string filename, -1, -1

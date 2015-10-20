@@ -238,7 +238,7 @@ let () =
    * is completely executed outside the normal framework for the client. *)
   if OpamStd.Sys.(os () = Win32) && Array.length Sys.argv = 3 &&
          Sys.argv.(1) = "env" &&
-         Sys.argv.(2) = "--autorun" then
+         (Sys.argv.(2) = "--autorun" || Sys.argv.(2) = "--clink") then
     try
       OpamStd.Option.iter OpamVersion.set_git OpamGitVersion.version;
       OpamClientConfig.opam_init ();
@@ -247,6 +247,13 @@ let () =
       match OpamStateConfig.(!r.current_switch) with
         Some sw ->
           let st = OpamSwitchState.load `Lock_none gt rt sw in
+          (* If we're being called from Clink, then OPAM will have been invoked by Lua's os.execute()
+           * This function (just like OCaml's Sys.command) uses cmd, in order to permit, for example, piping.
+           * However, for opam config env, it means that the parent of opam is not the process which wants
+           * injecting, it's the parent of the parent!
+           *)
+          if Sys.argv.(3) = "--clink" then
+            OpamStd.Win32.parent_of_parent ();
           OpamEnv.set_cmd_env (OpamEnv.get_opam ~force_path:true st)
       | None ->
           ()
