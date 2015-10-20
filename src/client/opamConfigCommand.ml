@@ -132,7 +132,10 @@ let print_fish_env env =
         OpamConsole.msg "set -gx %s %S;\n" k v
     ) env
 
-let env st ~csh ~sexp ~fish ~inplace_path =
+let print_cmd_env env =
+  List.iter (fun (k, v, _) -> OpamConsole.msg "set %s=%s\n" k v) env
+
+let env st ~cmd ~csh ~sexp ~fish ~inplace_path =
   log "config-env";
   let env = OpamEnv.get_opam ~force_path:(not inplace_path) st in
   if sexp then
@@ -141,6 +144,14 @@ let env st ~csh ~sexp ~fish ~inplace_path =
     print_csh_env env
   else if fish then
     print_fish_env env
+  else if cmd then
+    if OpamStd.Sys.tty_out then begin
+      log "parent-putenv";
+      OpamEnv.set_cmd_env env
+    end else begin
+      log "cmd-stdout";
+      print_cmd_env env
+    end
   else
     print_env env
 

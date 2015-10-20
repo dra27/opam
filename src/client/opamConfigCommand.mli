@@ -14,13 +14,14 @@
 open OpamTypes
 open OpamStateTypes
 
-(** Display the current environment. Booleans csh, sexp and fish set an alternative
-    output (unspecified if more than one is true, sh-style by default).
+(** Display the current environment. Booleans cmd, csh, sexp and fish set an
+    alternative output (unspecified if more than one is true, sh-style by
+    default).
     [inplace_path] changes how the PATH variable is updated when there is already
     an opam entry: either at the same rank, or pushed in front. *)
 val env:
-  'a switch_state -> csh:bool -> sexp:bool -> fish:bool -> inplace_path:bool ->
-  unit
+  'a switch_state -> cmd:bool -> csh:bool -> sexp:bool -> fish:bool ->
+    inplace_path:bool -> unit
 
 (** Display the content of all available variables; global summary if the list
     is empty, package name "-" is understood as global configuration *)

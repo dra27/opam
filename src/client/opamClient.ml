@@ -651,7 +651,10 @@ let slog = OpamConsole.slog
             (OpamStd.Format.pretty_list ~last:"or"
                (List.map (OpamConsole.colorise `bold) external_solvers));
         let advised_deps =
-          [OpamStateConfig.(Lazy.force !r.makecmd); "m4"; "cc"]
+          if OpamStd.Sys.(os () = Win32) then
+            []
+          else
+            [OpamStateConfig.(Lazy.force !r.makecmd); "m4"; "cc"]
         in
         (match List.filter (not @* check_external_dep) advised_deps with
          | [] -> ()
@@ -730,7 +733,7 @@ let slog = OpamConsole.slog
         OpamEnv.write_static_init_scripts root ~switch_eval:true ~completion:true;
         true
     in
-    if not updated then
+    if not updated && shell <> `cmd then
       OpamEnv.print_env_warning_at_init gt ~ocamlinit:true ~dot_profile shell;
     gt, rt
 

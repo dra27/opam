@@ -88,3 +88,6 @@ val check_and_print_env_warning: 'a switch_state -> unit
     been done automatically according to [user_config] *)
 val print_env_warning_at_init:
   'a global_state -> ocamlinit:bool -> ?dot_profile:filename -> shell -> unit
+
+(** Set the environment in the parent process (Windows only) *)
+val set_cmd_env : env -> unit
