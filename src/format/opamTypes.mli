@@ -302,7 +302,7 @@ type universe = {
 type pin_kind = [ `version | OpamUrl.backend ]
 
 (** Shell compatibility modes *)
-type shell = [`fish|`csh|`zsh|`sh|`bash|`cmd]
+type shell = [`fish|`csh|`zsh|`sh|`bash|`cmd|`clink]
 
 (** {2 Generic command-line definitions with filters} *)
 
