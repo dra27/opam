@@ -779,11 +779,11 @@ let config =
        | None -> `Ok ()
        | Some sw ->
          `Ok (OpamConfigCommand.env gt sw
-                ~set_opamroot ~set_opamswitch
-                ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish) ~inplace_path))
+                ~set_opamroot ~set_opamswitch ~inplace_path
+                ~cmd:(shell=`cmd) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)))
     | Some `revert_env, [] ->
        `Ok (OpamConfigCommand.print_eval_env
-              ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)
+              ~cmd:(shell=`cmd) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)
               (OpamEnv.add [] []))
     | Some `setup, [] ->
       let user        = all || user in
@@ -806,7 +806,7 @@ let config =
                 Main options\n\
                \    -l, --list           %s\n\
                \    -a, --all            %s\n\
-               \    --shell=<bash|sh|csh|zsh|fish>\n\
+               \    --shell=<bash|sh|csh|zsh|fish|cmd>\n\
                \                         Configure assuming the given shell.\n\
                 \n\
                 User configuration\n\
@@ -1068,11 +1068,11 @@ let env =
        | None -> ()
        | Some sw ->
          OpamConfigCommand.env gt sw
-           ~set_opamroot ~set_opamswitch
-           ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish) ~inplace_path)
+           ~set_opamroot ~set_opamswitch ~inplace_path
+           ~cmd:(shell=`cmd) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish))
     | true ->
       OpamConfigCommand.print_eval_env
-        ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)
+        ~cmd:(shell=`cmd) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)
         (OpamEnv.add [] [])
   in
   let open Common_config_flags in

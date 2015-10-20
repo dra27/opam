@@ -708,7 +708,11 @@ module OpamSys = struct
     | "zsh"  -> `zsh
     | "bash" -> `bash
     | "fish" -> `fish
-    | _      -> `sh
+    | _      ->
+        if is_windows then
+          `cmd
+        else
+          `sh
 
   let is_windows = is_windows
 
@@ -724,7 +728,11 @@ module OpamSys = struct
 
   let guess_shell_compat () =
     try shell_of_string (Filename.basename (Env.get "SHELL"))
-    with Not_found -> `sh
+    with Not_found ->
+      if is_windows then
+        `cmd
+      else
+        `sh
 
   let guess_dot_profile shell =
     let home f =
