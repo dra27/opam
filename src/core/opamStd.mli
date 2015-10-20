@@ -449,10 +449,10 @@ module Sys : sig
   val executable_name : string -> string
 
   (** Guess the shell compat-mode *)
-  val guess_shell_compat: unit -> [`csh|`zsh|`sh|`bash|`fish]
+  val guess_shell_compat: unit -> [`csh|`zsh|`sh|`bash|`fish|`cmd]
 
   (** Guess the location of .profile *)
-  val guess_dot_profile: [`csh|`zsh|`sh|`bash|`fish] -> string
+  val guess_dot_profile: [`csh|`zsh|`sh|`bash|`fish|`cmd] -> string
 
   (** The separator character used in the PATH variable (varies depending on
       OS) *)

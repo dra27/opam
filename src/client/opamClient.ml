@@ -687,7 +687,9 @@ module API = struct
           let global = { complete = true; switch_eval = true } in
           OpamState.update_setup t (Some user) (Some global);
           true in
-      if not updated then
+      if shell = `cmd then
+        OpamState.set_cmd_env (OpamState.get_opam_env ~force_path:false t);
+      if not updated && shell <> `cmd then
         OpamState.print_env_warning_at_init t user in
 
     if update_config <> `no && (OpamStd.Sys.(os () = Win32) && (try ignore (Sys.getenv "HOME"); false with Not_found -> true)) then begin
@@ -754,7 +756,10 @@ module API = struct
             (OpamStd.Format.pretty_list ~last:"or"
                (List.map (OpamConsole.colorise `bold) external_solvers));
         let advised_deps =
-          [OpamStateConfig.(Lazy.force !r.makecmd); "m4"; "cc"]
+          if OpamStd.Sys.(os () = Win32) then
+            []
+          else
+            [OpamStateConfig.(Lazy.force !r.makecmd); "m4"; "cc"]
         in
         (match List.filter (not @* check_external_dep) advised_deps with
          | [] -> ()
@@ -1321,8 +1326,8 @@ module SafeAPI = struct
 
   module CONFIG = struct
 
-    let env ~csh ~sexp ~fish ~inplace_path =
-      without_lock (fun () -> API.CONFIG.env ~csh ~sexp ~fish ~inplace_path)
+    let env ~cmd ~csh ~sexp ~fish ~inplace_path =
+      without_lock (fun () -> API.CONFIG.env ~cmd ~csh ~sexp ~fish ~inplace_path)
 
     let setup local global =
       global_lock (fun () -> API.CONFIG.setup local global)

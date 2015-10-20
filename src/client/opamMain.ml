@@ -359,10 +359,15 @@ let config =
   let doc = config_doc in
   let commands = [
     "env", `env, [],
+    (if OpamStd.Sys.(os () = Win32) then
+    "Set the environment variables PATH, MANPATH, OCAML_TOPLEVEL_PATH \
+     and CAML_LD_LIBRARY_PATH according to the currently selected \
+     compiler."
+     else
     "Return the environment variables PATH, MANPATH, OCAML_TOPLEVEL_PATH \
      and CAML_LD_LIBRARY_PATH according to the currently selected \
      compiler. The output of this command is meant to be evaluated by a \
-     shell, for example by doing $(b,eval `opam config env`).";
+     shell, for example by doing $(b,eval `opam config env`).");
     "setup", `setup, [],
     (Printf.sprintf
       "Configure global and user parameters for OPAM. Use $(b, opam config setup) \
@@ -453,7 +458,7 @@ let config =
     match command, params with
     | Some `env, [] ->
       `Ok (Client.CONFIG.env
-             ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish) ~inplace_path)
+             ~cmd:(shell=`cmd) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish) ~inplace_path)
     | Some `setup, [] ->
       let user        = all || user in
       let global      = all || global in
@@ -476,7 +481,7 @@ let config =
            Main options\n\
           \    -l, --list           %s\n\
           \    -a, --all            %s\n\
-          \    --shell=<bash|sh|csh|zsh|fish>\n\
+          \    --shell=<bash|sh|csh|zsh|fish|cmd>\n\
           \                         Configure assuming the given shell.\n\
            \n\
            User configuration\n\

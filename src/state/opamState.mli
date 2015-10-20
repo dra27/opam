@@ -155,6 +155,9 @@ val check_and_print_env_warning: state -> unit
     according to [user_config] *)
 val print_env_warning_at_init: state -> user_config -> unit
 
+(** Set the environment in the parent process (Windows only) *)
+val set_cmd_env : env -> unit
+
 (** {2 Initialisation} *)
 
 (** Update the global and user configuration by asking some questions. *)

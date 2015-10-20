@@ -55,7 +55,7 @@ module API: sig
   module CONFIG: sig
 
     (** Display environment. *)
-    val env: csh:bool -> sexp:bool -> fish:bool -> inplace_path:bool -> unit
+    val env: cmd:bool -> csh:bool -> sexp:bool -> fish:bool -> inplace_path:bool -> unit
 
     (** Global and user setup of OPAM. *)
     val setup: user_config option -> global_config option -> unit

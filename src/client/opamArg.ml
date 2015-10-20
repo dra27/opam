@@ -465,12 +465,13 @@ let installed_roots_flag =
   mk_flag ["installed-roots"] "Display only the installed roots."
 
 let shell_opt =
-  let enum = [
+  let (enum : (string * OpamTypes.shell) list) = [
       "bash",`bash;
       "sh",`sh;
       "csh",`csh;
       "zsh",`zsh;
       "fish",`fish;
+      "cmd",`cmd;
     ] in
   mk_opt ["shell"] "SHELL"
     (Printf.sprintf

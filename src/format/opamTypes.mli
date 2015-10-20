@@ -301,7 +301,7 @@ type pin_option =
 type pin_kind = [ `version | OpamUrl.backend ]
 
 (** Shell compatibility modes *)
-type shell = [`fish|`csh|`zsh|`sh|`bash]
+type shell = [`fish|`csh|`zsh|`sh|`bash|`cmd]
 
 (** Global configuration option *)
 type global_config = {
