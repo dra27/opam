@@ -820,7 +820,7 @@ module OpamSys = struct
     ) in
     fun () -> Lazy.force os
 
-  type shell = SH_sh | SH_bash | SH_zsh | SH_csh | SH_fish
+  type shell = SH_sh | SH_bash | SH_zsh | SH_csh | SH_fish | SH_cmd
 
   let shell_of_string = function
     | "tcsh"
@@ -830,7 +830,11 @@ module OpamSys = struct
     | "bash" -> Some SH_bash
     | "fish" -> Some SH_fish
     | "sh"   -> Some SH_sh
-    | _      -> None
+    | _      ->
+        if Sys.win32 then
+          SH_cmd
+        else
+          SH_sh
 
   let executable_name =
     if Sys.win32 then
@@ -883,7 +887,7 @@ module OpamSys = struct
       | some ->
           some
     in
-    Option.default SH_sh shell
+    Option.default (if Sys.win32 then SH_cmd else SH_sh) shell
 
   let guess_dot_profile shell =
     let home f =
