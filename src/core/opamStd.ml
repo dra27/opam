@@ -702,6 +702,37 @@ module OpamSys = struct
     ) in
     fun () -> Lazy.force os
 
+  let clink_scripts =
+    if is_windows then
+      let detect = lazy (
+        let s = OpamStubs.getConsoleAlias "clink" "cmd.exe" in
+        if OpamString.ends_with ~suffix:"\" $*" s then
+          try
+            let i = String.rindex_from s (String.length s - 5) '"' + 1 in
+            let s = String.sub s i (String.length s - i - 4) in
+            (* clink allows ~ to refer to the user's local AppData folder, but the logic which expands it
+               erroneously adds a ".", resulting in the directory appearing to be C:\Users\DRA\AppData\Local.\clink
+               While this causes no problems (since the directory cannot be prefixed \\?\, the dot is always parsed away)
+               but it looks strange. The simplest way to eliminate it is to change to the directory and call Sys.getcwd ()
+               See https://github.com/mridgers/clink/issues/233 *)
+            let cwd = Sys.getcwd ()
+            in
+            try
+              Sys.chdir s;
+              let r = Some (Sys.getcwd ()) in
+              Sys.chdir cwd;
+              r
+            with Sys_error _ ->
+              Sys.chdir cwd;
+              raise Not_found
+          with Not_found ->
+            None
+        else
+          None) in
+      fun () -> Lazy.force detect
+    else
+      fun () -> None
+
   let shell_of_string = function
     | "tcsh"
     | "csh"  -> `csh
@@ -730,7 +761,11 @@ module OpamSys = struct
     try shell_of_string (Filename.basename (Env.get "SHELL"))
     with Not_found ->
       if is_windows then
-        `cmd
+        match clink_scripts () with
+          Some _ ->
+            `clink
+        | None ->
+            `cmd
       else
         `sh
 
@@ -765,6 +800,15 @@ module OpamSys = struct
       if Sys.file_exists cshrc then cshrc else tcshrc
     | `cmd ->
         "Software\\Microsoft\\Command Processor\\AutoRun"
+    | `clink ->
+        begin
+          match clink_scripts () with
+            Some clink_dir ->
+              Filename.concat clink_dir "opam.lua"
+          | None ->
+              (* The user is not able to say --shell=clink, so this is not supposed to be possible *)
+              assert false
+        end
     | _     -> home ".profile"
 
 

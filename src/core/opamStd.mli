@@ -384,11 +384,14 @@ module Sys : sig
   (** Append .exe (only if missing) to executable filenames on Windows *)
   val executable_name : string -> string
 
+  (** clink user scripts directory (Windows only) *)
+  val clink_scripts: unit -> string option
+
   (** Guess the shell compat-mode *)
-  val guess_shell_compat: unit -> [`csh|`zsh|`sh|`bash|`fish|`cmd]
+  val guess_shell_compat: unit -> [`csh|`zsh|`sh|`bash|`fish|`cmd|`clink]
 
   (** Guess the location of .profile *)
-  val guess_dot_profile: [`csh|`zsh|`sh|`bash|`fish|`cmd] -> string
+  val guess_dot_profile: [`csh|`zsh|`sh|`bash|`fish|`cmd|`clink] -> string
 
   (** The separator character used in the PATH variable (varies depending on
       OS) *)

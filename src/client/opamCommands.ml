@@ -772,6 +772,7 @@ let config =
       dot_profile_o list all global user
       profile no_complete set_opamroot set_opamswitch params =
     apply_global_options global_options;
+    let cmd = (shell = `cmd || shell = `clink) in
     match command, params with
     | Some `env, [] ->
       OpamGlobalState.with_ `Lock_none @@ fun gt ->
@@ -780,10 +781,10 @@ let config =
        | Some sw ->
          `Ok (OpamConfigCommand.env gt sw
                 ~set_opamroot ~set_opamswitch ~inplace_path
-                ~cmd:(shell=`cmd) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)))
+                ~cmd ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)))
     | Some `revert_env, [] ->
        `Ok (OpamConfigCommand.print_eval_env
-              ~cmd:(shell=`cmd) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)
+              ~cmd:(shell=`cmd || shell=`clink) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)
               (OpamEnv.add [] []))
     | Some `setup, [] ->
       let user        = all || user in
@@ -1061,6 +1062,7 @@ let env =
       global_options shell sexp inplace_path set_opamroot set_opamswitch
       revert =
     apply_global_options global_options;
+    let cmd = (shell = `cmd || shell = `clink) in
     match revert with
     | false ->
       OpamGlobalState.with_ `Lock_none @@ fun gt ->
@@ -1069,10 +1071,10 @@ let env =
        | Some sw ->
          OpamConfigCommand.env gt sw
            ~set_opamroot ~set_opamswitch ~inplace_path
-           ~cmd:(shell=`cmd) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish))
+           ~cmd ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish))
     | true ->
       OpamConfigCommand.print_eval_env
-        ~cmd:(shell=`cmd) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)
+        ~cmd ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)
         (OpamEnv.add [] [])
   in
   let open Common_config_flags in
