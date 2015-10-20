@@ -599,7 +599,10 @@ let init
             else false
           in
           let advised_deps =
-            [OpamStateConfig.(Lazy.force !r.makecmd); "m4"; "cc"]
+            if OpamStd.Sys.(os () = Win32) then
+              []
+            else
+              [OpamStateConfig.(Lazy.force !r.makecmd); "m4"; "cc"]
           in
           (match List.filter (not @* check_external_dep) advised_deps with
            | [] -> ()

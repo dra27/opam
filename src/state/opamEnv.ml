@@ -306,6 +306,15 @@ let is_up_to_date st =
   let opamswitch = OpamStateConfig.(!r.switch_from <> `Default) in
   is_up_to_date_raw (updates ~opamswitch ~force_path:false st)
 
+let shell_eval_string ?(root="") ?(switch="") shell =
+  match shell with
+  | `fish ->
+    Printf.sprintf "eval (opam env%s%s)" root switch
+  | `cmd ->
+    Printf.sprintf "opam env%s%s" root switch
+  | _ ->
+    Printf.sprintf "eval $(opam env%s%s)" root switch
+
 let eval_string gt switch =
   let root =
     let opamroot_cur = OpamFilename.Dir.to_string gt.root in
@@ -332,11 +341,7 @@ let eval_string gt switch =
       if Some sw_cur <> sw_env then Printf.sprintf " --switch=%s" sw_cur
       else ""
   in
-  match OpamStd.Sys.guess_shell_compat () with
-  | `fish ->
-    Printf.sprintf "eval (opam env%s%s)" root switch
-  | _ ->
-    Printf.sprintf "eval $(opam env%s%s)" root switch
+  shell_eval_string (OpamStd.Sys.guess_shell_compat ()) ~root ~switch
 
 
 
@@ -347,16 +352,19 @@ let complete_zsh   = "complete.zsh"
 let variables_sh   = "variables.sh"
 let variables_csh  = "variables.csh"
 let variables_fish = "variables.fish"
+let variables_cmd  = "variables.cmd"
 let init_sh        = "init.sh"
 let init_zsh       = "init.zsh"
 let init_csh       = "init.csh"
 let init_fish      = "init.fish"
+let init_cmd       = "init.cmd"
 let init_file = function
   | `sh   -> init_sh
   | `csh  -> init_csh
   | `zsh  -> init_zsh
   | `bash -> init_sh
   | `fish -> init_fish
+  | `cmd  -> init_cmd
 
 let source root ~shell ?(interactive_only=false) f =
   let file f = OpamFilename.to_string (OpamPath.init root // f) in
@@ -385,13 +393,13 @@ let string_of_update st shell updates =
   let make_comment comment_opt =
     OpamStd.Option.to_string (Printf.sprintf "# %s\n") comment_opt
   in
-  let sh   (k,v,comment) =
+  let sh _   (k,v,comment) =
     Printf.sprintf "%s%s=%s; export %s;\n"
       (make_comment comment) k v k in
-  let csh  (k,v,comment) =
+  let csh _  (k,v,comment) =
     Printf.sprintf "%sif ( ! ${?%s} ) setenv %s \"\"\nsetenv %s %s\n"
       (make_comment comment) k k k v in
-  let fish (k,v,comment) =
+  let fish _ (k,v,comment) =
     (* Fish converts some colon-separated vars to arrays, which have to be
        treated differently. MANPATH is handled automatically, so better not to
        set it at all when not already defined*)
@@ -415,30 +423,64 @@ let string_of_update st shell updates =
       Printf.sprintf "%sset -gx %s %s;\n"
         (make_comment comment) k v
   in
+  let cmd  p (k,v,_) = Printf.sprintf "%sset %s=%s\n" p k v in
   let export = match shell with
     | `zsh | `sh  -> sh
     | `fish -> fish
-    | `csh -> csh in
+    | `csh -> csh
+    | `cmd -> cmd in
   let aux (ident, symbol, string, comment) =
     let string =
       OpamFilter.expand_string ~default:(fun _ -> "") fenv string |>
       OpamStd.Env.escape_single_quotes ~using_backslashes:(shell = `fish)
     in
+    let prefix, string =
+      if OpamStd.Sys.(os () = Win32) && ident = "MANPATH" then
+        (Printf.sprintf "for /f \"delims=\" %%%%D in ('cygpath \"%s\"') do " string, "%%D")
+      else
+        ("", string) in
     let key, value =
+      let separator = match ident with
+      | "PATH" | "CAML_LD_LIBRARY_PATH" | "PERL5LIB" ->
+          OpamStd.Sys.path_sep ()
+      | _ ->
+          ':' in
+      let retrieve =
+        if OpamStd.Sys.(os () = Win32) then
+          fun () -> Printf.sprintf "%%%s%%"
+        else
+          fun () -> Printf.sprintf "\"$%s\""
+      in
+      let squote =
+        if OpamStd.Sys.(os () = Win32) then
+          fun () x -> x
+        else
+          fun () -> Printf.sprintf "'%s'"
+      in
       ident, match symbol with
-      | Eq  -> Printf.sprintf "'%s'" string
+      | Eq  -> Printf.sprintf "%a" squote string
       | PlusEq | ColonEq | EqPlusEq ->
-        Printf.sprintf "'%s':\"$%s\"" string ident
+        Printf.sprintf "%a%c%a" squote string separator retrieve ident
       | EqColon | EqPlus ->
-        Printf.sprintf "\"$%s\":'%s'" ident string
+        Printf.sprintf "%a%c%a" retrieve ident separator squote string
     in
-    export (key, value, comment) in
+    export prefix (key, value, comment) in
   OpamStd.List.concat_map "" aux updates
+
+let rem = function
+  `cmd ->
+    "rem"
+| _ ->
+    "#"
 
 let init_script root ~completion ~shell
     (variables_sh, complete_sh) =
   let variables =
-    Some (source root ~shell variables_sh) in
+    match shell with
+      `cmd ->
+        Some "opam env"
+    | _ ->
+        Some (source root ~shell variables_sh) in
   let complete =
     if completion then
       OpamStd.Option.map (source root ~shell ~interactive_only:true) complete_sh
@@ -448,7 +490,7 @@ let init_script root ~completion ~shell
   let append name = function
     | None   -> ()
     | Some c ->
-      Printf.bprintf buf "# %s\n%s\n" name c in
+      Printf.bprintf buf "%s %s\n%s\n" (rem shell) name c in
   append "Load the environment variables" variables;
   append "Load the auto-complete scripts" complete;
   Buffer.contents buf
@@ -462,30 +504,53 @@ let write_script root (name, body) =
 
 let write_static_init_scripts root ~completion =
   let scripts =
+    let shells =
+      (* The shell scripts have been intentionally disabled for Windows, the idea being that they'll
+       * be selectively re-integrated by someone who actually tests them...
+       *)
+      if OpamStd.Sys.(os () = Win32) then
+        [
+          `cmd, init_cmd, (variables_cmd, None);
+        ]
+      else
+        [
+          `sh, init_sh, (variables_sh, Some complete_sh);
+          `zsh, init_zsh, (variables_sh, Some complete_zsh);
+          `csh, init_csh, (variables_csh, None);
+          `fish, init_fish, (variables_fish, None);
+        ] in
+    let scripts =
+      if OpamStd.Sys.(os () = Win32) then
+        [
+        ]
+      else
+        [
+          complete_sh, OpamScript.complete;
+          complete_zsh, OpamScript.complete_zsh;
+        ] in
     List.map (fun (shell, init, scripts) ->
-        init, init_script root ~shell ~completion scripts) [
-      `sh, init_sh, (variables_sh, Some complete_sh);
-      `zsh, init_zsh, (variables_sh, Some complete_zsh);
-      `csh, init_csh, (variables_csh, None);
-      `fish, init_fish, (variables_fish, None);
-    ] @ [
-      complete_sh, OpamScript.complete;
-      complete_zsh, OpamScript.complete_zsh;
-    ]
+        init, init_script root ~shell ~completion scripts) shells @ scripts
   in
   List.iter (write_script root) scripts
 
 let write_dynamic_init_scripts st =
   let updates = updates ~opamswitch:false st in
+  let scripts =
+    if OpamStd.Sys.(os () = Win32) then
+      [
+        variables_cmd, string_of_update st `cmd updates;
+      ]
+    else
+      [
+        variables_sh, string_of_update st `sh updates;
+        variables_csh, string_of_update st `csh updates;
+        variables_fish, string_of_update st `fish updates;
+      ] in
   try
     OpamFilename.with_flock_upgrade `Lock_write ~dontblock:true
       st.switch_global.global_lock
     @@ fun _ ->
-    List.iter (write_script st.switch_global.root) [
-      variables_sh, string_of_update st `sh updates;
-      variables_csh, string_of_update st `csh updates;
-      variables_fish, string_of_update st `fish updates;
-    ]
+    List.iter (write_script st.switch_global.root) scripts
   with OpamSystem.Locked ->
     OpamConsole.warning
       "Global shell init scripts not installed (could not acquire lock)"
@@ -556,7 +621,8 @@ let update_dot_profile root dot_profile shell =
 let update_user_setup root ?dot_profile shell =
   if dot_profile <> None then (
     OpamConsole.msg "User configuration:\n";
-    OpamStd.Option.iter (fun f -> update_dot_profile root f shell) dot_profile
+    if shell <> `cmd then
+      OpamStd.Option.iter (fun f -> update_dot_profile root f shell) dot_profile
   )
 
 let display_setup root ~dot_profile shell =
@@ -592,14 +658,20 @@ let display_setup root ~dot_profile shell =
   OpamConsole.msg "Global configuration:\n";
   List.iter print global_setup
 
+let set_cmd_env env =
+  List.iter (fun (k, v, _) -> log "parent-putenv: %s->%S" k v; ignore (OpamStd.Win32.parent_putenv k v)) env
+
 let check_and_print_env_warning st =
   if (OpamFile.Config.switch st.switch_global.config = Some st.switch ||
       OpamStateConfig.(!r.switch_from <> `Command_line)) &&
      not (is_up_to_date st) then
-    OpamConsole.formatted_msg
-      "# Run %s to update the current shell environment\n"
-      (OpamConsole.colorise `bold (eval_string st.switch_global
-                                     (Some st.switch)))
+       if OpamStd.Sys.(os () = Win32) then
+         set_cmd_env (get_opam ~force_path:false st)
+       else
+         OpamConsole.formatted_msg
+           "# Run %s to update the current shell environment\n"
+           (OpamConsole.colorise `bold (eval_string st.switch_global
+                                          (Some st.switch)))
 
 let setup_interactive root ~dot_profile shell =
   let update dot_profile =
@@ -611,41 +683,49 @@ let setup_interactive root ~dot_profile shell =
   OpamConsole.msg "\n";
 
   OpamConsole.header_msg "Required setup - please read";
+  if shell <> `cmd then
+    OpamConsole.msg
+      "\n\
+      \  In normal operation, opam only alters files within ~%s.opam.\n\
+       \n\
+      \  However, to best integrate with your system, some environment variables\n\
+      \  should be set. If you allow it to, this initialisation step will update\n\
+      \  your %s configuration by adding the following line to %s:\n\
+       \n\
+      \    %s\
+       \n\
+      \  Otherwise, e"
+      Filename.dir_sep
+      (OpamConsole.colorise `bold @@ string_of_shell shell)
+      (OpamConsole.colorise `cyan @@ OpamFilename.prettify dot_profile)
+      (OpamConsole.colorise `bold @@ source root ~shell (init_file shell))
+  else
+    OpamConsole.msg "E";
   OpamConsole.msg
-    "\n\
-    \  In normal operation, opam only alters files within ~%s.opam.\n\
-     \n\
-    \  However, to best integrate with your system, some environment variables\n\
-    \  should be set. If you allow it to, this initialisation step will update\n\
-    \  your %s configuration by adding the following line to %s:\n\
-     \n\
-    \    %s\
-     \n\
-    \  Otherwise, every time you want to access your opam installation, you will\n\
+      "very time you want to access your opam installation, you will\n\
     \  need to run:\n\
      \n\
     \    %s\n\
      \n\
     \  You can always re-run this setup with 'opam init' later.\n\n"
-    Filename.dir_sep
-    (OpamConsole.colorise `bold @@ string_of_shell shell)
-    (OpamConsole.colorise `cyan @@ OpamFilename.prettify dot_profile)
-    (OpamConsole.colorise `bold @@ source root ~shell (init_file shell))
-    (OpamConsole.colorise `bold @@ "eval $(opam env)");
-  match
-    OpamConsole.read
-      "Do you want opam to modify %s ? [N/y/f]\n\
-       (default is 'no', use 'f' to choose a different file)"
-      (OpamFilename.prettify dot_profile)
-  with
-  | None when OpamCoreConfig.(!r.answer <> None) -> update (Some dot_profile)
-  | Some ("y" | "Y" | "yes"  | "YES" ) -> update (Some dot_profile)
-  | Some ("f" | "F" | "file" | "FILE") ->
-    begin match OpamConsole.read "  Enter the name of the file to update:" with
-      | None   ->
-        OpamConsole.msg "Alright, assuming you changed your mind, \
-                         not performing any changes.\n";
-        false
-      | Some f -> update (Some (OpamFilename.of_string f))
-    end
-  | _ -> update None
+    (OpamConsole.colorise `bold @@ shell_eval_string shell);
+  if shell = `cmd then
+    update None
+  else
+    match
+      OpamConsole.read
+        "Do you want opam to modify %s ? [N/y/f]\n\
+         (default is 'no', use 'f' to choose a different file)"
+        (OpamFilename.prettify dot_profile)
+    with
+    | None when OpamCoreConfig.(!r.answer <> None) -> update (Some dot_profile)
+    | Some ("y" | "Y" | "yes"  | "YES" ) -> update (Some dot_profile)
+    | Some ("f" | "F" | "file" | "FILE") when shell <> `cmd ->
+      begin match OpamConsole.read "  Enter the name of the file to update:" with
+        | None   ->
+          OpamConsole.msg "Alright, assuming you changed your mind, \
+                           not performing any changes.\n";
+          false
+        | Some f -> update (Some (OpamFilename.of_string f))
+      end
+    | _ -> update None
