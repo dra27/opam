@@ -856,10 +856,10 @@ let config =
       if OpamStateConfig.(!r.current_switch) = None then `Ok () else
         OpamSwitchState.with_ `Lock_none gt @@ fun st ->
         `Ok (OpamConfigCommand.env st
-              ~cmd:(shell=`cmd) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish) ~inplace_path)
+              ~cmd:(shell=`cmd || shell=`clink) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish) ~inplace_path)
     | Some `revert_env, [] ->
        `Ok (OpamConfigCommand.print_eval_env
-              ~cmd:(shell=`cmd) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)
+              ~cmd:(shell=`cmd || shell=`clink) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)
               (OpamEnv.add [] []))
     | Some `setup, [] ->
       let user        = all || user in
@@ -1148,10 +1148,10 @@ let env =
       if OpamStateConfig.(!r.current_switch) <> None then
         OpamSwitchState.with_ `Lock_none gt @@ fun st ->
         OpamConfigCommand.env st
-          ~cmd:(shell=`cmd) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish) ~inplace_path
+          ~cmd:(shell=`cmd || shell=`clink) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish) ~inplace_path
     | true ->
       OpamConfigCommand.print_eval_env
-        ~cmd:(shell=`cmd) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)
+        ~cmd:(shell=`cmd || shell=`clink) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish)
         (OpamEnv.add [] [])
   in
   Term.(pure env $global_options $shell_opt $sexp $inplace_path $revert),

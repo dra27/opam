@@ -12,5 +12,6 @@
 (** (generated) Shell config scripts as OCaml strings *)
 
 val complete : string
+val complete_lua : string
 val complete_zsh : string
 val prompt : string
