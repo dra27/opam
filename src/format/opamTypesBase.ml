@@ -47,6 +47,7 @@ let string_of_shell = function
   | `zsh  -> "zsh"
   | `sh   -> "sh"
   | `bash -> "bash"
+  | `cmd  -> "Windows Command Processor"
 
 let file_null = ""
 let pos_file filename = OpamFilename.to_string filename, -1, -1
