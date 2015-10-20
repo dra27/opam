@@ -339,6 +339,7 @@ let shell_eval_string ?(root="") ?(switch="") ?(setswitch="") shell =
     Printf.sprintf "eval (opam env%s%s%s)" root switch setswitch
   | SH_csh ->
     Printf.sprintf "eval `opam env%s%s%s`" root switch setswitch
+  | SH_clink
   | SH_cmd ->
     Printf.sprintf "opam env%s%s" root switch
   | _ ->
@@ -381,11 +382,12 @@ let eval_string gt ?(set_opamswitch=false) switch =
 
 (** The shells for which we generate init scripts (bash and sh are the same
     entry) *)
-let shells_list = [ SH_sh; SH_zsh; SH_csh; SH_fish; SH_cmd ]
+let shells_list = [ SH_sh; SH_zsh; SH_csh; SH_fish; SH_cmd; SH_clink ]
 
 let complete_file = function
   | SH_sh | SH_bash -> Some "complete.sh"
   | SH_zsh -> Some "complete.zsh"
+  | SH_clink -> "complete.lua"
   | SH_csh | SH_fish | SH_cmd -> None
 
 let env_hook_file = function
@@ -393,6 +395,7 @@ let env_hook_file = function
   | SH_zsh -> Some "env_hook.zsh"
   | SH_csh -> Some "env_hook.csh"
   | SH_fish -> Some "env_hook.fish"
+  | SH_clink -> None (* COMBAK! *)
   | SH_cmd -> None
 
 let variables_file = function
@@ -400,6 +403,7 @@ let variables_file = function
   | SH_csh -> "variables.csh"
   | SH_fish -> "variables.fish"
   | SH_cmd -> "variables.cmd"
+  | SH_clink -> "opam env --clink"
 
 let init_file = function
   | SH_sh | SH_bash -> "init.sh"
@@ -407,10 +411,12 @@ let init_file = function
   | SH_csh -> "init.csh"
   | SH_fish -> "init.fish"
   | SH_cmd -> "init.cmd"
+  | SH_clink -> "init.lua"
 
 let complete_script = function
   | SH_sh | SH_bash -> Some OpamScript.complete
   | SH_zsh -> Some OpamScript.complete_zsh
+  | SH_clink -> Some OpamScript.complete_lua
   | SH_csh | SH_fish | SH_cmd -> None
 
 let env_hook_script_base = function
@@ -418,6 +424,7 @@ let env_hook_script_base = function
   | SH_zsh -> Some OpamScript.env_hook_zsh
   | SH_csh -> Some OpamScript.env_hook_csh
   | SH_fish -> Some OpamScript.env_hook_fish
+  | SH_clink -> None (* COMBAK *)
   | SH_cmd -> None
 
 let export_in_shell shell =
@@ -459,6 +466,7 @@ let export_in_shell shell =
   | SH_zsh | SH_bash | SH_sh -> sh
   | SH_fish -> fish
   | SH_csh -> csh
+  | SH_clink
   | SH_cmd -> cmd
 
 let env_hook_script shell =
@@ -479,6 +487,9 @@ let source root shell f =
       (file f) (file f)
   | SH_cmd ->
       "opam env --autorun"
+  | SH_clink ->
+      (* @@DRA Not sure if the use of %S is totally safe - need escaped backslash characters! *)
+       Printf.sprintf "dofile(%S)" (file f)
 
 let if_interactive_script shell t e =
   let ielse else_opt = match else_opt with
@@ -492,6 +503,8 @@ let if_interactive_script shell t e =
     Printf.sprintf "if ( $?prompt ) then\n  %s%sendif\n" t @@ ielse e
   | SH_fish ->
     Printf.sprintf "if isatty\n  %s%send\n" t @@ ielse e
+  | SH_clink ->
+      t
 
 let init_script root shell =
   let interactive =
@@ -547,6 +560,8 @@ let string_of_update st shell updates =
 let rem = function
 | SH_cmd ->
     "rem"
+| SH_clink ->
+    "--"
 | _ ->
     "#"
 
@@ -600,7 +615,7 @@ let write_dynamic_init_scripts st =
       (fun shell ->
          write_script (OpamPath.init st.switch_global.root)
            (variables_file shell, string_of_update st shell updates))
-      [SH_sh; SH_csh; SH_fish] @ (if Sys.win32 then [SH_cmd] else [])
+      [SH_sh; SH_csh; SH_fish] @ (if Sys.win32 then [SH_cmd; SH_clink] else [])
   with OpamSystem.Locked ->
     OpamConsole.warning
       "Global shell init scripts not installed (could not acquire lock)"
@@ -613,11 +628,18 @@ let clear_dynamic_init_scripts gt =
 let dot_profile_needs_update root dot_profile shell =
   if not (OpamFilename.exists dot_profile) || shell = SH_cmd then `yes else
   let body = OpamFilename.read dot_profile in
+  let escape =
+    if shell = `clink then
+      fun x ->
+        let x = Printf.sprintf "%S" x in
+        String.sub x 1 (String.length x - 2)
+    else
+      fun id -> id in
   let pattern1 = "opam config env" in
   let pattern1b = "opam env" in
-  let pattern2 = OpamFilename.to_string (OpamPath.init root // "init") in
+  let pattern2 = escape @@ OpamFilename.to_string (OpamPath.init root // "init") in
   let pattern3 =
-    OpamStd.String.remove_prefix ~prefix:(OpamFilename.Dir.to_string root)
+    escape @@ OpamStd.String.remove_prefix ~prefix:(OpamFilename.Dir.to_string root)
       pattern2
   in
   let uncommented_re patts =
@@ -642,7 +664,7 @@ let update_dot_profile root dot_profile shell =
   | `otherroot ->
     OpamConsole.msg
       "  %s is already configured for another opam root.\n"
-      pretty_dot_profile
+      pretty_dot_profile; false
   | `yes       ->
     let init_file = init_file shell in
     let body =
@@ -661,19 +683,25 @@ let update_dot_profile root dot_profile shell =
     OpamFilename.write dot_profile body
 
 
-let update_user_setup root ?dot_profile shell =
+let update_user_setup_aux root ?dot_profile shell =
   if dot_profile <> None then (
     OpamConsole.msg "\nUser configuration:\n";
     let f f =
       if shell = SH_cmd then
         let value = source root ~shell (init_file shell) in
           let f = OpamFilename.to_string f in
-          OpamStd.Win32.(writeRegistry RegistryHive.HKEY_CURRENT_USER (Filename.dirname f) (Filename.basename f) RegistryHive.REG_SZ value)
+          OpamStd.Win32.(writeRegistry RegistryHive.HKEY_CURRENT_USER (Filename.dirname f) (Filename.basename f) RegistryHive.REG_SZ value);
+          false
       else
         update_dot_profile root f shell
     in
-    OpamStd.Option.iter f dot_profile
-  )
+    match dot_profile with
+      Some x -> f x
+    | None -> false
+  ) else
+    false
+
+let update_user_setup root ?dot_profile shell = ignore @@ update_user_setup_aux root ?dot_profile shell
 
 let set_cmd_env env =
   List.iter (fun (k, v, _) -> log "parent-putenv: %s->%S" k v; ignore (OpamStd.Win32.parent_putenv k v)) env
