@@ -687,9 +687,9 @@ module API = struct
           let global = { complete = true; switch_eval = true } in
           OpamState.update_setup t (Some user) (Some global);
           true in
-      if shell = `cmd then
+      if shell = `cmd || shell = `clink then
         OpamState.set_cmd_env (OpamState.get_opam_env ~force_path:false t);
-      if not updated && shell <> `cmd then
+      if not updated && shell <> `cmd && shell <> `clink then
         OpamState.print_env_warning_at_init t user in
 
     if update_config <> `no && (OpamStd.Sys.(os () = Win32) && (try ignore (Sys.getenv "HOME"); false with Not_found -> true)) then begin

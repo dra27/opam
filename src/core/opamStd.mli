@@ -390,6 +390,12 @@ module Win32 : sig
   (** Writes output to the Windows Console using WriteConsoleW
   *)
 
+  val parent_of_parent : unit -> unit
+  (** Alters parent_putenv to manipulate the parent of the parent process. Required for Clink
+   * automatic execution of opam config env (because Lua's os.execute calls cmd). This function
+   * has no effect if called after the first call to {!parent_putenv}.
+   *)
+
   val parent_putenv : string -> string -> bool
   (** Update an environment variable in the parent (i.e. shell) process's environment
    *)
@@ -408,6 +414,11 @@ module Win32 : sig
   val persistHomeDirectory : string -> unit
   (** [persistHomeDirectory value] sets the HOME environment variable in this and the parent process
    * and also persists the setting to the user's registry and broadcasts the change to other processes.
+   *)
+
+  external getConsoleAlias : string -> string -> string = "OPAMW_GetConsoleAlias"
+  (** [getConsoleAlias alias exeName] retrieves the value for a given executable or [""] if the alias
+   * is not defined.
    *)
 end
 
@@ -448,11 +459,14 @@ module Sys : sig
   (** Append .exe (only if missing) to executable filenames on Windows *)
   val executable_name : string -> string
 
+  (** clink user scripts directory (Windows only) *)
+  val clink_scripts: unit -> string option
+
   (** Guess the shell compat-mode *)
-  val guess_shell_compat: unit -> [`csh|`zsh|`sh|`bash|`fish|`cmd]
+  val guess_shell_compat: unit -> [`csh|`zsh|`sh|`bash|`fish|`cmd|`clink]
 
   (** Guess the location of .profile *)
-  val guess_dot_profile: [`csh|`zsh|`sh|`bash|`fish|`cmd] -> string
+  val guess_dot_profile: [`csh|`zsh|`sh|`bash|`fish|`cmd|`clink] -> string
 
   (** The separator character used in the PATH variable (varies depending on
       OS) *)

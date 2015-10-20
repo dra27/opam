@@ -1982,15 +1982,18 @@ let switch_eval_sh  = "switch_eval.sh"
 let switch_eval_cmd = "switch_eval.cmd"
 let complete_sh     = "complete.sh"
 let complete_zsh    = "complete.zsh"
+let complete_clink  = "complete.lua"
 let variables_sh    = "variables.sh"
 let variables_csh   = "variables.csh"
 let variables_fish  = "variables.fish"
 let variables_cmd   = "variables.cmd"
+let variables_clink = "opam config env --clink"
 let init_sh         = "init.sh"
 let init_zsh        = "init.zsh"
 let init_csh        = "init.csh"
 let init_fish       = "init.fish"
 let init_cmd        = "init.cmd"
+let init_clink      = "init.lua"
 let init_file = function
   | `sh   -> init_sh
   | `csh  -> init_csh
@@ -1998,6 +2001,7 @@ let init_file = function
   | `bash -> init_sh
   | `fish -> init_fish
   | `cmd  -> init_cmd
+  | `clink -> init_clink
 
 let source t ~shell ?(interactive_only=false) f =
   let file f = OpamFilename.to_string (OpamPath.init t.root // f) in
@@ -2009,6 +2013,9 @@ let source t ~shell ?(interactive_only=false) f =
       Printf.sprintf "source %s > /dev/null 2> /dev/null or true\n" (file f)
     | `cmd ->
        Printf.sprintf "opam config env --autorun"
+    | `clink ->
+       (* @@DRA Not sure if the use of %S is totally safe - need escaped backslash characters! *)
+       Printf.sprintf "dofile(%S)" (file f)
     | _ ->
       Printf.sprintf ". %s > /dev/null 2> /dev/null || true\n" (file f)
   in
@@ -2018,6 +2025,8 @@ let source t ~shell ?(interactive_only=false) f =
       Printf.sprintf "if (tty -s >&/dev/null) then\n  %sendif\n" s
     | `fish ->
       Printf.sprintf "if tty -s >/dev/null 2>&1\n %send\n" s
+    | `clink ->
+        s
     | _ ->
       Printf.sprintf "if tty -s >/dev/null 2>&1; then\n  %sfi\n" s
   else s
@@ -2259,6 +2268,7 @@ let string_of_env_update t shell updates =
     | `zsh | `sh  -> sh
     | `fish -> fish
     | `csh -> csh
+    | `clink
     | `cmd -> cmd in
   let aux (ident, symbol, string, comment) =
     let string = OpamFilter.expand_string fenv string in
@@ -2291,6 +2301,8 @@ let string_of_env_update t shell updates =
 let rem = function
   `cmd ->
     "rem"
+| `clink ->
+    "--"
 | _ ->
     "#"
 
@@ -2299,6 +2311,8 @@ let init_script t ~switch_eval ~complete ~shell (variables_sh, switch_eval_sh, c
     match shell with
       `cmd ->
         Some "opam config env"
+    | `clink ->
+        Some "os.execute(\"opam config env --clink\")"
     | _ ->
         Some (source t ~shell variables_sh) in
   let switch_eval =
@@ -2334,6 +2348,7 @@ let update_init_scripts t ~global =
         if OpamStd.Sys.(os () = Win32) then
           [
             `cmd, init_cmd, (variables_cmd, None, None);
+            `clink, init_clink, (variables_clink, None, Some complete_clink);
           ]
         else
           [
@@ -2350,6 +2365,7 @@ let update_init_scripts t ~global =
     (if OpamStd.Sys.(os () = Win32) then
       [
         (switch_eval_cmd, OpamScript.switch_eval_cmd);
+        (complete_clink   , OpamScript.complete_lua);
         (variables_cmd  , string_of_env_update t `cmd (env_updates ~opamswitch:false t));
       ]
     else
@@ -2370,6 +2386,7 @@ let update_init_scripts t ~global =
     init_fish;
     init_zsh;
     init_cmd;
+    init_clink;
     variables_sh;
     variables_csh;
     variables_fish;
@@ -2399,7 +2416,7 @@ let update_init_scripts t ~global =
          if !updated then OpamConsole.msg "  Updating %s\n" pretty_init_file
          else OpamConsole.msg "  %s is already up-to-date.\n" pretty_init_file)
       (if OpamStd.Sys.(os () = Win32) then
-        [ init_cmd ]
+        [ init_cmd; init_clink ]
       else
         [ init_sh; init_zsh; init_csh; init_fish ])
 
@@ -2425,10 +2442,17 @@ let dot_profile_needs_update t dot_profile shell =
         ""
       else
         OpamFilename.read dot_profile in
+    let escape =
+      if shell = `clink then
+        fun x ->
+          let x = Printf.sprintf "%S" x in
+          String.sub x 1 (String.length x - 2)
+      else
+        fun id -> id in
     let pattern1 = "opam config" in
-    let pattern2 = OpamFilename.to_string (OpamPath.init t.root // "init") in
+    let pattern2 = escape @@ OpamFilename.to_string (OpamPath.init t.root // "init") in
     let pattern3 =
-      OpamStd.String.remove_prefix
+      escape @@ OpamStd.String.remove_prefix
         ~prefix:OpamStateConfig.(OpamFilename.Dir.to_string !r.root_dir)
         pattern2 in
     if mem_pattern_in_string ~pattern:pattern1 ~string:body then
@@ -2445,11 +2469,11 @@ let dot_profile_needs_update t dot_profile shell =
 let update_dot_profile t dot_profile shell =
   let pretty_dot_profile = OpamFilename.prettify dot_profile in
   match dot_profile_needs_update t dot_profile shell with
-  | `no        -> OpamConsole.msg "  %s is already up-to-date.\n" pretty_dot_profile
+  | `no        -> OpamConsole.msg "  %s is already up-to-date.\n" pretty_dot_profile; false
   | `otherroot ->
     OpamConsole.msg
       "  %s is already configured for another OPAM root.\n"
-      pretty_dot_profile
+      pretty_dot_profile; false
   | `yes       ->
     let init_file = init_file shell in
     let body =
@@ -2464,31 +2488,36 @@ let update_dot_profile t dot_profile shell =
          %s OPAM configuration\n\
          %s"
         (OpamStd.String.strip body) (rem shell) (source t ~shell init_file) in
-    OpamFilename.write dot_profile body
+    OpamFilename.write dot_profile body; true
 
-let update_setup t user global =
-  begin match user with
-    | Some { ocamlinit = false; dot_profile = None; _ }
-    | None   -> ()
-    | Some l ->
-      OpamConsole.msg "User configuration:\n";
-      if l.ocamlinit then update_ocamlinit ();
-      match l.dot_profile with
-      | None   -> ()
-      | Some f ->
-          if l.shell = `cmd then
-            let value = source t ~shell:l.shell (init_file l.shell) in
-            let f = OpamFilename.to_string f in
-            OpamStd.Win32.(writeRegistry RegistryHive.HKEY_CURRENT_USER (Filename.dirname f) (Filename.basename f) RegistryHive.REG_SZ value)
-          else
-            update_dot_profile t f l.shell;
-  end;
+let update_setup_aux t user global =
+  let updated =
+    begin match user with
+      | Some { ocamlinit = false; dot_profile = None; _ }
+      | None   -> false
+      | Some l ->
+        OpamConsole.msg "User configuration:\n";
+        if l.ocamlinit then update_ocamlinit ();
+        match l.dot_profile with
+        | None   -> false
+        | Some f ->
+            if l.shell = `cmd then
+              let value = source t ~shell:l.shell (init_file l.shell) in
+              let f = OpamFilename.to_string f in
+              OpamStd.Win32.(writeRegistry RegistryHive.HKEY_CURRENT_USER (Filename.dirname f) (Filename.basename f) RegistryHive.REG_SZ value);
+              false
+            else
+              update_dot_profile t f l.shell;
+    end in
   begin match global with
     | None   -> ()
     | Some _ ->
       OpamConsole.msg "Global configuration:\n";
       update_init_scripts t ~global
-  end
+  end;
+  updated
+
+let update_setup t user global = ignore (update_setup_aux t user global)
 
 let display_setup t shell dot_profile =
   let print (k,v) = OpamConsole.msg "  %-25s - %s\n" k v in
@@ -2555,6 +2584,7 @@ let eval_string t =
   match OpamStd.Sys.guess_shell_compat () with
   | `fish ->
     Printf.sprintf "eval (opam config env%s%s)" root switch
+  | `clink
   | `cmd ->
     "opam config env"
   | _ ->
@@ -2574,7 +2604,7 @@ let print_env_warning_at_init t user =
   if up_to_date_env t then ()
   else
     let (env_needed, profile_index, ocamlinit_index) =
-      if user.shell <> `cmd then
+      if user.shell <> `cmd && user.shell <> `clink then
         (true, "2.", "3.")
       else
         (false, "1.", "2.") in
@@ -2655,13 +2685,21 @@ let update_setup_interactive t shell dot_profile =
     let modify_user_conf = dot_profile <> None in
     let user = Some { shell; ocamlinit = modify_user_conf; dot_profile } in
     OpamConsole.msg "\n";
-    update_setup t user (Some {complete=true; switch_eval=true});
+    if update_setup_aux t user (Some {complete=true; switch_eval=true}) && shell = `clink then
+      OpamConsole.msg
+        "\n\
+         OPAM has installed auto-completion scripts for clink\n\
+         In order to enable them in this and any other existing sessions, please press CTRL+Q\n\
+        \  (or whichever key sequence you have rebound %s to)" (OpamConsole.colorise `bold "reload-lua-state");
     modify_user_conf in
 
   OpamConsole.msg "\n";
 
+  let str_shell = OpamTypesBase.string_of_shell shell in
+  let has_clink = (OpamStd.Sys.clink_scripts () <> None) in
+  let will_autorun = shell = `cmd || shell = `clink && not has_clink in
   let pretty_dot_profile =
-    if shell = `cmd then
+    if will_autorun then
       "HKCU\\" ^ OpamFilename.prettify dot_profile
     else
       OpamFilename.prettify dot_profile in
@@ -2671,18 +2709,25 @@ let update_setup_interactive t shell dot_profile =
      * It might be better to check to see if there's an existing value already there, but
      * AutoRun is not commonly used at *user* level (and HKLM AutoRun would be unaffected)
      *)
-    if shell = `cmd then
+    if will_autorun then
       Printf.sprintf
         "  - %s to set the right\n\
         \    environment variables for the Command Prompt on startup.\n"
         (OpamConsole.colorise `cyan @@ ("HKCU\\" ^ OpamFilename.prettify dot_profile))
     else
-      Printf.sprintf
-        "  - %s (or a file you specify) to set the right environment\n\
-        \    variables and to load the auto-completion scripts for your shell (%s)\n\
-        \    on startup. Specifically, it checks for and appends the following line:\n"
-        (OpamConsole.colorise `cyan @@ OpamFilename.prettify dot_profile)
-        (OpamConsole.colorise `bold @@ OpamTypesBase.string_of_shell shell) in
+      if has_clink then
+        Printf.sprintf
+          "  - %s (or a file you specify) to set the right environment\n\
+          \    variables and to load the auto-completion scripts for your shell (CMD/Clink)\n\
+          \    on startup. Specifically, it checks for and appends the following line:\n"
+          (OpamConsole.colorise `cyan @@ OpamFilename.prettify dot_profile)
+      else
+        Printf.sprintf
+          "  - %s (or a file you specify) to set the right environment\n\
+          \    variables and to load the auto-completion scripts for your shell (%s)\n\
+          \    on startup. Specifically, it checks for and appends the following line:\n"
+          (OpamConsole.colorise `cyan @@ OpamFilename.prettify dot_profile)
+          (OpamConsole.colorise `bold @@ str_shell) in
   match OpamConsole.read
       "In normal operation, OPAM only alters files within ~%s.opam.\n\
        \n\
@@ -2710,14 +2755,14 @@ let update_setup_interactive t shell dot_profile =
        (default is 'no'%s)\n\
       \    [N/y%s]"
       Filename.dir_sep
-      (if shell = `cmd then "places" else "files")
+      (if will_autorun then "places" else "files")
       dot_profile_msg
       (source t ~shell (init_file shell))
       (OpamConsole.colorise `cyan @@ Printf.sprintf "~%s.ocamlinit" Filename.dir_sep)
       pretty_dot_profile
       Filename.dir_sep
-      (if shell = `cmd then "" else Printf.sprintf ", use 'f' to name a file other than %s" (OpamFilename.prettify dot_profile))
-      (if shell = `cmd then "" else "/f")
+      (if will_autorun then "" else Printf.sprintf ", use 'f' to name a file other than %s" (OpamFilename.prettify dot_profile))
+      (if will_autorun then "" else "/f")
   with
   | None when OpamCoreConfig.(!r.answer <> None) -> update (Some dot_profile)
   | Some ("y" | "Y" | "yes"  | "YES" ) -> update (Some dot_profile)
