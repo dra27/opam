@@ -90,8 +90,8 @@ ALWAYS:
 # -- opam-core -- #
 opam-core.cma opam-core.cmxa: state/opamScript.ml core/opamCompat.ml core/opamCompat.mli ALWAYS
 
-state/opamScript.ml: ../shell/crunch.ml state/complete.sh state/complete.zsh \
-                     state/prompt.sh
+state/opamScript.ml: ../shell/crunch.ml state/complete.sh state/complete.lua \
+                     state/complete.zsh state/prompt.sh
 	ocaml $^ > $@
 
 ifeq ($(OCAML_4_03),true)
