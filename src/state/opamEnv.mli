@@ -121,3 +121,6 @@ val clear_dynamic_init_scripts: rw global_state -> unit
 (** Print a warning if the environment is not set-up properly.
     (General message) *)
 val check_and_print_env_warning: 'a switch_state -> unit
+
+(** Set the environment in the parent process (Windows only) *)
+val set_cmd_env : env -> unit
