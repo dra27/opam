@@ -71,11 +71,13 @@ The following Cygwin packages are required:
                             is required by findlib's build system)
 * From Devel - `mingw64-i686-gcc-core` & `mingw64-x86_64-gcc-core` (not required if
                                                                  building with MSVC)
+* From Web - `wget` (or `curl` from Net)
+* From Net - `rsync` (and `curl`, if you don't install wget)
 
 Alternatively, having downloaded Cygwin's setup program, Cygwin can be installed
 using the following command line:
 
-`setup-x86_64 --root=C:\cygwin64 --quiet-mode --no-desktop --no-startmenu --packages=make,mingw64-i686-gcc-core,mingw64-x86_64-gcc-core,m4,patch`
+`setup-x86_64 --root=C:\cygwin64 --quiet-mode --no-desktop --no-startmenu --packages=make,mingw64-i686-gcc-core,mingw64-x86_64-gcc-core,m4,patch,unzip,curl,rsync`
 
 The `--no-desktop` and `--no-startmenu` switches may be omitted in order to create
 shortcuts on the Desktop and Start Menu respectively. Executed this way, setup will
@@ -92,6 +94,11 @@ Cygwin is started either from a shortcut or by running:
 ```
 C:\cygwin64\bin\mintty -
 ```
+
+OPAM requires various commands from Cygwin in order to function correctly - ensure
+that `C:\cygwin\bin` is in your `PATH` either by running
+`set PATH=%PATH%;C:\cygwin\bin` or by adding `;C:\cygwin\bin` to `PATH` in the
+System applet.
 
 It is recommended that opam be built outside Cygwin's root
 (so in `/cygdrive/c/...`). From an elevated Cygwin shell, edit `/etc/fstab` and
@@ -134,6 +141,13 @@ Windows 10, or using Local Security Policy on earlier versions of Windows.
 Alternatively, you may run `configure` and use `make lib-ext`, as advised.
 
 You can then `configure` and build opam as above.
+
+## Git-for-Windows
+
+Git-for-Windows may be downloaded from https://git-scm.com/download/win. The default
+selection of components is sufficient for OPAM. You should select `Use Git from the
+Windows Command Prompt` and allow `core.autocrlf` to be set to `true`. The default
+behaviour to use `MinTTY` for Git Bash is recommended, though not required for OPAM.
 
 ## Compiling without OCaml
 
