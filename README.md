@@ -68,6 +68,8 @@ The following Cygwin packages are required:
                                                                  building with MSVC)
 * From Mail - `procmail` (*recommended* only: required for parallel compilation of
                           lib-ext or win-zips)
+* From Web - `wget` (do **not** install curl)
+* From Net - `rsync`
 
 Alternatively, having downloaded Cygwin's setup program, Cygwin can be installed
 using the following command line:
@@ -89,6 +91,11 @@ Cygwin is started either from a shortcut or by running:
 ```
 C:\cygwin\bin\mintty -
 ```
+
+OPAM requires various commands from Cygwin in order to function correctly - ensure
+that `C:\cygwin\bin` is in your `PATH` either by running
+`set PATH=%PATH%;C:\cygwin\bin` or by adding `;C:\cygwin\bin` to `PATH` in the
+System applet.
 
 It is recommended that OPAM be built outside Cygwin's root (so in `/cygdrive/c/...`).
 From an elevated Cygwin shell, edit `/etc/fstab` and ensure that the file's content
@@ -135,6 +142,13 @@ for `Unix.stat` and `Unix.lstat` to ocamlbuild. Alternatively, you may run
 
 You can then `configure` and build OPAM as above.
 >>>>>>> 7fbbf3c... Updated README.md with Windows build instructions.
+
+## Git-for-Windows
+
+Git-for-Windows may be downloaded from https://git-scm.com/download/win. The default
+selection of components is sufficient for OPAM. You should select `Use Git from the
+Windows Command Prompt` and allow `core.autocrlf` to be set to `true`. The default
+behaviour to use `MinTTY` for Git Bash is recommended, though not required for OPAM.
 
 ## Compiling without OCaml
 
