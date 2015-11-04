@@ -374,6 +374,8 @@ let source root ~shell ?(interactive_only=false) f =
       Printf.sprintf "source %s >& /dev/null || true\n" (file f)
     | `fish ->
       Printf.sprintf "source %s > /dev/null 2> /dev/null; or true\n" (file f)
+    | `cmd ->
+      "opam env --autorun"
     | _ ->
       Printf.sprintf "test -r %s && . %s > /dev/null 2> /dev/null || true\n"
         (file f) (file f)
@@ -575,8 +577,8 @@ let status_of_init_file root init_sh =
   ) else
     None
 
-let dot_profile_needs_update root dot_profile =
-  if not (OpamFilename.exists dot_profile) then `yes else
+let dot_profile_needs_update root dot_profile shell =
+  if not (OpamFilename.exists dot_profile) || shell = `cmd then `yes else
   let body = OpamFilename.read dot_profile in
   let pattern1 = "opam config env" in
   let pattern1b = "opam env" in
@@ -595,7 +597,7 @@ let dot_profile_needs_update root dot_profile =
 
 let update_dot_profile root dot_profile shell =
   let pretty_dot_profile = OpamFilename.prettify dot_profile in
-  match dot_profile_needs_update root dot_profile with
+  match dot_profile_needs_update root dot_profile shell with
   | `no        -> OpamConsole.msg "  %s is already up-to-date.\n" pretty_dot_profile
   | `otherroot ->
     OpamConsole.msg
@@ -612,17 +614,24 @@ let update_dot_profile root dot_profile shell =
     let body =
       Printf.sprintf
         "%s\n\n\
-         # opam configuration\n\
+         %s opam configuration\n\
          %s"
-        (OpamStd.String.strip body) (source root ~shell init_file) in
+        (OpamStd.String.strip body) (rem shell) (source root ~shell init_file) in
     OpamFilename.write dot_profile body
 
 
 let update_user_setup root ?dot_profile shell =
   if dot_profile <> None then (
     OpamConsole.msg "User configuration:\n";
-    if shell <> `cmd then
-      OpamStd.Option.iter (fun f -> update_dot_profile root f shell) dot_profile
+    let f f =
+      if shell = `cmd then
+        let value = source root ~shell (init_file shell) in
+          let f = OpamFilename.to_string f in
+          OpamStd.Win32.(writeRegistry RegistryHive.HKEY_CURRENT_USER (Filename.dirname f) (Filename.basename f) RegistryHive.REG_SZ value)
+      else
+        update_dot_profile root f shell
+    in
+    OpamStd.Option.iter f dot_profile
   )
 
 let display_setup root ~dot_profile shell =
@@ -632,7 +641,7 @@ let display_setup root ~dot_profile shell =
   let error   = "error" in
   let user_setup =
     let dot_profile_status =
-      match dot_profile_needs_update root dot_profile with
+      match dot_profile_needs_update root dot_profile shell with
       | `no        -> ok
       | `yes       -> not_set
       | `otherroot -> error in
@@ -683,49 +692,67 @@ let setup_interactive root ~dot_profile shell =
   OpamConsole.msg "\n";
 
   OpamConsole.header_msg "Required setup - please read";
-  if shell <> `cmd then
-    OpamConsole.msg
-      "\n\
-      \  In normal operation, opam only alters files within ~%s.opam.\n\
-       \n\
-      \  However, to best integrate with your system, some environment variables\n\
-      \  should be set. If you allow it to, this initialisation step will update\n\
-      \  your %s configuration by adding the following line to %s:\n\
-       \n\
-      \    %s\
-       \n\
-      \  Otherwise, e"
-      Filename.dir_sep
-      (OpamConsole.colorise `bold @@ string_of_shell shell)
-      (OpamConsole.colorise `cyan @@ OpamFilename.prettify dot_profile)
-      (OpamConsole.colorise `bold @@ source root ~shell (init_file shell))
-  else
-    OpamConsole.msg "E";
+  let (verb, suffix) =
+    if shell = `cmd then
+      ("setting\n  ", " to")
+    else
+      ("adding the following line to ", "")
+  in
+  let dot_profile =
+    if shell = `cmd then
+      OpamFilename.remove_prefix (OpamFilename.cwd ()) dot_profile |> OpamFilename.raw
+    else
+      dot_profile
+  in
+  let pretty_dot_profile =
+    (*
+     * It might be better to check to see if there's an existing value already there, but
+     * AutoRun is not commonly used at *user* level (and HKLM AutoRun would be unaffected)
+     *)
+    if shell = `cmd then
+      "HKCU\\" ^ OpamFilename.to_string dot_profile
+    else
+      OpamFilename.prettify dot_profile
+  in
   OpamConsole.msg
-      "very time you want to access your opam installation, you will\n\
+    "\n\
+    \  In normal operation, opam only alters files within ~%s.opam.\n\
+     \n\
+    \  However, to best integrate with your system, some environment variables\n\
+    \  should be set. If you allow it to, this initialisation step will update\n\
+    \  your %s configuration by %s%s%s:\n\
+     \n\
+    \    %s\n\
+     \n\
+    \  Otherwise, every time you want to access your opam installation, you will\n\
     \  need to run:\n\
      \n\
     \    %s\n\
      \n\
     \  You can always re-run this setup with 'opam init' later.\n\n"
+    Filename.dir_sep
+    (OpamConsole.colorise `bold @@ string_of_shell shell)
+    verb
+    (OpamConsole.colorise `cyan @@ pretty_dot_profile)
+    suffix
+    (OpamConsole.colorise `bold @@ source root ~shell (init_file shell))
     (OpamConsole.colorise `bold @@ shell_eval_string shell);
-  if shell = `cmd then
-    update None
-  else
-    match
-      OpamConsole.read
-        "Do you want opam to modify %s ? [N/y/f]\n\
-         (default is 'no', use 'f' to choose a different file)"
-        (OpamFilename.prettify dot_profile)
-    with
-    | None when OpamCoreConfig.(!r.answer <> None) -> update (Some dot_profile)
-    | Some ("y" | "Y" | "yes"  | "YES" ) -> update (Some dot_profile)
-    | Some ("f" | "F" | "file" | "FILE") when shell <> `cmd ->
-      begin match OpamConsole.read "  Enter the name of the file to update:" with
-        | None   ->
-          OpamConsole.msg "Alright, assuming you changed your mind, \
-                           not performing any changes.\n";
-          false
-        | Some f -> update (Some (OpamFilename.of_string f))
-      end
-    | _ -> update None
+  match
+    OpamConsole.read
+      "Do you want opam to modify %s ? [N/y%s]\n\
+       (default is 'no'%s)"
+      pretty_dot_profile
+      (if shell = `cmd then "" else "/f")
+      (if shell = `cmd then "" else ", use 'f' to choose a different file")
+  with
+  | None when OpamCoreConfig.(!r.answer <> None) -> update (Some dot_profile)
+  | Some ("y" | "Y" | "yes"  | "YES" ) -> update (Some dot_profile)
+  | Some ("f" | "F" | "file" | "FILE") when shell <> `cmd ->
+    begin match OpamConsole.read "  Enter the name of the file to update:" with
+      | None   ->
+        OpamConsole.msg "Alright, assuming you changed your mind, \
+                         not performing any changes.\n";
+        false
+      | Some f -> update (Some (OpamFilename.of_string f))
+    end
+  | _ -> update None
