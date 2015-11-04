@@ -691,7 +691,7 @@ module API = struct
         OpamState.print_env_warning_at_init t user in
 
     if OpamFilename.exists config_f then (
-      OpamConsole.msg "OPAM has already been initialized.";
+      OpamConsole.msg "OPAM has already been initialized.%s" (if update_config = `ask then "" else "\n");
     ) else (
       if not root_empty then (
         OpamConsole.warning "%s exists and is not empty"
