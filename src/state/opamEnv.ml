@@ -477,6 +477,8 @@ let source root shell f =
   | SH_sh | SH_bash | SH_zsh ->
     Printf.sprintf "test -r %s && . %s > /dev/null 2> /dev/null || true\n"
       (file f) (file f)
+  | SH_cmd ->
+      "opam env --autorun"
 
 let if_interactive_script shell t e =
   let ielse else_opt = match else_opt with
@@ -608,8 +610,8 @@ let clear_dynamic_init_scripts gt =
       OpamFilename.remove (OpamPath.init gt.root // variables_file shell))
     [SH_sh; SH_csh; SH_fish]
 
-let dot_profile_needs_update root dot_profile =
-  if not (OpamFilename.exists dot_profile) then `yes else
+let dot_profile_needs_update root dot_profile shell =
+  if not (OpamFilename.exists dot_profile) || shell = SH_cmd then `yes else
   let body = OpamFilename.read dot_profile in
   let pattern1 = "opam config env" in
   let pattern1b = "opam env" in
@@ -635,7 +637,7 @@ let update_dot_profile root dot_profile shell =
         pretty_dot_profile
         (OpamConsole.colorise `underline "sourced")
   in
-  match dot_profile_needs_update root dot_profile with
+  match dot_profile_needs_update root dot_profile shell with
   | `no        -> OpamConsole.msg "  %s is already up-to-date.\n" pretty_dot_profile; bash_src()
   | `otherroot ->
     OpamConsole.msg
@@ -653,16 +655,24 @@ let update_dot_profile root dot_profile shell =
     let body =
       Printf.sprintf
         "%s\n\n\
-         # opam configuration\n\
+         %s opam configuration\n\
          %s"
-        (OpamStd.String.strip body) (source root shell init_file) in
+        (OpamStd.String.strip body) (rem shell) (source root shell init_file) in
     OpamFilename.write dot_profile body
 
 
 let update_user_setup root ?dot_profile shell =
   if dot_profile <> None then (
     OpamConsole.msg "\nUser configuration:\n";
-    OpamStd.Option.iter (fun f -> update_dot_profile root f shell) dot_profile
+    let f f =
+      if shell = SH_cmd then
+        let value = source root ~shell (init_file shell) in
+          let f = OpamFilename.to_string f in
+          OpamStd.Win32.(writeRegistry RegistryHive.HKEY_CURRENT_USER (Filename.dirname f) (Filename.basename f) RegistryHive.REG_SZ value)
+      else
+        update_dot_profile root f shell
+    in
+    OpamStd.Option.iter f dot_profile
   )
 
 let set_cmd_env env =
@@ -696,40 +706,49 @@ let setup
     | None, Some dot_profile, true ->
       OpamConsole.header_msg "Required setup - please read";
 
-      let msg =
-        if Sys.win32 then
-          fun dir_sep _ _ _ eval_string ->
-            OpamConsole.msg
-              "\n\
-              \  In normal operation, opam only alters files within ~%s.opam.\n\
-               \n\
-              \  Every time you want to access your opam installation, you will\n\
-              \  need to run:\n\
-               \n\
-              \    %s\n\
-               \n" dir_sep eval_string
+      let (verb, suffix) =
+        if shell = SH_cmd then
+          ("setting\n  ", " to")
         else
-          OpamConsole.msg
-            "\n\
-            \  In normal operation, opam only alters files within ~%s.opam.\n\
-             \n\
-            \  However, to best integrate with your system, some environment variables\n\
-            \  should be set. If you allow it to, this initialisation step will update\n\
-            \  your %s configuration by adding the following line to %s:\n\
-             \n\
-            \    %s\
-             \n\
-            \  Otherwise, every time you want to access your opam installation, you will\n\
-            \  need to run:\n\
-             \n\
-            \    %s\n\
-             \n\
-            \  You can always re-run this setup with 'opam init' later.\n\n"
+          ("adding the following line to ", "")
       in
-      msg
+      let dot_profile =
+        if shell = SH_cmd then
+          OpamFilename.remove_prefix (OpamFilename.cwd ()) dot_profile |> OpamFilename.raw
+        else
+          dot_profile
+      in
+      let pretty_dot_profile =
+        (*
+         * It might be better to check to see if there's an existing value already there, but
+         * AutoRun is not commonly used at *user* level (and HKLM AutoRun would be unaffected)
+         *)
+        if shell = SH_cmd then
+          "HKCU\\" ^ OpamFilename.to_string dot_profile
+        else
+          OpamFilename.prettify dot_profile
+      in
+      OpamConsole.msg
+        "\n\
+        \  In normal operation, opam only alters files within ~%s.opam.\n\
+         \n\
+        \  However, to best integrate with your system, some environment variables\n\
+        \  should be set. If you allow it to, this initialisation step will update\n\
+        \  your %s configuration by %s%s%s:\n\
+         \n\
+        \    %s\
+         \n\
+        \  Otherwise, every time you want to access your opam installation, you will\n\
+        \  need to run:\n\
+         \n\
+        \    %s\n\
+         \n\
+        \  You can always re-run this setup with 'opam init' later.\n\n"
         Filename.dir_sep
         (OpamConsole.colorise `bold @@ string_of_shell shell)
-        (OpamConsole.colorise `cyan @@ OpamFilename.prettify dot_profile)
+        verb
+        (OpamConsole.colorise `cyan @@ pretty_dot_profile)
+        suffix
         (OpamConsole.colorise `bold @@ source root shell (init_file shell))
         (OpamConsole.colorise `bold @@ shell_eval_string shell);
       if OpamCoreConfig.(!r.answer = Some true) then begin
@@ -738,10 +757,13 @@ let setup
       end else
         match
           OpamConsole.read
-            "Do you want opam to modify %s? [N/y/f]\n\
-             (default is 'no', use 'f' to choose a different file)"
-            (OpamFilename.prettify dot_profile)
+            "Do you want opam to modify %s? [N/y%s]\n\
+             (default is 'no'%s)"
+            pretty_dot_profile
+            (if shell = SH_cmd then "" else "/f")
+            (if shell = SH_cmd then "" else ", use 'f' to choose a different file")
         with
+        | None when OpamCoreConfig.(!r.answer <> None) -> update (Some dot_profile)
         | Some ("y" | "Y" | "yes"  | "YES" ) -> Some dot_profile
         | Some ("f" | "F" | "file" | "FILE") ->
           begin
