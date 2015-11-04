@@ -652,6 +652,7 @@ let setup_interactive root ~dot_profile shell =
        (default is 'no', use 'f' to choose a different file)"
       (OpamFilename.prettify dot_profile)
   with
+  | None when OpamCoreConfig.(!r.answer <> None) -> update (Some dot_profile)
   | Some ("y" | "Y" | "yes"  | "YES" ) -> update (Some dot_profile)
   | Some ("f" | "F" | "file" | "FILE") ->
     begin match OpamConsole.read "  Enter the name of the file to update:" with
