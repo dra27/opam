@@ -2160,7 +2160,7 @@ let mem_pattern_in_string ~pattern ~string =
 
 let ocamlinit () =
   try
-    let file = Filename.concat (OpamStd.Env.get "HOME") ".ocamlinit" in
+    let file = Filename.concat (OpamStd.Sys.home ()) ".ocamlinit" in
     Some (OpamFilename.of_string file)
   with Not_found ->
     None
