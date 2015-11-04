@@ -479,7 +479,7 @@ let update_dot_profile root dot_profile shell =
 (* A little bit of remaining OCaml specific stuff. Can we find another way ? *)
 let ocamlinit () =
   try
-    let file = Filename.concat (OpamStd.Env.get "HOME") ".ocamlinit" in
+    let file = Filename.concat (OpamStd.Sys.home ()) ".ocamlinit" in
     Some (OpamFilename.of_string file)
   with Not_found ->
     None
