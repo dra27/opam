@@ -1841,13 +1841,35 @@ let json_out () =
         (Printexc.to_string e)
 
 let () =
-  OpamStd.Sys.at_exit (fun () ->
-      flush stderr;
-      flush stdout;
-      if OpamClientConfig.(!r.print_stats) then (
-        OpamFile.Stats.print ();
-        OpamSystem.print_stats ();
+  (* It is imperative for Windows that opam config env --autorun does nothing on
+   * stdout/stderr and always exits with code 0. For this reason, the actual command
+   * is completely executed outside the normal framework for the client. *)
+  if OpamStd.Sys.(os () = Win32) && Array.length Sys.argv = 4 &&
+         Sys.argv.(1) = "config" &&
+         Sys.argv.(2) = "env" &&
+         Sys.argv.(3) = "--autorun" then
+    try
+      OpamStd.Option.iter OpamVersion.set_git OpamGitVersion.version;
+      OpamClientConfig.opam_init ();
+      let gt = OpamGlobalState.load `Lock_none in
+      let rt = OpamRepositoryState.load `Lock_none gt in
+      match OpamStateConfig.(!r.current_switch) with
+        Some sw ->
+          let st = OpamSwitchState.load `Lock_none gt rt sw in
+          OpamEnv.set_cmd_env (OpamEnv.get_opam ~force_path:true st)
+      | None ->
+          ()
+    with _ ->
+      ()
+  else begin
+    OpamStd.Sys.at_exit (fun () ->
+        flush stderr;
+        flush stdout;
+        if OpamClientConfig.(!r.print_stats) then (
+          OpamFile.Stats.print ();
+          OpamSystem.print_stats ();
+        );
+        json_out ()
       );
-      json_out ()
-    );
-  run default commands
+    run default commands
+  end

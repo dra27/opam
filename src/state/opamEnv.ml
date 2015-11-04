@@ -289,6 +289,8 @@ let source root ~shell ?(interactive_only=false) f =
       Printf.sprintf "source %s >& /dev/null || true\n" (file f)
     | `fish ->
       Printf.sprintf "source %s > /dev/null 2> /dev/null; or true\n" (file f)
+    | `cmd ->
+      Printf.sprintf "opam config env --autorun"
     | _ ->
       Printf.sprintf "test -x %s && . %s > /dev/null 2> /dev/null || true\n"
         (file f) (file f)
@@ -492,8 +494,8 @@ let status_of_init_file root init_sh =
   ) else
     None
 
-let dot_profile_needs_update root dot_profile =
-  if not (OpamFilename.exists dot_profile) then `yes else
+let dot_profile_needs_update root dot_profile shell =
+  if not (OpamFilename.exists dot_profile) || shell = `cmd then `yes else
   let body = OpamFilename.read dot_profile in
   let pattern1 = "opam config env" in
   let pattern2 = OpamFilename.to_string (OpamPath.init root // "init") in
@@ -511,7 +513,7 @@ let dot_profile_needs_update root dot_profile =
 
 let update_dot_profile root dot_profile shell =
   let pretty_dot_profile = OpamFilename.prettify dot_profile in
-  match dot_profile_needs_update root dot_profile with
+  match dot_profile_needs_update root dot_profile shell with
   | `no        -> OpamConsole.msg "  %s is already up-to-date.\n" pretty_dot_profile
   | `otherroot ->
     OpamConsole.msg
@@ -528,9 +530,9 @@ let update_dot_profile root dot_profile shell =
     let body =
       Printf.sprintf
         "%s\n\n\
-         # OPAM configuration\n\
+         %s OPAM configuration\n\
          %s"
-        (OpamStd.String.strip body) (source root ~shell init_file) in
+        (OpamStd.String.strip body) (rem shell) (source root ~shell init_file) in
     OpamFilename.write dot_profile body
 
 (* A little bit of remaining OCaml specific stuff. Can we find another way ? *)
@@ -584,8 +586,14 @@ let update_user_setup root ~ocamlinit ?dot_profile shell =
   if ocamlinit || dot_profile <> None then (
     OpamConsole.msg "User configuration:\n";
     if ocamlinit then update_ocamlinit ();
-    if shell <> `cmd then
-      OpamStd.Option.iter (fun f -> update_dot_profile root f shell) dot_profile
+    let f f =
+      if shell = `cmd then
+        let value = source root ~shell (init_file shell) in
+          let f = OpamFilename.to_string f in
+          OpamStd.Win32.(writeRegistry RegistryHive.HKEY_CURRENT_USER (Filename.dirname f) (Filename.basename f) RegistryHive.REG_SZ value)
+      else
+        update_dot_profile root f shell in
+    OpamStd.Option.iter f dot_profile
   )
 
 let display_setup root ~dot_profile shell =
@@ -597,7 +605,7 @@ let display_setup root ~dot_profile shell =
     let ocamlinit_status =
       if ocamlinit_needs_update () then not_set else ok in
     let dot_profile_status =
-      match dot_profile_needs_update root dot_profile with
+      match dot_profile_needs_update root dot_profile shell with
       | `no        -> ok
       | `yes       -> not_set
       | `otherroot -> error in
@@ -635,12 +643,25 @@ let print_env_warning_at_init gt ~ocamlinit ?dot_profile shell =
       if shell <> `cmd then
         (true, "2.", "3.")
       else
-        (false, "n/a", "1.") in
+        (false, "1.", "2.") in
   let profile_string = match dot_profile with
     | None -> ""
     | Some f ->
         if shell = `cmd then
-          ""
+          let command =
+            let command = source gt.root ~shell:shell (init_file shell) in
+            String.sub command 0 (String.length command - 1) in
+          Printf.sprintf
+            "%s To correctly configure OPAM for subsequent use, update\n\
+            \   HKCU\\Software\\Microsoft\\Command Processor\\AutoRun to the following:\n\
+             \n\
+            \      %s\n\
+             \n\
+            \   for example, by running:\n\
+             \n\
+            \      reg add \"HKCU\\Software\\Microsoft\\Command Processor\" /v AutoRun /d \"%s\"\n\n"
+            (OpamConsole.colorise `yellow profile_index)
+            command command
         else
           Printf.sprintf
             "%s To correctly configure OPAM for subsequent use, add the following\n\
@@ -705,33 +726,39 @@ let setup_interactive root ~dot_profile shell =
   OpamConsole.msg "\n";
 
   let pretty_dot_profile =
+    (*
+     * It might be better to check to see if there's an existing value already there, but
+     * AutoRun is not commonly used at *user* level (and HKLM AutoRun would be unaffected)
+     *)
     if shell = `cmd then
-      ""
+      "HKCU\\" ^ OpamFilename.prettify dot_profile
     else
       OpamFilename.prettify dot_profile in
 
   let dot_profile_msg =
     if shell = `cmd then
-      ""
+      Printf.sprintf
+        "  - %s to set the right\n\
+        \    environment variables for the Command Prompt on startup.\n"
+        (OpamConsole.colorise `cyan @@ ("HKCU\\" ^ OpamFilename.prettify dot_profile))
     else
       Printf.sprintf
         "\n  - %s (or a file you specify) to set the right environment\n\
         \    variables and to load the auto-completion scripts for your shell (%s)\n\
-        \    on startup. Specifically, it checks for and appends the following line:\n\
-        \n\
-        \    %s"
+        \    on startup. Specifically, it checks for and appends the following line:\n"
         (OpamConsole.colorise `cyan @@ pretty_dot_profile)
-        (OpamConsole.colorise `bold @@ OpamTypesBase.string_of_shell shell)
-        (source root ~shell (init_file shell)) in
+        (OpamConsole.colorise `bold @@ OpamTypesBase.string_of_shell shell) in
 
   match OpamConsole.read
       "In normal operation, OPAM only alters files within ~%s.opam.\n\
        \n\
-       During this initialisation, you can allow OPAM to add information to %s\n\
-       other file%s for best results. You can also make these additions manually\n\
+       During this initialisation, you can allow OPAM to add information to two\n\
+       other %s for best results. You can also make these additions manually\n\
        if you wish.\n\
        \n\
        If you agree, OPAM will modify:\n\n%s\
+      \    %s\
+      \n\
       \  - %s to ensure that non-system installations of `ocamlfind`\n\
       \    (i.e. those installed by OPAM) will work correctly when running the\n\
       \    OCaml toplevel. It does this by adding $OCAML_TOPLEVEL_PATH to the list\n\
@@ -744,16 +771,15 @@ let setup_interactive root ~dot_profile shell =
        \   opam config setup -a\n\
        \n\
       \n\
-       Do you want OPAM to modify %s%s~%s.ocamlinit?\n\
+       Do you want OPAM to modify %s and ~%s.ocamlinit?\n\
        (default is 'no'%s)\n\
       \    [N/y%s]"
       Filename.dir_sep
-      (if shell = `cmd then "one" else "two")
-      (if shell = `cmd then "" else "s")
+      (if shell = `cmd then "places" else "files")
       dot_profile_msg
+      (source root ~shell (init_file shell))
       (OpamConsole.colorise `cyan @@ Printf.sprintf "~%s.ocamlinit" Filename.dir_sep)
       pretty_dot_profile
-      (if shell = `cmd then "" else " and ")
       Filename.dir_sep
       (if shell = `cmd then "" else Printf.sprintf ", use 'f' to name a file other than %s" (OpamFilename.prettify dot_profile))
       (if shell = `cmd then "" else "/f")
