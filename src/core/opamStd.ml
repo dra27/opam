@@ -941,6 +941,8 @@ module OpamSys = struct
       let cshrc = home ".cshrc" in
       let tcshrc = home ".tcshrc" in
       if Sys.file_exists cshrc then cshrc else tcshrc
+    | `cmd ->
+        "Software\\Microsoft\\Command Processor\\AutoRun"
     | _     -> home ".profile"
 
 
