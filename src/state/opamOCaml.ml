@@ -61,12 +61,12 @@ let exists_alongside_ocamlc name =
   let ocamlc_dir =
     List.fold_left (function
         | None -> fun d ->
-          if Sys.file_exists (Filename.concat d "ocamlc") then Some d else None
+          if Sys.file_exists (OpamStd.Sys.executable_name (Filename.concat d "ocamlc")) then Some d else None
         | s -> fun _ -> s)
       None path
   in
   match ocamlc_dir with
-  | Some d -> Sys.file_exists (Filename.concat d name)
+  | Some d -> Sys.file_exists (OpamStd.Sys.executable_name (Filename.concat d name))
   | None -> false
 
 let ocaml_version = lazy (ocaml_cmd ~system:false "-version")
