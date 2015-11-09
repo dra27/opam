@@ -31,6 +31,12 @@ let rsync_trim = function
     | _ :: _ :: _ :: l -> List.filter ((<>) "./") l
     | _ -> []
 
+let convert_path =
+  if OpamStd.Sys.(os () = Win32) && OpamStd.Sys.is_cygwin_variant "rsync.exe" = `Cygwin then
+    OpamSystem.apply_cygpath
+  else
+    fun x -> x
+
 let call_rsync check args =
   OpamSystem.make_command "rsync" args
   @@> fun r ->
@@ -80,7 +86,7 @@ let rsync ?(args=[]) ?(exclude_vcdirs=true) src dst =
     OpamSystem.mkdir dst;
     call_rsync (fun () -> not (OpamSystem.dir_is_empty dst))
       ( rsync_arg :: args @ exclude_args @
-        [ "--delete"; src; dst; ])
+        [ "--delete"; convert_path src; convert_path dst; ])
     @@| function
     | None -> Not_available src
     | Some [] -> Up_to_date []
@@ -111,7 +117,7 @@ let rsync_file ?(args=[]) url dst =
     Done (Up_to_date dst)
   else
   call_rsync (fun () -> Sys.file_exists dst_s)
-    ( rsync_arg :: args @ [ src_s; dst_s ])
+    ( rsync_arg :: args @ [ convert_path src_s; convert_path dst_s ])
   @@| function
   | None -> Not_available src_s
   | Some [] -> Up_to_date dst
