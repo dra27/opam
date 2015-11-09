@@ -26,6 +26,8 @@ module type VCS = sig
   val vc_dir: repository -> dirname
 end
 
+let convert_path =
+  OpamSystem.get_cygpath_function ~command:"rsync"
 
 module Make (VCS: VCS) = struct
 
@@ -62,7 +64,7 @@ module Make (VCS: VCS) = struct
         if not (OpamStd.String.Set.mem basename fset)
         then OpamFilename.remove f)
       (OpamFilename.rec_files repo.repo_root);
-    OpamLocal.rsync_dirs ~args:["--files-from"; stdout_file]
+    OpamLocal.rsync_dirs ~args:["--files-from"; (Lazy.force convert_path) stdout_file]
       ~exclude_vcdirs:false
       repo.repo_url repo.repo_root
     @@+ fun dl ->
