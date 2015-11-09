@@ -495,6 +495,8 @@ end
 module OpamSys = struct
 
   let with_process_in cmd args f =
+    if Sys.os_type = "Win32" then
+      assert false;
     let path = ["/bin";"/usr/bin"] in
     let cmd =
       List.find Sys.file_exists (List.map (fun d -> Filename.concat d cmd) path)
@@ -552,12 +554,24 @@ module OpamSys = struct
     with Unix.Unix_error _ | Sys_error _ | Not_found ->
       None
 
-  let uname_m () =
-    try
-      with_process_in "uname" "-m"
-        (fun ic -> Some (OpamString.strip (input_line ic)))
-    with Unix.Unix_error _ | Sys_error _ | Not_found ->
-      None
+  let uname_m =
+    if Sys.os_type = "Win32" then
+      let res =
+        (*
+         * Note that ocamlc -config has i386/amd64 instead of i686/x86_64
+         *)
+        if Sys.word_size = 32 then
+          Some "i686"
+        else
+          Some "x86_64" in
+      fun () -> res
+    else
+      fun () ->
+        try
+          with_process_in "uname" "-m"
+            (fun ic -> Some (OpamString.strip (input_line ic)))
+        with Unix.Unix_error _ | Sys_error _ | Not_found ->
+          None
 
   type os =
     | Darwin
