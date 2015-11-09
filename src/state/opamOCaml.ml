@@ -60,7 +60,7 @@ let where_is_ocamlc = lazy (
   let path = OpamStd.String.split path (OpamStd.Sys.path_sep ()) in
   List.fold_left (function
       | None -> fun d ->
-        let f = Filename.concat d "ocamlc" in
+        let f = OpamStd.Sys.executable_name (Filename.concat d "ocamlc") in
         if Sys.file_exists f then Some d else None
       | s -> fun _ -> s)
     None path
@@ -70,7 +70,7 @@ let exists_alongside_ocamlc name =
   match Lazy.force where_is_ocamlc with
   | Some ocamlc ->
     Sys.file_exists
-      (Filename.concat (Filename.dirname ocamlc) name)
+      (OpamStd.Sys.executable_name (Filename.concat (Filename.dirname ocamlc) name))
   | None -> false
 
 let ocaml_version = lazy (ocaml_cmd ~system:false "-version")
