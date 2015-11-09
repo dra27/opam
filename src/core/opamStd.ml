@@ -536,11 +536,14 @@ module Win32 = struct
   external getStdHandle : int -> handle = "OPAMW_GetStdHandle"
   external getConsoleScreenBufferInfo : handle -> console_screen_buffer_info = "OPAMW_GetConsoleScreenBufferInfo"
   external setConsoleTextAttribute : handle -> int -> unit = "OPAMW_SetConsoleTextAttribute"
+  external isWoW64 : unit -> bool = "OPAMW_IsWoW64"
 end
 
 module OpamSys = struct
 
   let with_process_in cmd args f =
+    if Sys.os_type = "Win32" then
+      assert false;
     let path = ["/bin";"/usr/bin"] in
     let cmd =
       List.find Sys.file_exists (List.map (fun d -> Filename.concat d cmd) path)
@@ -611,12 +614,21 @@ module OpamSys = struct
     with Unix.Unix_error _ | Sys_error _ | Not_found ->
       None
 
-  let uname_m () =
-    try
-      with_process_in "uname" "-m"
-        (fun ic -> Some (OpamString.strip (input_line ic)))
-    with Unix.Unix_error _ | Sys_error _ | Not_found ->
-      None
+  let uname_m =
+    if Sys.os_type = "Win32" then
+      let res =
+        if Sys.word_size = 32 && not (Win32.isWoW64 ()) then
+          Some "i686"
+        else
+          Some "x86_64" in
+      fun () -> res
+    else
+      fun () ->
+        try
+          with_process_in "uname" "-m"
+            (fun ic -> Some (OpamString.strip (input_line ic)))
+        with Unix.Unix_error _ | Sys_error _ | Not_found ->
+          None
 
   type os =
     | Darwin
