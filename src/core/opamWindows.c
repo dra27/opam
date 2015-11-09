@@ -31,6 +31,27 @@ static struct custom_operations HandleOps =
 
 #define HANDLE_val(v) (*((HANDLE*)Data_custom_val(v)))
 
+typedef BOOL (WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
+
+static LPFN_ISWOW64PROCESS IsWoW64Process = NULL;
+
+static BOOL CurrentProcessIsWoW64(void)
+{
+  /*
+   * 32-bit versions may or may not have IsWow64Process (depends on age). Recommended way is to use
+   * GetProcAddress to obtain IsWow64Process, rather than relying on Windows.h.
+   * See http://msdn.microsoft.com/en-gb/library/windows/desktop/ms684139.aspx
+   */
+  if (IsWoW64Process || (IsWoW64Process = (LPFN_ISWOW64PROCESS)GetProcAddress(GetModuleHandle("kernel32"), "IsWow64Process")))
+  {
+    BOOL output;
+    if (IsWoW64Process(GetCurrentProcess(), &output))
+      return output;
+  }
+
+  return FALSE;
+}
+
 #define OPAMreturn CAMLreturn
 
 #else
@@ -111,4 +132,11 @@ CAMLprim value OPAMW_SetConsoleTextAttribute(value hConsoleOutput, value wAttrib
 #endif
 
   OPAMreturn(Val_unit);
+}
+
+CAMLprim value OPAMW_IsWoW64(value unit)
+{
+  CAMLparam1(unit);
+
+  OPAMreturn(Val_bool(CurrentProcessIsWoW64()));
 }
