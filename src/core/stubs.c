@@ -594,3 +594,13 @@ CAMLprim value OPAMW_IsWoW64Mismatch(value unit)
 
   CAMLreturn(Val_int((pidWoW64 != ppidWoW64 ? entry.th32ParentProcessID : 0)));
 }
+
+/* These empty stubs are required for Unix only
+CAMLprim value win_create_process_native(value cmd, value cmdline, value env, value fd1, value fd2, value fd3)
+{
+  CAMLparam5(cmd, cmdline, env, fd1, fd2); CAMLxparam1(fd3);
+
+CAMLprim value win_create_process(value * argv, int argn)
+{
+
+*/
