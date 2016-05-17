@@ -268,3 +268,9 @@ val classify_executable : string -> [ `Exe of [ `i386 | `x86 | `x86_64 ]
                                     | `Dll of [ `x86 | `x86_64 ]
                                     | `Script
                                     | `Unknown ]
+
+val get_installed : unit -> string list
+
+(** [scan_dir ignore dir] returns a set of the files found in [dir] but does not
+    recurse into directory [ignore]. Symbolic links are not followed. *)
+val scan_dir : ?ignore:string -> dir:string -> unit -> OpamStd.String.Set.t

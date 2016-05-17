@@ -670,6 +670,36 @@ let confirmation ?ask requested solution =
     OpamPackage.Name.Set.equal requested solution_packages
     || OpamConsole.confirm "Do you want to continue ?"
 
+let report_sanity ~bin current initial =
+  let new_files = OpamStd.String.Set.diff current initial in
+  let f file =
+    (* See similar process in OpamSystem.install *)
+    let cygcheck =
+      match OpamSystem.classify_executable file with
+        `Exe _ ->
+          if not (Filename.check_suffix file ".exe") then
+            if OpamFilename.starts_with bin (OpamFilename.of_string file) then
+              OpamConsole.warning "%s is executable but doesn't end .exe (almost certainly a packaging error)" file;
+          (* TODO Could ensure that these appear to be in the correct directory (cf. OpamSystem.install)? *)
+          true
+      | `Dll _ ->
+          (* TODO Could ensure that these appear to be in the correct directory (cf. OpamSystem.install)? *)
+          true
+      | `Script ->
+          OpamConsole.warning "%s is a script; the command won't be available" file;
+          false
+      | `Unknown ->
+          false in
+    if cygcheck then
+      match OpamStd.Sys.is_cygwin_variant file with
+        `Native ->
+          ()
+      | `Cygwin ->
+          OpamConsole.warning "%s is a Cygwin-linked image" file
+      | `CygLinked ->
+          OpamConsole.warning "%s links with a Cygwin-compiled DLL (almost certainly a packaging or environment error)" file in
+  List.iter f (OpamStd.String.Set.elements new_files)
+
 (* Apply a solution *)
 let apply ?ask t action ~requested solution =
   log "apply";
@@ -729,7 +759,16 @@ let apply ?ask t action ~requested solution =
               confirmation ?ask requested action_graph
     then (
       (* print_variable_warnings t; *)
-      parallel_apply t action action_graph
+      let scan =
+        if OpamStd.Sys.(os () = Win32) then
+          OpamSystem.scan_dir ~ignore:(OpamFilename.Dir.to_string (OpamPath.Switch.meta t.switch_global.root t.switch)) ~dir:(OpamFilename.Dir.to_string (OpamPath.Switch.root t.switch_global.root t.switch))
+        else
+          fun () -> OpamStd.String.Set.empty in
+      let initial = scan () in
+      let result = parallel_apply t action action_graph in
+      let current = scan () in
+      report_sanity ~bin:(OpamPath.Switch.Default.bin t.switch_global.root t.switch) current (OpamStd.String.Set.union initial (OpamStd.String.Set.of_list (OpamSystem.get_installed ())));
+      result
     ) else
       t, Aborted
   )
