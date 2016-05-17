@@ -23,6 +23,7 @@ let global_variable_names = [
                            configuration";
   "arch",                 "The current arch, as returned by \"uname -m\"";
   "root",                 "The current opam root directory";
+  "exe",                  "Suffix needed for executable filenames (Windows)"
 ]
 
 let package_variable_names = [
@@ -64,6 +65,7 @@ let resolve_global gt full_var =
       | "opam-version"  -> Some (V.string OpamVersion.(to_string current))
       | "jobs"          -> Some (V.int (OpamFile.Config.jobs gt.config))
       | "root"          -> Some (V.string (OpamFilename.Dir.to_string gt.root))
+      | "exe"           -> Some (V.string (OpamStd.Sys.executable_name ""))
       | _               -> None
 
 (** Resolve switch-global variables only, as allowed by the 'available:'
