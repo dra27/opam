@@ -123,6 +123,8 @@ module Option: sig
 
   val default_map: 'a option -> 'a option -> 'a option
 
+  val map_default: ('a -> 'b) -> 'b -> 'a option -> 'b
+
   val compare: ('a -> 'a -> int) -> 'a option -> 'a option -> int
 
   val to_string: ?none:string -> ('a -> string) -> 'a option -> string
@@ -206,6 +208,7 @@ module String : sig
   val contains_char: string -> char -> bool
   val contains: sub:string -> string -> bool
   val exact_match: Re.re -> string -> bool
+  val find_from: (char -> bool) -> string -> int -> int
 
   (** {3 Manipulation} *)
 
@@ -451,6 +454,9 @@ module Sys : sig
   (** The user's home directory. Queried lazily *)
   val home: unit -> string
 
+  (** The system directory (Windows only) *)
+  val system: unit -> string
+
   type os = Darwin
           | Linux
           | FreeBSD
@@ -482,6 +488,9 @@ module Sys : sig
   (** The separator character used in the PATH variable (varies depending on
       OS) *)
   val path_sep: unit -> char
+
+  (** Return the list of directories currently in the given PATH *)
+  val get_path_dirs: string -> string list
 
   (** Return the full path to a command in the environment. *)
   val search_path_for_command: ?env:string array -> string -> string
