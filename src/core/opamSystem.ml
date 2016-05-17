@@ -455,21 +455,31 @@ let read_command_output ?verbose ?env ?metadata ?allow_stdin cmd =
 let verbose_for_base_commands () =
   OpamCoreConfig.(!r.verbose_level) >= 3
 
-let copy src dst =
-  if (try Sys.is_directory src
-      with Sys_error _ -> raise (File_not_found src))
-  then internal_error "Cannot copy %s: it is a directory." src;
-  if (try Sys.is_directory dst with Sys_error _ -> false)
-  then internal_error "Cannot copy to %s: it is a directory." dst;
-  if Sys.file_exists dst
-  then remove_file dst;
-  mkdir (Filename.dirname dst);
-  command ~verbose:(verbose_for_base_commands ()) ["cp"; src; dst ]
+let cygify f =
+  if OpamStd.Sys.(os () = Win32) then
+    List.map (Lazy.force f)
+  else
+    fun x -> x
 
-let mv src dst =
-  if Sys.file_exists dst then remove_file dst;
-  mkdir (Filename.dirname dst);
-  command ~verbose:(verbose_for_base_commands ()) ["mv"; src; dst ]
+let copy =
+  let f = get_cygpath_function ~command:"cp" in
+  fun src dst ->
+    if (try Sys.is_directory src
+        with Sys_error _ -> raise (File_not_found src))
+    then internal_error "Cannot copy %s: it is a directory." src;
+    if (try Sys.is_directory dst with Sys_error _ -> false)
+    then internal_error "Cannot copy to %s: it is a directory." dst;
+    if Sys.file_exists dst
+    then remove_file dst;
+    mkdir (Filename.dirname dst);
+    command ~verbose:(verbose_for_base_commands ()) ("cp"::(cygify f [src; dst ]))
+
+let mv =
+  let f = get_cygpath_function ~command:"mv" in
+  fun src dst ->
+    if Sys.file_exists dst then remove_file dst;
+    mkdir (Filename.dirname dst);
+    command ~verbose:(verbose_for_base_commands ()) ("mv"::(cygify f [src; dst ]))
 
 let is_exec file =
   let stat = Unix.stat file in
@@ -551,8 +561,42 @@ let install ?exec src dst =
   let exec = match exec with
     | Some e -> e
     | None -> is_exec src in
-  command ("install" :: "-m" :: (if exec then "0755" else "0644") ::
-     [ src; dst ])
+  begin
+    if OpamStd.Sys.(os () = Win32) then
+      if exec then begin
+        let (dst, cygcheck) =
+          match classify_executable src with
+            `Exe _ ->
+              if not (Filename.check_suffix dst ".exe") then begin
+                OpamConsole.warning "Automatically adding .exe to %s" dst;
+                (dst ^ ".exe", true)
+              end else
+                (dst, true)
+          | `Dll _ ->
+              (* TODO Installation of .dll to bin is unfortunate, but not sure if it should be a warning *)
+              (dst, true)
+          | `Script ->
+              (* TODO Generate a .cmd wrapper (and warn about it - they're not perfect) *)
+              OpamConsole.warning "%s is a script; the command won't be available" dst;
+              (dst, false)
+          | `Unknown ->
+              (* TODO Installation of a non-executable file is unexpected, but not sure if it should be a warning/error *)
+              (dst, false) in
+        copy src dst;
+        if cygcheck then
+          match OpamStd.Sys.is_cygwin_variant dst with
+            `Native ->
+              ()
+          | `Cygwin ->
+              OpamConsole.warning "%s is a Cygwin-linked executable" dst
+          | `CygLinked ->
+              OpamConsole.warning "%s links with a Cygwin-compiled DLL (almost certainly a packaging or environment error)" dst
+      end else
+        copy src dst
+    else
+      command ("install" :: "-m" :: (if exec then "0755" else "0644") ::
+         [ src; dst ])
+  end
 
 let cpu_count () =
   try
