@@ -272,3 +272,12 @@ val register_printer: unit -> unit
     lib may not perform properly without this if [Sys.catch_break] isn't set
     and SIGPIPE isn't handled (with a no-op) *)
 val init: unit -> unit
+
+(** Identifies kinds of executable files. At present, only useful on Windows.
+    Executable or DLLs are recognised based on their content, not on their
+    filename. Any file beginning "#!" is assumed to be a shell script and all
+    files are classified [`Unknown]. *)
+val classify_executable : string -> [ `Exe of [ `i386 | `x86 | `x86_64 ]
+                                    | `Dll of [ `x86 | `x86_64 ]
+                                    | `Script
+                                    | `Unknown ]
