@@ -417,6 +417,21 @@ module OpamString = struct
     with Not_found ->
       false
 
+  let find_from f s i =
+    let l = String.length s in
+    if i < 0 || i > l then
+      invalid_arg "find_from"
+    else
+      let rec g i =
+        if i < l then
+          if f s.[i] then
+            i
+          else
+            g (succ i)
+        else
+          raise Not_found in
+      g i
+
   let map f s =
     let len = String.length s in
     let b = Bytes.create len in
@@ -652,6 +667,10 @@ module OpamSys = struct
         Hashtbl.add memo arg r;
         r
 
+  let system () =
+    (* CSIDL_SYSTEM = 0x25 *)
+    OpamStubs.(shGetFolderPath 0x25 SHGFP_TYPE_CURRENT)
+
   type os =
     | Darwin
     | Linux
@@ -754,18 +773,19 @@ module OpamSys = struct
     if is_windows then fun path ->
       let length = String.length path in
       let rec f acc index current last normal =
-        if index = length
-        then let current = current ^ String.sub path last (index - last) in
-          if current <> "" then current::acc else acc
-        else let c = path.[index]
+        if index = length then
+          let current = current ^ String.sub path last (index - last) in
+          List.rev (if current <> "" then current::acc else acc)
+        else
+          let c = path.[index]
           and next = succ index in
           if c = ';' && normal || c = '"' then
             let current = current ^ String.sub path last (index - last) in
             if c = '"' then
               f acc next current next (not normal)
             else
-            let acc = if current = "" then acc else current::acc in
-            f acc next "" next true
+              let acc = if current = "" then acc else current::acc in
+              f acc next "" next true
           else
             f acc next current last normal in
       f [] 0 "" 0 true
