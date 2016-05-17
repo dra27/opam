@@ -697,6 +697,7 @@ let global_variable_names = [
   "ocaml-native-dynlink", "Whether native dynlink is available on this \
                            installation";
   "arch",                 "The current arch, as returned by \"uname -m\"";
+  "exe",                  "Suffix needed for executable filenames (Windows)"
 ]
 let package_variable_names = [
   "name",      "Name of the package";
@@ -815,6 +816,7 @@ let rec resolve_variable t ?opam:opam_arg local_variables v =
                 (OpamPath.Switch.lib_dir t.root t.switch t.switch_config
                  / "ocaml" // "dynlink.cmxa"))
     | "arch"          -> string (OpamStd.Sys.arch ())
+    | "exe"           -> string (OpamStd.Sys.executable_name "")
     | _               -> None
   in
   let get_package_var v =
