@@ -49,4 +49,4 @@ archives:
 	cd $* ; MAKEFLAGS= ../../shell/bootstrap-ocaml.sh $* win
 
 ../opam-%.zip: %/opam/bin/opam.exe
-	cd $*/opam/bin ; zip -u ../../../$@ *
+	cd $*/opam/bin ; zip -ju ../../../$@ ../../../COPYRIGHT.md ../../../LICENSE *

@@ -1,0 +1,26 @@
+# OPAM - A package manager for OCaml
+
+## Copyright and license
+
+This binary release of OPAM is released under the terms of the GNU General
+Public License version 3.0, the full text of which may be found in the file
+LICENSE which should have been included with this distribution. Full source code
+is freely available from https://github.com/dra27/opam/tree/windows
+
+Patches adding native Windows support may be identified from the source
+repository by executing the command `git format-patch master...windows` from
+within a clone of this repository. These patches are Copyright 2015, 2016
+MetaStack Solutions Ltd.
+
+The version comparison function in `src/core/opamVersionCompare.ml` is part of
+the Dose library and Copyright 2011 Ralf Treinen.
+
+All other code is:
+
+Copyright 2012-2015 OCamlPro
+Copyright 2012 INRIA
+
+OPAM is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.

@@ -174,6 +174,8 @@ win-compilers: bootstrap/Makefile
 bootstrap/Makefile:
 	mkdir -p bootstrap
 	ln -sf ../Makefile.win-compilers bootstrap/Makefile
+	ln -sf ../LICENSE.msl bootstrap/LICENSE
+	ln -sf ../COPYRIGHT.windows bootstrap/COPYRIGHT.md
 
 JOBS=$(shell expr 4 \* $(NUMBER_OF_PROCESSORS))
 
