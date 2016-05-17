@@ -211,6 +211,14 @@ The release cycle respects [Semantic Versioning](http://semver.org/).
 
 ## Copyright and license
 
+Patches adding native Windows support are at present under a different copyright
+and licence. The code for these patches may be identified using the Git
+repository https://github.com/dra27/opam and consists of all commits (in any
+branch) whose tree includes this message and the file LICENSE.msl. The patches
+are Copyright 2015, 2016 MetaStack Solutions Ltd. and are released under the GNU
+General Public Licence version 3.0 (please see the file in LICENSE.msl for the
+full text of this license).
+
 The version comparison function in `src/core/opamVersionCompare.ml` is part of
 the Dose library and Copyright 2011 Ralf Treinen. Some code in
 `src/core/opamJson.ml` is taken from the documentation of `Jsonm` and is
