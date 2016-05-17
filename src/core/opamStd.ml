@@ -417,6 +417,21 @@ module OpamString = struct
     with Not_found ->
       false
 
+  let find_from f s i =
+    let l = String.length s in
+    if i < 0 || i > l then
+      invalid_arg "find_from"
+    else
+      let rec g i =
+        if i < l then
+          if f s.[i] then
+            i
+          else
+            g (succ i)
+        else
+          raise Not_found in
+      g i
+
   let map f s =
     let len = String.length s in
     let b = Bytes.create len in
@@ -765,6 +780,10 @@ module OpamSys = struct
     fun () -> Lazy.force home
 
   let etc () = "/etc"
+
+  let system () =
+    (* CSIDL_SYSTEM = 0x25; SHGFP_TYPE_CURRENT = 0x0 *)
+    Win32.shGetFolderPath 0x25 0
 
   let uname_s () =
     try
