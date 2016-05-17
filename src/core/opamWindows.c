@@ -130,6 +130,17 @@ char* InjectSetEnvironmentVariable(DWORD pid, char* key, char* val);
 
 #else
 
+/* Dummy stubs required for non-Windows builds */
+CAMLprim value win_create_process_native(value cmd, value cmdline, value env, value fd1, value fd2, value fd3)
+{
+  return Val_unit;
+}
+
+CAMLprim value win_create_process(value * argv, int argn)
+{
+  return Val_unit;
+}
+
 #define OPAMreturn(v) CAMLreturn(Val_unit)
 
 #endif
