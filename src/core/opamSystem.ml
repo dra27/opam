@@ -537,6 +537,10 @@ let classify_executable file =
     close_in c;
     `Unknown
 
+let installed = ref []
+
+let get_installed () = !installed
+
 let install ?exec src dst =
   if Sys.is_directory src then
     internal_error "Cannot install %s: it is a directory." src;
@@ -581,7 +585,8 @@ let install ?exec src dst =
     else
       command ("install" :: "-m" :: (if exec then "0755" else "0644") ::
          [ src; dst ])
-  end
+  end;
+  installed := dst::!installed
 
 let cpu_count () =
   try
@@ -724,6 +729,39 @@ let link src dst =
       copy src dst
   ) else
     internal_error "link: %s does not exist." src
+
+let scan_dir ?(ignore="") ~dir () =
+  (* COMBAK Loops - should rely on stat working (i.e. 4.03+ for Windows) and record hardlinks? *)
+  let rec scan acc dir =
+    let h = Unix.opendir dir in
+    let rec f acc =
+      match Unix.readdir h with
+        entry ->
+          let file = Filename.concat dir entry in
+          let stat =
+            try
+              Some (Unix.lstat file)
+            with _ ->
+              OpamConsole.warning "Cannot scan %s - invalid filename?" file; (* See http://caml.inria.fr/mantis/view.php?id=3771 *)
+              None in
+          begin
+            match stat with
+              Some stat ->
+                if stat.Unix.st_kind = Unix.S_DIR then
+                  if entry <> Filename.current_dir_name && entry <> Filename.parent_dir_name && file <> ignore then
+                    f (scan acc file)
+                  else
+                    f acc
+                else
+                  f (OpamStd.String.Set.add file acc)
+            | None ->
+                f acc
+          end
+      | exception End_of_file ->
+          Unix.closedir h;
+          acc in
+    f acc in
+  scan OpamStd.String.Set.empty dir
 
 type lock = Unix.file_descr * string
 
