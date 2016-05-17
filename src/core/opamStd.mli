@@ -120,6 +120,8 @@ module Option: sig
 
   val default_map: 'a option -> 'a option -> 'a option
 
+  val map_default: ('a -> 'b) -> 'b -> 'a option -> 'b
+
   val compare: ('a -> 'a -> int) -> 'a option -> 'a option -> int
 
   val to_string: ?none:string -> ('a -> string) -> 'a option -> string
@@ -189,6 +191,7 @@ module String : sig
   val ends_with: suffix:string -> string -> bool
   val contains: string -> char -> bool
   val exact_match: Re.re -> string -> bool
+  val find_from: (char -> bool) -> string -> int -> int
 
   (** {3 Manipulation} *)
 
