@@ -13,9 +13,9 @@ open OpamTypes
 let repository_url = {
   OpamUrl.
   transport = "https";
-  path = "opam.ocaml.org";
-  hash = None;
-  backend = `http;
+  path = "github.com/dra27/opam-repository";
+  hash = Some "windows";
+  backend = `git;
 }
 
 let default_compiler =
