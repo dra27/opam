@@ -100,8 +100,15 @@ let process args =
                 in
                 OpamFilename.with_tmp_dir_job @@ fun dir ->
                 try
+                  (* Download to package.patch, rather than allowing the name to be
+                     guessed since, on Windows, some of the characters which are
+                     valid in URLs are not valid in filenames *)
+                let f =
+                  let base = OpamFilename.Base.of_string "package.patch" in
+                  OpamFilename.create dir base
+                in
                   OpamProcess.Job.catch err
-                    (OpamDownload.download ~overwrite:false url dir @@| fun f ->
+                    (OpamDownload.download_as ~overwrite:false url f @@| fun () ->
                      Some (url, OpamFilename.digest f, None))
                 with e -> err e)
           (OpamFile.Comp.patches comp)
