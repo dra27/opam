@@ -239,7 +239,7 @@ let unlock st =
   (st :> unlocked switch_state)
 
 let with_write_lock ?dontblock st f =
-  OpamFilename.with_flock_upgrade `Lock_write ?dontblock st.switch_lock @@ fun () ->
+  OpamFilename.with_flock_upgrade `Lock_write ?dontblock st.switch_lock @@ fun _ ->
   f ({ st with switch_lock = st.switch_lock } : rw switch_state)
 (* We don't actually change the field value, but this makes restricting the
    phantom lock type possible*)
