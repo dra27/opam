@@ -165,7 +165,7 @@ let set var value =
   let root = OpamStateConfig.(!r.root_dir) in
   let switch = OpamStateConfig.get_switch () in
   OpamFilename.with_flock `Lock_write (OpamPath.Switch.lock root switch)
-  @@ fun () ->
+  @@ fun _ ->
   let var = OpamVariable.Full.variable var in
   let config_f = OpamPath.Switch.global_config root switch in
   let config = OpamFile.Dot_config.read config_f in

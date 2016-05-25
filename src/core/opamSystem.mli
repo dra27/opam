@@ -232,6 +232,9 @@ val lock_isatleast: [< lock_flag ] -> lock -> bool
 (** Returns the current kind of the lock *)
 val get_lock_flag: lock -> lock_flag
 
+(** Returns the underlying fd for the lock or raises Not_found for `No_lock *)
+val get_lock_fd: lock -> Unix.file_descr
+
 (** {2 Misc} *)
 
 (** Apply a patch file in the current directory. *)
