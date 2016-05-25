@@ -672,8 +672,10 @@ let init
         OpamFile.InitConfig.default_compiler init_config
       with e ->
         OpamStd.Exn.finalise e @@ fun () ->
-        if not (OpamConsole.debug ()) && root_empty then
-          OpamFilename.rmdir root)
+        if not (OpamConsole.debug ()) && root_empty then begin
+          OpamSystem.release_all_locks ();
+          OpamFilename.rmdir root
+        end)
   in
   let _updated = match update_config with
     | `no  -> false
