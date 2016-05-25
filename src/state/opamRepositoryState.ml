@@ -80,7 +80,7 @@ module Cache = struct
   let load root =
     match OpamFilename.opt_file (OpamPath.state_cache root) with
     | Some file ->
-      OpamFilename.with_flock `Lock_read file @@ fun () ->
+      OpamFilename.with_flock `Lock_read file @@ fun _ ->
       marshal_from_file file
     | None -> None
 
@@ -90,7 +90,7 @@ module Cache = struct
     else
     let chrono = OpamConsole.timer () in
     let file = OpamPath.state_cache rt.repos_global.root in
-    OpamFilename.with_flock `Lock_write file @@ fun () ->
+    OpamFilename.with_flock `Lock_write file @@ fun _ ->
     log "Writing the cache of repository metadata to %s ...\n"
       (OpamFilename.prettify file);
     let oc = open_out_bin (OpamFilename.to_string file) in
@@ -176,7 +176,7 @@ let load lock_kind gt =
     make_rt repofiles opams
   | Some (repofiles, opams) ->
     log "Cache found, loading repositories without remote only";
-    OpamFilename.with_flock_upgrade `Lock_read lock @@ fun () ->
+    OpamFilename.with_flock_upgrade `Lock_read lock @@ fun _ ->
     let uncached_repos = OpamRepositoryName.Map.mapi mk_repo uncached in
     let uncached_repofiles = load_repos_definitions uncached_repos in
     let uncached_opams =
@@ -187,7 +187,7 @@ let load lock_kind gt =
       (OpamRepositoryName.Map.union (fun _ x -> x) opams uncached_opams)
   | None ->
     log "No cache found";
-    OpamFilename.with_flock_upgrade `Lock_read lock @@ fun () ->
+    OpamFilename.with_flock_upgrade `Lock_read lock @@ fun _ ->
     let repos = OpamRepositoryName.Map.mapi mk_repo repos_map in
     let rt =
       make_rt
@@ -229,7 +229,7 @@ let unlock rt =
 let with_write_lock ?dontblock rt f =
   let ret, rt =
     OpamFilename.with_flock_upgrade `Lock_write ?dontblock rt.repos_lock
-    @@ fun () -> f ({ rt with repos_lock = rt.repos_lock } : rw repos_state)
+    @@ fun _ -> f ({ rt with repos_lock = rt.repos_lock } : rw repos_state)
     (* We don't actually change the field value, but this makes restricting the
        phantom lock type possible *)
   in
