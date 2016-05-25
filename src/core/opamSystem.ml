@@ -784,6 +784,11 @@ let funlock lock = flock_update `Lock_none lock
 
 let get_lock_flag lock = lock.kind
 
+let get_lock_fd lock =
+  match lock.fd with
+    Some fd -> fd
+  | None -> raise Not_found
+
 let lock_max flag1 flag2 = match flag1, flag2 with
   | `Lock_write, _ | _, `Lock_write -> `Lock_write
   | `Lock_read, _ | _, `Lock_read -> `Lock_read
