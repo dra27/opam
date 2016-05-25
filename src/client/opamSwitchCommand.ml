@@ -298,6 +298,7 @@ let install gt ?rt ?synopsis ?repos ~update_config ~packages switch =
          OpamStd.Option.iter
            (ignore @* OpamSwitchAction.set_current_switch `Lock_write gt)
            old_switch_opt);
+      ignore (OpamSwitchState.unlock st);
       ignore (clear_switch gt switch);
       raise e
   in
@@ -312,7 +313,10 @@ let install gt ?rt ?synopsis ?repos ~update_config ~packages switch =
            raise e);
        if OpamConsole.confirm "Switch initialisation failed, clean up ? \
                                ('n' will leave the switch partially installed)"
-       then ignore (clear_switch gt switch));
+       then begin
+         ignore (OpamSwitchState.unlock st);
+         ignore (clear_switch gt switch)
+       end);
     raise e
 
 let switch lock gt switch =
