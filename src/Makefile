@@ -158,6 +158,7 @@ SRC_format = \
   opamTypesBase.ml \
   opamPp.ml \
   opamFormat.ml \
+	opamInterpLexer.mll \
   opamFilter.ml \
   opamFile.ml
 

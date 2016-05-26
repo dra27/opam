@@ -88,6 +88,10 @@ let (string_interp_regex, path_interp_regex) =
   compile (alt string_interp),
   compile (alt ((seq [str "%<"; group (greedy (notclose '>')); opt (group (str ">%"))])::string_interp))
 
+let escape_string =
+  let rex = Re.(compile @@ set "\\\"") in
+  Re_pcre.substitute ~rex ~subst:(fun s -> "\\"^s)
+
 let escape_expansions =
   Re.replace_string Re.(compile @@ char '%') ~by:"%%"
 
@@ -210,7 +214,7 @@ let resolve_ident ?(no_undef_expand=false) env fident =
      | None -> FUndef (FIdent fident))
 
 (* Resolves ["%{x}%"] and ["%<x>%"] string interpolations *)
-let rec expand_string_aux ?(regex=path_interp_regex) ?(partial=false) ?default env text =
+let rec expand_string_aux ?(regex=path_interp_regex) ?(escape_string=fun x -> x) ?(partial=false) ?default env text =
   let default_f fident = match default, partial with
     | None, false -> None
     | Some df, false -> Some (df fident)
@@ -231,17 +235,18 @@ let rec expand_string_aux ?(regex=path_interp_regex) ?(partial=false) ?default e
       (log "ERR: Unclosed %s in %S\n" (if str.[1] = '{' then "variable replacement" else "path expansion") str;
        str)
     else
-      if str.[1] = '<' then
-        expand_string_aux ~regex:string_interp_regex ~partial ?default env (String.sub str 2 (String.length str - 4))
-        |> String.map (function '/' -> Filename.dir_sep.[0] | c -> c)
-      else
-        let fident = String.sub str 2 (String.length str - 4) in
-        resolve_ident ~no_undef_expand:partial env (filter_ident_of_string fident)
-        |> value_string ?default:(default_f fident)
+      (if str.[1] = '<' then
+         expand_string_aux ~regex:string_interp_regex ~escape_string ~partial ?default env (String.sub str 2 (String.length str - 4))
+         |> String.map (function '/' -> Filename.dir_sep.[0] | c -> c)
+       else
+         let fident = String.sub str 2 (String.length str - 4) in
+         resolve_ident ~no_undef_expand:partial env (filter_ident_of_string fident)
+         |> value_string ?default:(default_f fident))
+      |> escape_string
   in
   Re.replace regex ~f text
 
-let expand_string = expand_string_aux ~regex:path_interp_regex
+let expand_string = expand_string_aux ?escape_string:None ~regex:path_interp_regex
 
 let unclosed_expansions text =
   let re =
@@ -404,15 +409,38 @@ let expand_interpolations_in_file env file =
   let src = OpamFilename.add_extension f "in" in
   let ic = OpamFilename.open_in src in
   let oc = OpamFilename.open_out f in
-  let rec aux () =
-    match try Some (input_line ic) with End_of_file -> None with
+  let line = try Some (input_line ic) with End_of_file -> None in
+  let opamish =
+    match line with
+    | None ->
+        false
     | Some s ->
-      output_string oc (expand_string ~default:(fun _ -> "") env s);
+        match OpamStd.String.cut_at s ':' with
+          | Some (k, _) ->
+              if String.trim k = "opam-version" then
+                true
+              else
+                false
+          | None ->
+              false
+  in
+  let process (is_string, s) =
+    if is_string then
+      output_string oc (expand_string_aux ~escape_string ~default:(fun _ -> "") env s)
+    else
+      output_string oc (expand_string ~default:(fun _ -> "") env s)
+  in
+  let rec aux = function
+    | Some s ->
+      if opamish then
+        List.iter process (OpamInterpLexer.line (Lexing.from_string s))
+      else
+        process (false, s);
       output_char oc '\n';
-      aux ()
+      aux (try Some (input_line ic) with End_of_file -> None)
     | None -> ()
   in
-  aux ();
+  aux line;
   close_in ic;
   close_out oc
 
