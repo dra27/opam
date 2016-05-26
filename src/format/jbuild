@@ -13,7 +13,7 @@ let () = out {|
    (flags (:standard %s))
    (wrapped false)))
 
-(ocamllex (opamLineLexer))
+(ocamllex (opamLineLexer opamInterpLexer))
 
 (ml_of_mli (opamTypes))
 |} ocaml_flags
