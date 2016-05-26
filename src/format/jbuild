@@ -8,7 +8,7 @@
    (flags (:standard (:include ../ocaml-flags-standard.sexp) (:include ../ocaml-context-flags.sexp)))
    (wrapped false)))
 
-(ocamllex (opamLineLexer))
+(ocamllex (opamLineLexer opamInterpLexer))
 
 (rule
   (with-stdout-to opamTypes.ml
