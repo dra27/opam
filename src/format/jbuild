@@ -13,7 +13,7 @@ let () = out {|
    (flags (:standard %s))
    (wrapped false)))
 
-(ocamllex (opamLineLexer))
+(ocamllex (opamLineLexer opamInterpLexer))
 
 (rule
   (with-stdout-to opamTypes.ml

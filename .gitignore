@@ -63,6 +63,7 @@ src/client/opamGitVersion.ml
 src/state/opamScript.ml
 src/core/opamCoreConfig.ml
 src/core/opamVersion.ml
+src/format/opamInterpLexer.ml
 src/format/opamLineLexer.ml
 src/core/opamCompat.ml
 src/core/opamCompat.mli
