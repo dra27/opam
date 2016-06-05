@@ -411,7 +411,7 @@ let parallel_apply t action action_graph =
         OpamPackage.Set.Op.(t.installed -- removed ++ installed)
       in
       let t = (* Local state for this process, only prerequisites are visible *)
-        { t with installed = visible_installed; }
+        { t with installed = visible_installed; conf_files = !t_ref.conf_files}
         (* !X note : t.switch_config.bindings should be updated as well to
            handle compiler upgrades better *)
       in
