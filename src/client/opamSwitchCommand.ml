@@ -180,7 +180,7 @@ let install_compiler_packages t atoms =
     OpamConsole.error_and_exit
       "No packages %s found."
       (OpamPackage.Name.Set.to_string not_found);
-  let solution =
+  let (solution, also_install) =
     OpamSolution.resolve t Switch
       ~orphans:OpamPackage.Set.empty
       ~requested:roots
@@ -240,7 +240,8 @@ let install_compiler_packages t atoms =
       { t with switch_config }
     else t
   in
-  let t = { t with compiler_packages = to_install_pkgs } in
+  let t = { t with compiler_packages = to_install_pkgs -- also_install } in
+  let roots = OpamPackage.names_of_packages also_install |> OpamPackage.Name.Set.union roots in
   let t, result =
     OpamSolution.apply ~ask:OpamClientConfig.(!r.show) t Switch
       ~requested:roots
@@ -406,7 +407,7 @@ let import_t ?ask importfile t =
       (OpamStd.Format.itemize OpamPackage.to_string
          (OpamPackage.Set.elements unavailable));
 
-  let t, solution =
+  let t, solution, _ =
     let to_import =
       OpamSolution.eq_atoms_of_packages (to_install %% available) @
       OpamSolution.atoms_of_packages unavailable_version
