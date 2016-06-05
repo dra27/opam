@@ -262,7 +262,7 @@ let download_package st nv =
         Done (`Successful (Some (F f)))
       | None ->
         let dir =
-          OpamPath.Switch.dev_package st.switch_global.root st.switch nv.name
+          OpamPath.Switch.dev_package_full st.switch_global.root st.switch nv
         in
         OpamUpdate.download_upstream st nv dir @@| of_dl
   in
@@ -513,10 +513,16 @@ let cleanup_package_artefacts t nv =
   let dev_dir =
     OpamPath.Switch.dev_package t.switch_global.root t.switch name
   in
+  let dev_dir_full =
+    OpamPath.Switch.dev_package_full t.switch_global.root t.switch nv
+  in
   if not (OpamPackage.Set.mem nv t.installed) then (
     if OpamFilename.exists_dir dev_dir then (
       log "Cleaning-up the switch repository";
       OpamFilename.rmdir dev_dir );
+    if OpamFilename.exists_dir dev_dir_full then (
+      log "Cleaning-up the upstream package archive";
+      OpamFilename.rmdir dev_dir_full );
     log "Removing the local metadata";
     OpamSwitchAction.remove_metadata t (OpamPackage.Set.singleton nv);
   )

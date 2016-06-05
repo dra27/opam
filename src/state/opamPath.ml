@@ -99,6 +99,8 @@ module Switch = struct
 
   let dev_package t a name = dev_packages_dir t a / OpamPackage.Name.to_string name
 
+  let dev_package_full t a nv = dev_packages_dir t a / OpamPackage.to_string nv
+
   let environment t a = meta t a /- "environment"
 
   let installed_opams t a = meta t a / "packages"
