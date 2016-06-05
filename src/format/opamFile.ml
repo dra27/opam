@@ -1388,6 +1388,7 @@ module OPAMSyntax = struct
     depends    : filtered_formula;
     depopts    : filtered_formula;
     conflicts  : formula;
+    also_install: filtered_formula;
     available  : filter;
     flags      : package_flag list;
     env        : env_update list;
@@ -1452,6 +1453,7 @@ module OPAMSyntax = struct
     depends    = OpamFormula.Empty;
     depopts    = OpamFormula.Empty;
     conflicts  = OpamFormula.Empty;
+    also_install = OpamFormula.Empty;
     available  = FBool true;
     flags      = [];
     env        = [];
@@ -1523,6 +1525,7 @@ module OPAMSyntax = struct
   let depends t = t.depends
   let depopts t = t.depopts
   let conflicts t = t.conflicts
+  let also_install t = t.also_install
   let available t = t.available
   let flags t = t.flags
   let has_flag f t = List.mem f t.flags
@@ -1593,6 +1596,7 @@ module OPAMSyntax = struct
   let with_depends depends t = { t with depends }
   let with_depopts depopts t = { t with depopts }
   let with_conflicts conflicts t = {t with conflicts }
+  let with_also_install also_install t = { t with also_install }
   let with_available available t = { t with available }
   let with_flags flags t = { t with flags }
   let add_flags flags t =
@@ -1799,6 +1803,8 @@ module OPAMSyntax = struct
       "conflicts", with_cleanup cleanup_conflicts
         Pp.ppacc with_conflicts conflicts
         (Pp.V.package_formula `Disj (Pp.V.constraints Pp.V.version));
+      "also-install", no_cleanup Pp.ppacc with_also_install also_install
+        (Pp.V.package_formula `Conj Pp.V.(filtered_constraints ext_version));
       "available", no_cleanup Pp.ppacc with_available available
         (Pp.V.list_depth 1 -| Pp.V.list -| Pp.V.filter);
       "flags", with_cleanup cleanup_flags Pp.ppacc add_flags flags
@@ -2071,6 +2077,7 @@ module OPAM = struct
       depends    = t.depends;
       depopts    = t.depopts;
       conflicts  = t.conflicts;
+      also_install = t.also_install;
       available  = t.available;
       flags      = t.flags;
       env        = t.env;

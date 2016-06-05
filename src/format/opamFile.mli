@@ -186,6 +186,7 @@ module OPAM: sig
     depends    : filtered_formula;
     depopts    : filtered_formula;
     conflicts  : formula;
+    also_install: filtered_formula;
     available  : filter;
     flags      : package_flag list;
     env        : env_update list;
@@ -306,6 +307,9 @@ module OPAM: sig
   val depexts: t -> tags option
 
   val extra_sources: t -> (url * string * basename option) list
+
+  (** Additional packages to be installed after this one *)
+  val also_install: t -> filtered_formula
 
   (** All extended "x-" fields as a map *)
   val extensions: t -> value OpamStd.String.Map.t
@@ -458,6 +462,9 @@ module OPAM: sig
   val with_dev_repo: url -> t -> t
 
   val with_extra_sources: (url * string * basename option) list -> t -> t
+
+  (** Construct using [also_install] *)
+  val with_also_install: filtered_formula -> t -> t
 
   val with_extensions: value OpamStd.String.Map.t -> t -> t
 
