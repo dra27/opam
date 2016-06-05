@@ -131,7 +131,7 @@ let init =
   ] in
   let compiler =
     mk_opt ["c";"compiler"] "VERSION" "Set the compiler to install"
-      Arg.string "system"
+      Arg.(some & string) None
   in
   let no_compiler =
     mk_flag ["bare"]
@@ -150,6 +150,16 @@ let init =
       build_options repo_kind repo_name repo_url
       no_setup auto_setup shell dot_profile_o
       compiler no_compiler =
+    let compiler =
+      match compiler with
+      | Some compiler ->
+          if no_compiler then
+            OpamConsole.error_and_exit "Options --bare and --compiler are incompatible"
+          else
+            compiler
+      | None ->
+          "system"
+    in
     apply_global_options global_options;
     apply_build_options build_options;
     let repo_priority = 0 in
@@ -1216,14 +1226,17 @@ let switch =
       OpamRepositoryState.with_ `Lock_none gt @@ fun rt ->
       OpamSwitchCommand.guess_compiler_package rt s
     in
+    if empty && packages <> Some [] && packages <> None then
+      OpamConsole.error_and_exit "Options --packages and --empty may not be specified at the same time";
     let compiler_packages gt switch =
       match packages, alias_of with
       | Some pkgs, None -> pkgs
       | None, Some al -> guess_compiler_package gt al
       | None, None -> guess_compiler_package gt switch
       | Some _, Some _ ->
-        OpamConsole.error_and_exit
-          "Options --alias-of and --packages are incompatible"
+          let opt = if empty then "empty" else "packages" in
+          OpamConsole.error_and_exit
+            "Options --alias-of and --%s are incompatible" opt
     in
     match command, params with
     | None      , []
