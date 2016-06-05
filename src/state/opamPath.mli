@@ -132,8 +132,12 @@ module Switch: sig
   val dev_packages_dir: t -> switch -> dirname
 
   (** Build dir for a given pinned package: {i
-      $meta/packages.dev/$name.$version/} *)
+      $meta/packages.dev/$name/} *)
   val dev_package: t -> switch -> name -> dirname
+
+  (** Upstream archive cache dir for a given package: {i
+      $meta/packages.dev/$name.$version/} *)
+  val dev_package_full: t -> switch -> package -> dirname
 
   (** Cached environment updates. *)
   val environment: t -> switch -> OpamFile.Environment.t OpamFile.t
