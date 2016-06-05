@@ -136,7 +136,7 @@ let init =
   ] in
   let compiler =
     mk_opt ["c";"compiler"] "VERSION" "Set the compiler to install"
-      Arg.string "system"
+      Arg.(some & string) None
   in
   let no_compiler =
     mk_flag ["bare"]
@@ -155,6 +155,16 @@ let init =
       build_options repo_kind repo_name repo_url
       no_setup auto_setup shell dot_profile_o
       compiler no_compiler =
+    let compiler =
+      match compiler with
+      | Some compiler ->
+          if no_compiler then
+            OpamConsole.error_and_exit "Options --bare and --compiler are incompatible"
+          else
+            compiler
+      | None ->
+          "system"
+    in
     apply_global_options global_options;
     apply_build_options build_options;
     let repo_priority = 0 in
