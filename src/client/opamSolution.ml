@@ -816,6 +816,8 @@ let apply ?ask t action ~requested ?add_roots solution =
       t, Aborted
   )
 
+module AtomSet = Set.Make(struct type t = OpamFormula.atom let compare = compare end)
+
 let resolve ?(verbose=true) t action ~orphans ?reinstall ~requested request =
   if OpamClientConfig.(!r.json_out <> None) then (
     OpamJson.append "command-line"
@@ -823,21 +825,104 @@ let resolve ?(verbose=true) t action ~orphans ?reinstall ~requested request =
     OpamJson.append "switch" (OpamSwitch.to_json t.switch)
   );
   Json.output_request request action;
-  let r =
+  let rec get_solution also_install request r =
+    match r with
+    | Success solution ->
+        let action_graph = OpamSolver.get_atomic_action_graph solution in
+        (* also-install packages should only be added when a package is *first* installed.
+           At present, installing a different version of a package which is already installed does
+           not attempt to install any new packages.
+           Not totally certain that this is the most efficient to determine reinstalls... *)
+        let reinstalls =
+          let (installs, removes) =
+            OpamSolver.ActionGraph.fold_vertex (fun act (installs, removes) ->
+              match act with
+              | `Install nv ->
+                  (OpamPackage.Name.Set.add (OpamPackage.name nv) installs, removes)
+              | `Remove nv ->
+                  (installs, OpamPackage.Name.Set.add (OpamPackage.name nv) removes)
+              | _ ->
+                  assert false) action_graph (OpamPackage.Name.Set.empty, OpamPackage.Name.Set.empty)
+          in
+          OpamPackage.Name.Set.fold (fun item acc ->
+            if OpamPackage.Name.Set.mem item removes then
+              OpamPackage.Name.Set.add item acc
+            else
+              acc) installs OpamPackage.Name.Set.empty
+        in
+        let also_install', request =
+          OpamSolver.ActionGraph.fold_vertex (fun act acc ->
+            match act with
+            | `Install nv ->
+                if OpamPackage.Name.Set.mem (OpamPackage.name nv) reinstalls then
+                  acc
+                else
+                  let opam = OpamSwitchState.opam t nv in
+                  let also_install = OpamFile.OPAM.also_install opam in
+                  let atoms = OpamFilter.filter_formula (OpamPackageVar.resolve ~opam t) also_install in
+                  let atoms = OpamFormula.to_conjunction atoms in
+                  let f ((also_install, request) as acc) atom =
+                    if AtomSet.mem atom also_install then
+                      acc
+                    else (AtomSet.add atom also_install, {request with wish_install = atom::request.wish_install})
+                  in
+                  List.fold_left f acc atoms
+            | _ ->
+                acc) action_graph (also_install, request) in
+        if AtomSet.equal also_install also_install' then
+          r
+        else
+          let r =
+            OpamSolver.resolve ~verbose
+              (OpamSwitchState.universe t ~requested ?reinstall action)
+              ~orphans
+              request
+          in
+          get_solution also_install' request r
+    | _ ->
+        r
+  in
+  let raw =
     OpamSolver.resolve ~verbose
       (OpamSwitchState.universe t ~requested ?reinstall action)
       ~orphans
       request
   in
+  let r = get_solution AtomSet.empty request raw in
   Json.output_solution t r;
-  r
+  let extra_packages =
+    match (raw, r) with
+    | Success orig, Success r ->
+        let f solution =
+          let f act acc =
+            match act with
+            |  `Install nv -> OpamPackage.Set.add nv acc
+            | _ -> acc
+          in
+          OpamSolver.ActionGraph.fold_vertex f (OpamSolver.get_atomic_action_graph solution) OpamPackage.Set.empty
+        in
+        let orig_solution =
+          let orig = f orig in
+          OpamPackage.Set.fold (fun elt acc -> OpamPackage.Name.Set.add (OpamPackage.name elt) acc) orig OpamPackage.Name.Set.empty
+        in
+        let new_solution = f r in
+        let r =
+          OpamPackage.Set.filter (fun elt -> not (OpamPackage.Name.Set.mem (OpamPackage.name elt) orig_solution)) new_solution
+        in
+        r
+    | _ ->
+        OpamPackage.Set.empty in
+  r, extra_packages
 
 let resolve_and_apply ?ask t action ~orphans ?reinstall ~requested ?add_roots request =
   match resolve t action ~orphans ?reinstall ~requested request with
-  | Conflicts cs ->
+  | (Conflicts cs, extra_packages) ->
     log "conflict!";
     OpamConsole.msg "%s"
       (OpamCudf.string_of_conflict t.packages
          (OpamSwitchState.unavailable_reason t) cs);
-    t, No_solution
-  | Success solution -> apply ?ask t action ~requested ?add_roots solution
+    (t, No_solution, extra_packages)
+  | (Success solution, extra_packages) ->
+      let (a,b) = apply ?ask t action ~requested ?add_roots solution
+      in
+      a, b, extra_packages
