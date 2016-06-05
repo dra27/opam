@@ -208,7 +208,7 @@ let compute_upgrade_t
       (OpamSolver.request
          ~install:to_install
          ~upgrade:(OpamSolution.atoms_of_packages to_upgrade)
-         ~criteria:`Upgrade ())
+         ~criteria:`Upgrade ()) |> fst
   else
   let changes =
     requested_installed ++ OpamSwitchState.packages_of_atoms t to_install
@@ -232,7 +232,7 @@ let compute_upgrade_t
        ~install:to_install
        ~remove:(OpamSolution.atoms_of_packages to_remove)
        ~upgrade:upgrade_atoms
-       ())
+       ()) |> fst
 
 let upgrade_t ?strict_upgrade ?auto_install ?ask ?(check=false) ~all atoms t =
   log "UPGRADE %a"
@@ -346,7 +346,7 @@ let fixup t =
       (OpamSolver.request
          ~install:(OpamSolution.atoms_of_packages pkgs)
          ~criteria:`Fixup
-         ())
+         ()) |> fst
   in
   let is_success = function
     | _, Success _ -> true
@@ -849,7 +849,7 @@ let install_t t ?ask atoms add_to_roots ~deps_only =
     OpamSolution.resolve t Install
       ~orphans:(full_orphans ++ orphan_versions)
       ~requested:names
-      request in
+      request |> fst in
   let t, solution = match solution with
     | Conflicts cs ->
       log "conflict!";
@@ -954,7 +954,7 @@ let remove_t ?ask ~autoremove ~force atoms t =
              (OpamSolver.dependencies ~build:true
                 ~depopts:true ~installed:true universe to_remove))
       else to_remove in
-    let t, solution =
+    let t, solution, _ =
       OpamSolution.resolve_and_apply ?ask t Remove ~requested
         ~orphans:(full_orphans ++ orphan_versions)
         (OpamSolver.request
@@ -1004,7 +1004,7 @@ let reinstall_t t ?ask ?(force=false) atoms =
 
   let request = OpamSolver.request ~install:atoms ~criteria:`Fixup () in
 
-  let t, solution =
+  let t, solution, _ =
     OpamSolution.resolve_and_apply ?ask t Reinstall
       ~orphans:(full_orphans ++ orphan_versions)
       ~reinstall:(OpamPackage.packages_of_names t.installed requested)

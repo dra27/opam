@@ -22,7 +22,7 @@ val resolve:
   ?reinstall:package_set ->
   requested:name_set ->
   atom request ->
-  (OpamSolver.solution, OpamCudf.conflict) result
+  (OpamSolver.solution, OpamCudf.conflict) result * package_set
 
 (** Apply a solution returned by the solver. If [ask] is not specified, prompts
     the user whenever the solution isn't obvious from the request. [add_roots]
@@ -50,7 +50,7 @@ val resolve_and_apply:
   requested:OpamPackage.Name.Set.t ->
   ?add_roots:OpamPackage.Name.Set.t ->
   atom request ->
-  rw switch_state * solver_result
+  rw switch_state * solver_result * package_set
 
 (** Raise an error if no solution is found or in case of error. Unless [quiet]
     is set, print a message indicating that nothing was done on an empty

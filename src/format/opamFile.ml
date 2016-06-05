@@ -1970,6 +1970,7 @@ module OPAMSyntax = struct
     depopts    : filtered_formula;
     conflicts  : formula;
     conflict_class : name list;
+    also_install: filtered_formula;
     available  : filter;
     flags      : package_flag list;
     env        : env_update list;
@@ -2040,6 +2041,7 @@ module OPAMSyntax = struct
     depends    = OpamFormula.Empty;
     depopts    = OpamFormula.Empty;
     conflicts  = OpamFormula.Empty;
+    also_install = OpamFormula.Empty;
     available  = FBool true;
     flags      = [];
     conflict_class = [];
@@ -2116,6 +2118,7 @@ module OPAMSyntax = struct
   let depopts t = t.depopts
   let conflicts t = t.conflicts
   let conflict_class t = t.conflict_class
+  let also_install t = t.also_install
   let available t = t.available
   let flags t = t.flags
   let has_flag f t = List.mem f t.flags
@@ -2194,6 +2197,7 @@ module OPAMSyntax = struct
   let with_depopts depopts t = { t with depopts }
   let with_conflicts conflicts t = {t with conflicts }
   let with_conflict_class conflict_class t = { t with conflict_class }
+  let with_also_install also_install t = { t with also_install }
   let with_available available t = { t with available }
   let with_flags flags t = { t with flags }
   let add_flags flags t =
@@ -2432,6 +2436,8 @@ module OPAMSyntax = struct
         (Pp.V.package_formula `Disj (Pp.V.constraints Pp.V.version));
       "conflict-class", no_cleanup Pp.ppacc with_conflict_class conflict_class
         (Pp.V.map_list ~depth:1 Pp.V.pkgname);
+      "also-install", no_cleanup Pp.ppacc with_also_install also_install
+        (Pp.V.package_formula `Conj Pp.V.(filtered_constraints ext_version));
       "available", no_cleanup Pp.ppacc with_available available
         (Pp.V.list_depth 1 -| Pp.V.list -| Pp.V.filter);
       "flags", with_cleanup cleanup_flags Pp.ppacc add_flags flags
@@ -2749,6 +2755,7 @@ module OPAM = struct
       depopts    = t.depopts;
       conflicts  = t.conflicts;
       conflict_class = t.conflict_class;
+      also_install = t.also_install;
       available  = t.available;
       flags      = t.flags;
       env        = t.env;
