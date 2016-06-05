@@ -388,9 +388,15 @@ let unavailable_reason st (name, _ as atom) =
   with Not_found ->
   match OpamPackage.package_of_name_opt st.compiler_packages name with
   | Some nv ->
+    let upgrade =
+      if OpamPackage.Set.mem nv st.installed_roots then
+        "can't be changed"
+      else
+        "must be upgraded explicitly"
+    in
     Printf.sprintf
-      "%s is part of the base for this compiler and can't be changed"
-      (OpamPackage.to_string nv)
+      "%s is part of the base for this compiler and %s"
+      (OpamPackage.to_string nv) upgrade
   | None -> not_found_message st atom
 
 let update_package_metadata nv opam st =

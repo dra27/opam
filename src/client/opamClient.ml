@@ -204,7 +204,7 @@ let slog = OpamConsole.slog
     if atoms = [] then
       let to_reinstall = t.reinstall %% t.installed in
       let t, full_orphans, orphan_versions = orphans ~transitive:true t in
-      let to_upgrade = t.installed -- full_orphans -- orphan_versions in
+      let to_upgrade = t.installed -- full_orphans -- orphan_versions -- t.compiler_packages in
       let to_install = t.installed -- full_orphans in
       let requested = OpamPackage.Name.Set.empty in
       let action = Upgrade to_reinstall in
@@ -342,7 +342,7 @@ let slog = OpamConsole.slog
       let t, result = OpamSolution.apply ?ask t action ~requested solution in
       if result = Nothing_to_do then (
         let to_check =
-          if OpamPackage.Name.Set.is_empty requested then t.installed -- t.compiler_packages
+          if OpamPackage.Name.Set.is_empty requested then t.installed -- (t.compiler_packages %% t.installed_roots)
           else OpamPackage.packages_of_names t.installed requested
         in
         let latest =
@@ -355,12 +355,16 @@ let slog = OpamConsole.slog
           OpamConsole.msg "Already up-to-date.\n"
         else
           (let hdmsg = "Everything as up-to-date as possible" in
-           let unav = notuptodate -- Lazy.force t.available_packages in
            let unopt = notuptodate %% Lazy.force t.available_packages in
+           (* The present arrangement leaves base packages which can be updated in unav, meaning that the user
+              is only given precise details with --verbose. Alternatively, unav and unopt could be tweaked to
+              leave the base packages in unopt and have the message about upgrade displayed every time (in this
+               case, the message should be re-worded slightly) *)
            let base =
              OpamPackage.packages_of_names unopt
                (OpamPackage.names_of_packages t.compiler_packages)
            in
+           let unav = notuptodate -- (Lazy.force t.available_packages -- base) in
            let unopt = unopt -- base in
            if (OpamConsole.verbose ()) && not (OpamPackage.Set.is_empty unav) then
              OpamConsole.formatted_msg

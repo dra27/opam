@@ -64,7 +64,7 @@ val cudf_versions_map: universe -> package_set -> int OpamPackage.Map.t
 (** Creates a CUDF universe from an OPAM universe, including the given
     packages *)
 val load_cudf_universe:
-  ?depopts:bool -> build:bool ->
+  ?depopts:bool -> ?request:atom request -> build:bool ->
   universe -> ?version_map:int package_map -> package_set -> Cudf.universe
 
 (**  Build a request *)

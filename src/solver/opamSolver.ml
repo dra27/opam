@@ -155,7 +155,7 @@ let atom2cudf _universe (version_map : int OpamPackage.Map.t) (name,cstr) =
           | `Leq -> Some (`Lt, 1)
         else Some (result_op, sign (fst (OpamStd.IntMap.min_binding map)))
 
-let opam2cudf universe ?(depopts=false) ~build version_map package =
+let opam2cudf universe ?request ?(depopts=false) ~build version_map package =
   let name = OpamPackage.name package in
   let version = OpamPackage.version package in
   let dev = OpamPackage.Set.mem package universe.u_dev in
@@ -185,7 +185,22 @@ let opam2cudf universe ?(depopts=false) ~build version_map package =
     (name, None) :: (* prevents install of multiple versions of the same pkg *)
     OpamFormula.to_disjunction conflicts in
   let installed = OpamPackage.Set.mem package universe.u_installed in
-  let base = OpamPackage.Set.mem package universe.u_base in
+  let base =
+    let base_filter =
+      (* Remove atoms from base which have had an upgrade explicitly requested *)
+      OpamStd.Option.map_default (fun request -> OpamPackage.packages_of_names universe.u_installed (List.fold_left (fun acc (elt, _) -> OpamPackage.Name.Set.add elt acc) OpamPackage.Name.Set.empty request.wish_upgrade)) OpamPackage.Set.empty request -- (universe.u_base %% universe.u_installed_roots)
+    in
+    if OpamPackage.Set.mem package (universe.u_base -- base_filter) then
+      let f request =
+        let f atom =
+          List.filter (fun package -> OpamFormula.check atom package) (OpamPackage.Set.elements (universe.u_base -- base_filter)) <> []
+        in
+        List.filter f request.wish_install
+      in
+      OpamStd.Option.map_default f [(OpamPackage.Name.of_string "", None)] request <> []
+    else
+      false
+  in
   let reinstall = match universe.u_action with
     | Upgrade reinstall | Reinstall reinstall ->
       OpamPackage.Set.mem package reinstall
@@ -239,7 +254,7 @@ let opam2cudf universe ?(depopts=false) ~build version_map package =
   }
 
 (* load a cudf universe from an opam one *)
-let load_cudf_universe ?depopts ~build
+let load_cudf_universe ?depopts ?request ~build
     opam_universe ?version_map opam_packages =
   log "Load cudf universe (depopts:%b, build:%b)"
     (OpamStd.Option.default false depopts)
@@ -254,9 +269,9 @@ let load_cudf_universe ?depopts ~build
     opam_packages --
     (OpamPackage.packages_of_names opam_packages
        OpamPackage.Name.Set.Op.(
-         OpamPackage.names_of_packages opam_universe.u_base
+         OpamPackage.names_of_packages OpamPackage.Set.Op.(opam_universe.u_base %% opam_universe.u_installed_roots)
          -- OpamPackage.names_of_packages opam_universe.u_pinned)
-     -- opam_universe.u_base)
+     -- (opam_universe.u_base %% opam_universe.u_installed_roots))
   in
   let cudf_universe =
     let cudf_packages =
@@ -265,7 +280,7 @@ let load_cudf_universe ?depopts ~build
          check if it is installed, etc. Optimise by gathering all info first *)
       OpamPackage.Set.fold
         (fun nv list ->
-           opam2cudf opam_universe ?depopts ~build version_map nv :: list)
+           opam2cudf opam_universe ?request ?depopts ~build version_map nv :: list)
         opam_packages [] in
     try Cudf.load_universe cudf_packages
     with Cudf.Constraint_violation s ->
@@ -356,12 +371,12 @@ let resolve ?(verbose=true) universe ~orphans request =
     cudf_versions_map universe
       (universe.u_available ++ universe.u_installed ++ orphans) in
   let simple_universe =
-    load_cudf_universe universe ~version_map ~build:true
+    load_cudf_universe universe ~version_map ~build:true ~request
       (universe.u_available ++ universe.u_installed -- orphans) in
   let request = cleanup_request universe request in
   let cudf_request = map_request (atom2cudf universe version_map) request in
   let add_orphan_packages u =
-    load_cudf_universe universe ~version_map ~build:true
+    load_cudf_universe universe ~version_map ~build:true ~request
       (orphans ++
          (OpamPackage.Set.of_list
             (List.map OpamCudf.cudf2opam (Cudf.get_packages u)))) in
@@ -383,10 +398,10 @@ let resolve ?(verbose=true) universe ~orphans request =
     let all_packages =
       universe.u_available ++ orphans in
     let simple_universe =
-      load_cudf_universe universe ~depopts:true ~build:false
+      load_cudf_universe universe ~depopts:true ~build:false ~request
         ~version_map all_packages in
     let complete_universe =
-      load_cudf_universe universe ~depopts:true ~build:true
+      load_cudf_universe universe ~depopts:true ~build:true ~request
         ~version_map all_packages in
     try
       let atomic_actions =
