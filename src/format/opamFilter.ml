@@ -85,6 +85,14 @@ let string_interp_regex =
       seq [str "%{"; group (greedy notclose); opt (group (str "}%"))];
     ])
 
+let path_interp_regex =
+  let open Re in
+  compile (alt [
+    char '/';
+    str "$$";
+    seq [char '$'; greedy (rep (diff notnl (set "$"))); opt (char '$')];
+  ])
+
 let escape_string =
   let rex = Re.(compile @@ set "\\\"") in
   Re_pcre.substitute ~rex ~subst:(fun s -> "\\"^s)
@@ -232,10 +240,28 @@ let expand_string_aux ?(escape_string=fun x -> x) ?(partial=false) ?default env 
       (log "ERR: Unclosed variable replacement in %S\n" str;
        str)
     else
-    let fident = String.sub str 2 (String.length str - 4) in
-    resolve_ident ~no_undef_expand:partial env (filter_ident_of_string fident)
-    |> value_string ?default:(default fident)
-    |> escape_string
+      if str.[2] = '<' then
+        let subst str =
+          if str = "/" then
+            escape_string Filename.dir_sep
+          else
+            if str = "$" || str = "$$" then
+              "$"
+            else if not (str.[String.length str - 1] = '$') then
+                   (log "ERR: Unclosed path variable replacement in %s\n" str;
+                    str)
+                 else
+                   let fident = String.sub str 1 (String.length str - 2) in
+                   resolve_ident ~no_undef_expand:partial env (filter_ident_of_string fident)
+                   |> value_string ?default:(default fident)
+                   |> escape_string
+        in
+          Re_pcre.substitute ~rex:path_interp_regex ~subst (String.sub str 3 (String.length str - 5))
+      else
+        let fident = String.sub str 2 (String.length str - 4) in
+        resolve_ident ~no_undef_expand:partial env (filter_ident_of_string fident)
+        |> value_string ?default:(default fident)
+        |> escape_string
   in
   Re.replace string_interp_regex ~f text
 
