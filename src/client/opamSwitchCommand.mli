@@ -19,7 +19,7 @@ open OpamStateTypes
     existence of the new switch *)
 val install:
   rw global_state -> update_config:bool ->
-  packages:atom conjunction -> switch ->
+  packages:atom conjunction -> switch -> cc * libc * target_arch ->
   unlocked global_state * rw switch_state
 
 (** Install a compiler's base packages *)
@@ -47,7 +47,7 @@ val switch: 'a lock -> rw global_state -> switch -> 'a switch_state
 (** Switch to the given compiler switch, installing it if it doesn't exist
     already (with the given compiler, or empty if unspecified). *)
 val switch_with_autoinstall:
-  rw global_state -> packages:atom conjunction -> switch ->
+  rw global_state -> packages:atom conjunction -> switch -> cc * libc * target_arch ->
   unlocked global_state * rw switch_state
 
 (** Reinstall the given compiler switch. *)

@@ -304,6 +304,15 @@ type pin_kind = [ `version | OpamUrl.backend ]
 (** Shell compatibility modes *)
 type shell = [`fish|`csh|`zsh|`sh|`bash|`cmd|`clink]
 
+(** C compiler type (classic cc or Microsoft cl) *)
+type cc = [ `cc | `cl | `Default ]
+
+(** C runtime type (libc or Microsoft) *)
+type libc = [ `libc | `msvc | `Default ]
+
+(** Target switch architecture (Windows-only) *)
+type target_arch = [ `x86 | `x64 | `Other | `Default ]
+
 (** {2 Generic command-line definitions with filters} *)
 
 (** A command argument *)

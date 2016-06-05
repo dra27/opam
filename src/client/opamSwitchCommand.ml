@@ -248,7 +248,7 @@ let install_compiler_packages t atoms =
   OpamSolution.check_solution ~quiet:true t result;
   t
 
-let install gt ~update_config ~packages switch =
+let install gt ~update_config ~packages switch triple =
   let comp_dir = OpamPath.Switch.root gt.root switch in
   if List.mem switch (OpamFile.Config.installed_switches gt.config) then
     OpamConsole.error_and_exit
@@ -258,7 +258,7 @@ let install gt ~update_config ~packages switch =
     OpamConsole.error_and_exit
       "Directory %S already exists, please choose a different name"
       (OpamFilename.Dir.to_string comp_dir);
-  let gt = OpamSwitchAction.create_empty_switch gt switch in
+  let gt = OpamSwitchAction.create_empty_switch gt switch triple in
   let st =
     if update_config then
       OpamSwitchAction.set_current_switch `Lock_write gt switch
@@ -286,7 +286,7 @@ let switch lock gt switch =
       (OpamSwitch.to_string switch)
       (OpamStd.Format.itemize OpamSwitch.to_string installed_switches)
 
-let switch_with_autoinstall gt ~packages switch =
+let switch_with_autoinstall gt ~packages switch triple =
   log "switch switch=%a" (slog OpamSwitch.to_string) switch;
   let installed_switches = OpamFile.Config.installed_switches gt.config in
   if List.mem switch installed_switches then
@@ -295,7 +295,7 @@ let switch_with_autoinstall gt ~packages switch =
     OpamEnv.check_and_print_env_warning st;
     gt, st
   else
-    install gt ~update_config:true ~packages switch
+    install gt ~update_config:true ~packages switch triple
 
 let import_t importfile t =
   log "import switch";

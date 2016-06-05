@@ -106,6 +106,46 @@ let init_dot_profile shell dot_profile =
 
 type command = unit Term.t * Term.info
 
+(* This is a little bit ad-hoc. In order to make the command line help clearer, the parameters describe default behaviour, even though
+   the implementation of this default behaviour is actually left to the root packages themselves (OPAM simply passes the value "default"
+   for any missing item). *)
+let cc =
+  let values = [("cc", `cc); ("cl", `cl)] in
+  mk_opt ["cc"] "CCOMPTYPE" ("Specify the type of the C compiler to use (Windows only). Must be " ^ Arg.doc_alts_enum values)
+  Arg.(some ~none:(if OpamStd.Sys.(os () = Win32) then "dynamically-determined" else "cc") & enum values) None
+
+let libc =
+  let def_libc =
+    if OpamStd.Sys.(os () = Win32) then
+      `msvc
+    else
+      `libc
+  in
+  let values = [("libc", `libc); ("msvc", `msvc)] in
+  mk_opt ["libc"] "LIBCTYPE" ("Specify the type of C runtime library to use (Windows only). Must be " ^ Arg.doc_alts_enum values)
+  Arg.(some ~none:(string_of_libc def_libc) & enum values) None
+
+let arch =
+  let none =
+    if OpamStd.Sys.(os () = Win32) then
+      match OpamStd.Sys.arch () with
+      | "i686" ->
+          "i686"
+      | "x86_64" ->
+          "x86_64 (if available)"
+      | _ ->
+          assert false
+    else
+      "other"
+  in
+  let values = [("i686", `x86); ("x86", `x86); ("x86_64", `x64); ("x64", `x64); ("other", `Other)] in
+  mk_opt ["arch"] "ARCH" ("Specify the target architecture for the compiler (Windows only). Must be " ^ Arg.doc_alts_enum values)
+  Arg.(some ~none & enum values) None
+
+let process_triple cc libc arch =
+  let f x = OpamStd.Option.default `Default x in
+  (cc <> None || libc <> None || arch <> None, (f cc, f libc, f arch))
+
 (* INIT *)
 let init_doc = "Initialize OPAM state."
 let init =
@@ -149,7 +189,7 @@ let init =
   let init global_options
       build_options repo_kind repo_name repo_url
       no_setup auto_setup shell dot_profile_o
-      compiler no_compiler =
+      compiler no_compiler cc libc arch =
     let compiler =
       match compiler with
       | Some compiler ->
@@ -159,6 +199,19 @@ let init =
             compiler
       | None ->
           "system"
+    in
+    let (tripled, triple) = process_triple cc libc arch in
+    let triple =
+      if compiler = "system" then
+        if tripled then
+          if no_compiler then
+            OpamConsole.error_and_exit "Options --cc, --lib and --arch are incompatible with --bare"
+          else
+            OpamConsole.error_and_exit "Options --cc, --libc and --arch may not be specified for a system compiler"
+        else
+          (`Default, `Default, `Default)
+      else
+        triple
     in
     apply_global_options global_options;
     apply_build_options build_options;
@@ -179,12 +232,12 @@ let init =
         OpamSwitchCommand.guess_compiler_package rt compiler
       in
       OpamSwitchCommand.switch_with_autoinstall
-        gt ~packages (OpamSwitch.of_string compiler)
+        gt ~packages (OpamSwitch.of_string compiler) triple
       |> ignore
   in
   Term.(pure init
     $global_options $build_options $repo_kind_flag $repo_name $repo_url
-    $no_setup $auto_setup $shell_opt $dot_profile_flag $compiler $no_compiler),
+    $no_setup $auto_setup $shell_opt $dot_profile_flag $compiler $no_compiler $cc $libc $arch),
   term_info "init" ~doc ~man
 
 (* LIST *)
@@ -1214,13 +1267,24 @@ let switch =
 
   let switch global_options
       build_options command alias_of print_short installed all
-      no_switch no_autoinstall packages empty params =
+      no_switch no_autoinstall packages empty params cc libc arch =
     apply_global_options global_options;
     apply_build_options build_options;
     let packages =
       match packages, empty with
       | None, true -> Some []
       | packages, _ -> packages
+    in
+    let (tripled, triple) = process_triple cc libc arch in
+    let triple =
+      match alias_of with
+      | Some "system" ->
+          if tripled then
+            OpamConsole.error_and_exit "Options --cc, --libc and --arch may not be specified for a system compiler"
+          else
+            (`Default, `Default, `Default)
+      | _ ->
+          triple
     in
     let guess_compiler_package gt s =
       OpamRepositoryState.with_ `Lock_none gt @@ fun rt ->
@@ -1241,6 +1305,8 @@ let switch =
     match command, params with
     | None      , []
     | Some `list, [] ->
+      if tripled then
+        OpamConsole.error_and_exit "Options --cc, --libc and --arch may only be specified when installing a switch";
       OpamGlobalState.with_ `Lock_none @@ fun gt ->
       OpamSwitchCommand.list gt ~print_short ~installed ~all;
       `Ok ()
@@ -1251,22 +1317,27 @@ let switch =
           ~update_config:(not no_switch)
           ~packages:(compiler_packages gt switch)
           (OpamSwitch.of_string switch)
+          triple
       in
       ignore (OpamSwitchState.unlock st);
       `Ok ()
     | Some `export, [filename] ->
+      if tripled then
+        OpamConsole.error_and_exit "Options --cc, --libc and --arch may only be specified when installing a switch";
       OpamSwitchCommand.export
         (if filename = "-" then None
          else Some (OpamFile.make (OpamFilename.of_string filename)));
       `Ok ()
     | Some `import, [filename] ->
+      if tripled then
+        OpamConsole.error_and_exit "Options --cc, --libc and --arch may only be specified when installing a switch";
       OpamGlobalState.with_ `Lock_none @@ fun gt ->
       let switch = OpamStateConfig.get_switch () in
       let installed_switches = OpamFile.Config.installed_switches gt.config in
       let gt =
         if not (List.mem switch installed_switches) then
           OpamGlobalState.with_write_lock gt @@ fun gt ->
-          OpamSwitchAction.create_empty_switch gt switch
+          OpamSwitchAction.create_empty_switch gt switch triple
           |> OpamGlobalState.unlock
         else gt
       in
@@ -1283,6 +1354,8 @@ let switch =
       in
       `Ok ()
     | Some `remove, switches ->
+      if tripled then
+        OpamConsole.error_and_exit "Options --cc, --libc and --arch may only be specified when installing a switch";
       OpamGlobalState.with_ `Lock_write @@ fun gt ->
       let _gt =
         List.fold_left
@@ -1294,11 +1367,15 @@ let switch =
       `Ok ()
     | Some `reinstall, [switch] ->
       let switch = OpamSwitch.of_string switch in
+      if tripled then
+        OpamConsole.error_and_exit "Options --cc, --libc and --arch may only be specified when installing a switch";
       OpamGlobalState.with_ `Lock_none @@ fun gt ->
       OpamSwitchState.with_ `Lock_write gt ~switch @@ fun st ->
       let _st = OpamSwitchCommand.reinstall st in
       `Ok ()
     | Some `current, [] ->
+      if tripled then
+        OpamConsole.error_and_exit "Options --cc, --libc and --arch may only be specified when installing a switch";
       OpamSwitchCommand.show ();
       `Ok ()
     | Some `set, [switch]
@@ -1316,11 +1393,11 @@ let switch =
           OpamConsole.msg "Switch already installed, nothing to do.\n"
         else
           OpamSwitchCommand.install gt ~update_config:false
-            ~packages switch_name |> ignore
+            ~packages switch_name triple |> ignore
       else if no_autoinstall then
         OpamSwitchCommand.switch `Lock_none gt switch_name |> ignore
       else
-        OpamSwitchCommand.switch_with_autoinstall gt ~packages switch_name
+        OpamSwitchCommand.switch_with_autoinstall gt ~packages switch_name triple
         |> ignore;
       `Ok ()
     | Some `set_compiler, packages ->
@@ -1337,7 +1414,7 @@ let switch =
              $global_options $build_options $command
              $alias_of $print_short_flag
              $installed $all $no_switch $no_autoinstall
-             $packages $empty $params)),
+             $packages $empty $params $cc $libc $arch)),
   term_info "switch" ~doc ~man
 
 (* PIN *)
