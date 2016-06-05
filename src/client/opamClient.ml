@@ -337,7 +337,7 @@ let slog = OpamConsole.slog
       let t, result = OpamSolution.apply ?ask t action ~requested solution in
       if result = Nothing_to_do then (
         let to_check =
-          if OpamPackage.Name.Set.is_empty requested then t.installed
+          if OpamPackage.Name.Set.is_empty requested then t.installed -- t.compiler_packages
           else OpamPackage.packages_of_names t.installed requested
         in
         let latest =
