@@ -251,9 +251,20 @@ let install_compiler_packages t atoms =
       ~requested:roots
       solution in
   OpamSolution.check_solution ~quiet:true t result;
+  let vars =
+    let f (name, _) =
+      let name = OpamVariable.to_string name in
+      (name <> "switch-cc" && name <> "switch-arch" && name <> "switch-libc")
+    in
+    List.filter f (OpamFile.Dot_config.bindings t.switch_config)
+  in
+  let t =
+    {t with switch_config = OpamFile.Dot_config.with_vars vars t.switch_config}
+  in
+  OpamSwitchAction.install_global_config t.switch_global.root t.switch t.switch_config;
   t
 
-let install_cont gt ~update_config ~packages switch =
+let install_cont gt ~update_config ~packages switch triple =
   let comp_dir = OpamPath.Switch.root gt.root switch in
   if List.mem switch (OpamFile.Config.installed_switches gt.config) then
     OpamConsole.error_and_exit
@@ -263,7 +274,7 @@ let install_cont gt ~update_config ~packages switch =
     OpamConsole.error_and_exit
       "Directory %S already exists, please choose a different name"
       (OpamFilename.Dir.to_string comp_dir);
-  let gt = OpamSwitchAction.create_empty_switch gt switch in
+  let gt = OpamSwitchAction.create_empty_switch gt switch triple in
   (if update_config
    then fun f ->
      f (OpamSwitchAction.set_current_switch `Lock_write gt switch)
@@ -282,10 +293,10 @@ let install_cont gt ~update_config ~packages switch =
         (OpamSwitch.to_string switch);
       raise e
 
-let install gt ~update_config ~packages switch =
-  (snd (install_cont gt ~update_config ~packages switch)) ()
+let install gt ~update_config ~packages switch triple =
+  (snd (install_cont gt ~update_config ~packages switch triple)) ()
 
-let switch_cont gt ~packages switch =
+let switch_cont gt ~packages switch triple =
   log "switch switch=%a" (slog OpamSwitch.to_string) switch;
   let switch, cont =
     if List.mem switch (OpamFile.Config.installed_switches gt.config) then
@@ -293,13 +304,13 @@ let switch_cont gt ~packages switch =
       OpamEnv.check_and_print_env_warning st;
       switch, fun () -> ()
     else
-      install_cont gt ~update_config:true ~packages switch
+      install_cont gt ~update_config:true ~packages switch triple
   in
   switch,
   cont
 
-let switch gt ~packages switch =
-  (snd (switch_cont gt ~packages switch)) ()
+let switch gt ~packages switch triple =
+  (snd (switch_cont gt ~packages switch triple)) ()
 
 let import_t importfile t =
   log "import switch";

@@ -15,13 +15,14 @@
 (**************************************************************************)
 
 open OpamTypes
+open OpamTypesBase
 open OpamStateTypes
 open OpamPackage.Set.Op
 
 let log fmt = OpamConsole.log "SWACT" fmt
 let slog = OpamConsole.slog
 
-let gen_global_config root switch =
+let gen_global_config root switch (cc, libc, arch) =
   let map f l =
     List.rev_map (fun (s,p) -> OpamVariable.of_string s, S (f p)) l
   in
@@ -36,6 +37,9 @@ let gen_global_config root switch =
        with Not_found -> "group");
       ("make" , OpamStateConfig.(Lazy.force !r.makecmd));
       ("os"   , OpamStd.Sys.os_string ());
+      ("switch-cc", string_of_cc cc);
+      ("switch-libc", string_of_libc libc);
+      ("switch-arch", string_of_target_arch arch);
     ] @
     map OpamFilename.Dir.to_string
       [
@@ -61,7 +65,7 @@ let install_global_config root switch config =
     (OpamPath.Switch.global_config root switch)
     config
 
-let create_empty_switch gt switch =
+let create_empty_switch gt switch triple =
   log "create_empty_switch at %a" (slog OpamSwitch.to_string) switch;
   let root = gt.root in
   let switch_dir = OpamPath.Switch.root root switch in
@@ -75,7 +79,7 @@ let create_empty_switch gt switch =
     (* Create base directories *)
     OpamFilename.mkdir switch_dir;
 
-    let config = gen_global_config root switch in
+    let config = gen_global_config root switch triple in
 
     OpamFilename.mkdir (OpamPath.Switch.lib_dir root switch config);
     OpamFilename.mkdir (OpamPath.Switch.stublibs root switch config);

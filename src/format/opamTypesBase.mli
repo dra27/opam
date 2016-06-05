@@ -54,6 +54,12 @@ val string_of_cause: ('pkg -> string) -> 'pkg cause -> string
 (** Pretty-print *)
 val string_of_shell: shell -> string
 
+val string_of_cc: cc -> string
+
+val string_of_libc: libc -> string
+
+val string_of_target_arch: target_arch -> string
+
 (** The empty file position *)
 val pos_null: pos
 

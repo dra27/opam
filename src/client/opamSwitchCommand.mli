@@ -25,13 +25,13 @@ val install_cont:
   rw global_state ->
   update_config:bool ->
   packages:atom conjunction ->
-  switch ->
+  switch -> cc * libc * target_arch ->
   switch * (unit -> unit)
 
 (** Like [install_cont] but runs the continuation already *)
 val install:
   rw global_state -> update_config:bool ->
-  packages:atom conjunction -> switch -> unit
+  packages:atom conjunction -> switch -> cc * libc * target_arch -> unit
 
 (** Install a compiler's base packages *)
 val install_compiler_packages:
@@ -56,12 +56,12 @@ val remove: rw global_state -> ?confirm:bool -> switch -> rw global_state
     continuation like [install] *)
 val switch_cont:
   rw global_state -> packages:atom conjunction ->
-  switch -> switch * (unit -> unit)
+  switch -> cc * libc * target_arch -> switch * (unit -> unit)
 
 (** Like [switch_cont] but runs the continuation already. *)
 val switch:
   rw global_state -> packages:atom conjunction ->
-  switch -> unit
+  switch -> cc * libc * target_arch -> unit
 
 (** Reinstall the given compiler switch. *)
 val reinstall: 'a global_state -> switch -> unit

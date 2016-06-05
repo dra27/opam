@@ -45,6 +45,22 @@ let string_of_shell = function
   | `cmd  -> "Windows Command Processor"
   | `clink -> "Windows Command Processor/Clink"
 
+let string_of_cc = function
+| `cc -> "cc"
+| `cl -> "cl"
+| `System -> "system"
+
+let string_of_libc = function
+| `libc -> "libc"
+| `msvc -> "msvc"
+| `System -> "system"
+
+let string_of_target_arch = function
+| `x86 -> "i686"
+| `x64 -> "x86_64"
+| `Other -> "other"
+| `System -> "system"
+
 let file_null = OpamFilename.of_string ""
 let pos_file filename = filename, -1, -1
 let pos_null = pos_file file_null
