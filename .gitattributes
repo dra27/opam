@@ -1,2 +1,8 @@
 # Default behaviour, for if core.autocrlf isn't set
 * text=auto
+
+# Checksums
+SHA512SUMS text eol=lf
+
+# Binary files
+*.zip binary
