@@ -71,7 +71,7 @@ let cygwin_create_process_env prog args env fd1 fd2 fd3 =
   let make_args argv =
     let b = Buffer.create 128 in
     let gen_quote ~quote ~pre ?(post = pre) s =
-      log ~level:3 "gen_quote: %s" s;
+      log ~level:3 "gen_quote: %S" s;
       Buffer.clear b;
       let l = String.length s in
       let rec f i =
@@ -97,7 +97,13 @@ let cygwin_create_process_env prog args env fd1 fd2 fd3 =
             Buffer.contents b
         end else
           Buffer.contents b in
-      let r = f 0 in log ~level:3 "result: %S" r; r in
+      let r =
+        if s = "" then
+          "\"\""
+        else
+          f 0
+      in
+      log ~level:3 "result: %S" r; r in
     if List.exists (fun s -> try String.index s '"' >= 0 with Not_found -> false) argv then
       ("\"" ^ String.concat "\" \"" (List.map (gen_quote ~quote:"\"" ~pre:"\"'" ~post:"'\"") argv) ^ "\"", false)
     else
@@ -111,53 +117,78 @@ let cygwin_create_process_env prog args env fd1 fd2 fd3 =
       match OpamStd.String.cut_at item '=' with
         Some pair -> pair
       | None -> (item, "") in
-    if String.lowercase key = "cygwin" then
-      let () =
-        if key = "CYGWIN" then
-          set := true in
-      let settings = OpamStd.String.split value ' ' in
-      let set = ref false in
-      let f setting =
-        let setting = String.trim setting in
-        let setting =
-          match OpamStd.String.cut_at setting ':' with
-            Some (setting, _) -> setting
-          | None -> setting in
-        match setting with
-          "glob" ->
-            if no_glob then begin
-              log ~level:2 "Removing glob from %s" key;
-              false
-            end else begin
-              log ~level:2 "Leaving glob in %s" key;
-              set := true;
-              true
-            end
-        | "noglob" ->
-            if no_glob then begin
-              log ~level:2 "Leaving noglob in %s" key;
-              set := true;
-              true
-            end else begin
-              log ~level:2 "Removing noglob from %s" key;
-              false
-            end
-        | _ ->
-            true in
-      let settings = List.filter f settings in
-      let settings =
-        if not !set && no_glob then begin
-          log ~level:2 "Setting noglob in %s" key;
-          "noglob"::settings
+    match String.lowercase key with
+    | "cygwin" ->
+        let () =
+          if key = "CYGWIN" then
+            set := true in
+        let settings = OpamStd.String.split value ' ' in
+        let set = ref false in
+        let f setting =
+          let setting = String.trim setting in
+          let setting =
+            match OpamStd.String.cut_at setting ':' with
+              Some (setting, _) -> setting
+            | None -> setting in
+          match setting with
+            "glob" ->
+              if no_glob then begin
+                log ~level:2 "Removing glob from %s" key;
+                false
+              end else begin
+                log ~level:2 "Leaving glob in %s" key;
+                set := true;
+                true
+              end
+          | "noglob" ->
+              if no_glob then begin
+                log ~level:2 "Leaving noglob in %s" key;
+                set := true;
+                true
+              end else begin
+                log ~level:2 "Removing noglob from %s" key;
+                false
+              end
+          | _ ->
+              true in
+        let settings = List.filter f settings in
+        let settings =
+          if not !set && no_glob then begin
+            log ~level:2 "Setting noglob in %s" key;
+            "noglob"::settings
+          end else
+            settings in
+        if settings = [] then begin
+          log ~level:2 "Removing %s completely" key;
+          None
         end else
-          settings in
-      if settings = [] then begin
-        log ~level:2 "Removing %s completely" key;
-        None
-      end else
-        Some (key ^ "=" ^ String.concat " " settings)
-    else
-      Some item in
+          Some (key ^ "=" ^ String.concat " " settings)
+    | "path" ->
+        let path_dirs = OpamStd.Sys.get_path_dirs item in
+        let winsys = Filename.concat (OpamStd.Sys.system ()) "." |> String.lowercase in
+        let rec f prefix suffix = function
+        | dir::dirs ->
+            let contains_cygpath = Sys.file_exists (Filename.concat dir "cygpath.exe") in
+            if suffix = [] then
+              if String.lowercase (Filename.concat dir ".") = winsys then
+                f prefix [dir] dirs
+              else
+                if contains_cygpath then
+                  path_dirs
+                else
+                  f (dir::prefix) [] dirs
+            else
+              if contains_cygpath then begin
+                log ~level:2 "Moving %s to after %s in PATH" dir (List.hd prefix);
+                List.rev_append prefix (dir::(List.rev_append suffix dirs))
+              end else
+                f prefix (dir::suffix) dirs
+        | [] ->
+            assert false
+        in
+        Some (String.concat ";" (f [] [] path_dirs))
+    | _ ->
+        Some item in
   let env = OpamStd.List.filter_map f env in
   let env =
     if !set then

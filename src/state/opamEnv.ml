@@ -32,8 +32,7 @@ let apply_env_update_op ?remove_prefix op contents getenv =
       let before, after = OpamStd.Env.cut_value ~prefix sep (getenv ()) in
       List.rev_append before (new_item::after)
     | None ->
-      OpamConsole.error_and_exit
-        "'=+=' environment update operator not allowed in this scope"
+        new_item::(OpamStd.String.split_delim (getenv ()) sep)
   in
   let get_prev_value () =
     match remove_prefix with
@@ -49,14 +48,62 @@ let apply_env_update_op ?remove_prefix op contents getenv =
   let c = String.make 1 sep in
   match op with
   | Eq  -> contents
-  | PlusEq -> String.concat c (contents :: get_prev_value ())
-  | EqPlus -> String.concat c (get_prev_value () @ [contents])
+  | PlusEq -> String.concat c (if contents = "" then get_prev_value () else contents :: get_prev_value ())
+  | EqPlus -> String.concat c (if contents = "" then get_prev_value () else get_prev_value () @ [contents])
   | EqPlusEq -> String.concat c (update_env contents)
   | ColonEq -> String.concat c (colon_eq contents (get_prev_value ()))
   | EqColon ->
     String.concat c
       (List.rev (colon_eq contents (List.rev (get_prev_value ()))))
 
+let remove_env_update_op ?remove_prefix op contents getenv =
+  let sep = OpamStd.Sys.path_sep () in
+  let update_env new_item =
+    match remove_prefix with
+    | Some prefix ->
+      (* Changes in place the first value starting with opam_root_prefix *)
+      let before, after = OpamStd.Env.cut_value ~prefix sep (getenv ()) in
+      List.rev_append before (new_item::after)
+    | None ->
+        OpamStd.String.split_delim (getenv ()) sep
+  in
+  let get_prev_value () =
+    OpamStd.String.split_delim (getenv ()) sep
+  in
+  let filter_out contents value =
+    let contents = OpamStd.String.split_delim contents sep in
+    let rec matches contents all =
+      match (contents, all) with
+      | ([], all) ->
+          (true, all)
+      | (hd::contents, hd'::all) ->
+          if hd = hd' then
+            matches contents all
+          else
+            (false, [])
+      | (_, []) ->
+          (false, [])
+    in
+    let rec find_block acc = function
+    | [] ->
+        List.rev acc
+    | (item::items) as all ->
+        let (matches, remaining) = matches contents all in
+        if matches then
+          List.rev_append acc remaining
+        else
+          find_block (item::acc) items
+    in
+    find_block [] value
+  in
+  let c = String.make 1 sep in
+  match op with
+  | Eq  -> contents (* Can't reverse these - OPAM relies on their being overwritten by each switch *)
+  | ColonEq
+  | EqColon
+  | EqPlus
+  | PlusEq -> String.concat c (if contents = "" && op <> ColonEq && op <> EqColon then get_prev_value () else get_prev_value () |> filter_out contents)
+  | EqPlusEq -> String.concat c (update_env "")
 
 let expand_update ?remove_prefix (ident, op, string, comment) getenv =
   ident,
@@ -64,20 +111,46 @@ let expand_update ?remove_prefix (ident, op, string, comment) getenv =
   comment
 
 let expand (env: env_update list) : env =
+  let remove_prefix = OpamFilename.Dir.to_string OpamStateConfig.(!r.root_dir) in
   List.fold_left (fun acc ((var, op, contents, comment) as upd) ->
       try
         let _, prev_value, _ =
+          (* @@DRA Case sensitive! *)
           List.find (fun (v, _, _) -> v = var) acc
         in
         expand_update (var, op, contents, comment) (fun () -> prev_value)
         :: acc
       with Not_found ->
         expand_update
-          ~remove_prefix:(OpamFilename.Dir.to_string OpamStateConfig.(!r.root_dir))
+          ~remove_prefix
           upd
           (fun () -> OpamStd.Option.default "" (OpamStd.Env.getopt var))
         :: acc)
     [] env
+  |> List.rev
+
+let contract_update ?remove_prefix (ident, op, string, comment) getenv =
+  ident,
+  remove_env_update_op ?remove_prefix op string getenv,
+  comment
+
+let remove updates =
+  let remove_prefix = OpamFilename.Dir.to_string OpamStateConfig.(!r.root_dir) in
+  List.fold_left (fun acc ((var, op, contents, comment) as upd) ->
+    try
+      let _, prev_value, _ =
+        (* @@DRA Case sensitive! *)
+        List.find (fun (v, _, _) -> v = var) acc
+      in
+      contract_update (var, op, contents, comment) (fun () -> prev_value)
+      :: acc
+    with Not_found ->
+      contract_update
+        ~remove_prefix
+        upd
+        (fun () -> OpamStd.Option.default "" (OpamStd.Env.getopt var))
+      :: acc)
+  [] updates
   |> List.rev
 
 let add (env: env) (updates: env_update list) =
@@ -131,6 +204,7 @@ let compute_updates st =
     OpamPackage.Set.fold (fun nv acc ->
         let opam = OpamSwitchState.opam st nv in
         List.map (fun (name,op,str,cmt) ->
+            log "setenv req %s %s" name str;
             let s =
               OpamFilter.expand_string ~default:(fun _ -> "") (fenv ~opam) str
             in
@@ -155,7 +229,9 @@ let updates ~opamswitch ?(force_path=false) st =
   let update =
     let fn = OpamPath.Switch.environment root st.switch in
     match OpamFile.Environment.read_opt fn with
-    | Some env -> env
+    | Some env ->
+        (*List.iter (fun (k, o, v, c) -> Printf.eprintf "Key %s%s\n  %s %s\n%!" k (OpamStd.Option.map_default (Printf.sprintf " (%s)") "" c) (string_of_env_update_op o) v) env;*)
+        env
     | None -> compute_updates st
   in
   let add_to_path = OpamPath.Switch.bin root st.switch st.switch_config in
@@ -180,7 +256,43 @@ let updates ~opamswitch ?(force_path=false) st =
    we really want to get the environment for this switch. *)
 let get_opam ~force_path st =
   let opamswitch = OpamStateConfig.(!r.switch_from <> `Default) in
-  add [] (updates ~opamswitch ~force_path st)
+  let f (k, v, c) = (k, Eq, v, c) in
+  let reversed =
+    try
+      (* Reverse changes made in the current environment - for this, use OPAM_SWITCH_PREFIX rather than any parameters *)
+      let environment_switch =
+        Filename.basename (OpamStd.Env.get "OPAM_SWITCH_PREFIX")
+      in
+      (*Printf.eprintf "Eliminating updates from switch %s before computation\n%!" environment_switch;*)
+      let environment_switch = OpamSwitch.of_string environment_switch in
+      let add_to_path =
+        OpamSwitchState.with_ `Lock_none ~switch:environment_switch st.switch_global @@ fun st -> OpamPath.Switch.bin st.switch_global.root environment_switch st.switch_config in
+      let new_path =
+        "PATH",
+        PlusEq,
+        OpamFilename.Dir.to_string add_to_path,
+        Some "Current opam switch binary dir" in
+      let env =
+      match OpamFile.Environment.read_opt (OpamPath.Switch.environment st.switch_global.root environment_switch) with
+      | Some env ->
+          List.rev (new_path::env)
+      | None ->
+          [new_path]
+      in
+      (*List.iter (fun (k, o, v, _) -> Printf.eprintf "  %s %s %S\n%!" k (string_of_env_update_op o) v) env;*)
+      remove env
+    with Not_found -> []
+  in
+  let updates = (updates ~opamswitch ~force_path st) in
+  (*Printf.eprintf "Updates:\n%!";
+  List.iter (fun (k, o, v, _) -> Printf.eprintf "  %s %s %S\n%!" k (string_of_env_update_op o) v) updates;
+  Printf.eprintf "Parsed removals:\n%!";
+  List.iter (fun (k, o, v, _) -> Printf.eprintf "  %s %s %S\n%!" k (string_of_env_update_op o) v) (List.map f reversed);*)
+  add [] (List.rev_append (List.rev_map f reversed) updates)
+
+let get_reverse_opam ~force_path st =
+  let opamswitch = OpamStateConfig.(!r.switch_from <> `Default) in
+  remove (List.rev (updates ~opamswitch ~force_path st))
 
 let get_full ?(opamswitch=true) ~force_path st =
   let env0 = List.map (fun (v,va) -> v,va,None) (OpamStd.Env.list ()) in
@@ -373,7 +485,7 @@ let string_of_update st shell updates =
         (Printf.sprintf "for /f \"delims=\" %%%%D in ('cygpath \"%s\"') do " string, "%%D")
       else
         ("", string) in
-    let key, value =
+    let key, value, skip =
       let separator = match ident with
       | "PATH" | "CAML_LD_LIBRARY_PATH" | "PERL5LIB" ->
           OpamStd.Sys.path_sep ()
@@ -385,13 +497,17 @@ let string_of_update st shell updates =
         else
           "$" ^ ident in
       match symbol with
-      | Eq  -> ident, string
-      | PlusEq | ColonEq | EqPlusEq -> ident, Printf.sprintf "%s%c%a" string separator retrieve ident
+      | Eq  -> ident, string, false
+      | PlusEq | ColonEq | EqPlusEq ->
+          ident, Printf.sprintf "%s%c%a" string separator retrieve ident, (string = "")
       | EqColon | EqPlus ->
         ident, (match shell with `csh -> Printf.sprintf "${%s}:%s" ident string
-                               | _ -> Printf.sprintf "%a%c%s" retrieve ident separator string)
+                               | _ -> Printf.sprintf "%a%c%s" retrieve ident separator string), (string = "")
     in
-    export prefix (key, value, comment) in
+    if skip then
+      ""
+    else
+      export prefix (key, value, comment) in
   OpamStd.List.concat_map "" aux updates
 
 let rem = function
@@ -732,7 +848,7 @@ let print_env_warning_at_init gt ~ocamlinit ?dot_profile shell =
     line
 
 let set_cmd_env env =
-  List.iter (fun (k, v, _) -> ignore (OpamStd.Win32.parent_putenv k v)) env
+  List.iter (fun (k, v, _) -> log "parent-putenv: %s->%S" k v; ignore (OpamStd.Win32.parent_putenv k v)) env
 
 let check_and_print_env_warning st =
   if (OpamSwitchState.is_switch_globally_set st ||

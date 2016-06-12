@@ -161,7 +161,7 @@ let rec resolve st ?opam:opam_arg ?(local=OpamVariable.Map.empty) v =
       try
         let cfg =
           OpamPackage.Map.find
-            (OpamPackage.package_of_name st.installed name)
+            (OpamPackage.package_of_name (OpamPackage.Set.union st.installed (OpamPackage.Set.of_list (OpamPackage.Map.keys st.conf_files))) name)
             st.conf_files
         in
         OpamFile.Dot_config.variable cfg (OpamVariable.Full.variable v)
