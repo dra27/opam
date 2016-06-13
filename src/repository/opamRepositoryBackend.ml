@@ -36,8 +36,8 @@ let to_string r =
 
 let default_url = {
   OpamUrl.
-  transport = "https";
-  path = "github.com/dra27/opam-repository";
+  transport = "file";
+  path = "C:\\DRA\\opam-repository";
   hash = Some "next-windows";
   backend = `git;
 }

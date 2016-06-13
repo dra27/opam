@@ -49,6 +49,10 @@ let compute_available_packages gt switch switch_config ~pinned ~opams =
   in
   let avail_map =
     OpamPackage.Map.filter (fun package opam ->
+      (*if OpamPackage.name package |> OpamPackage.Name.to_string = "ocaml" && OpamPackage.version package |> OpamPackage.Version.to_string = "system" then begin
+        Printf.eprintf "Analysis ocaml.system\n%!";
+        List.iter (fun (n,v) -> Printf.eprintf "  %s = %s\n%!" (OpamVariable.to_string n) (OpamVariable.string_of_variable_contents v)) (OpamFile.Dot_config.bindings switch_config)
+      end;*)
         OpamFilter.eval_to_bool ~default:false
           (OpamPackageVar.resolve_switch_raw ~package gt switch switch_config)
           (OpamFile.OPAM.available opam))

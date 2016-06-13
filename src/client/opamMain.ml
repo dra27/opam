@@ -111,56 +111,45 @@ let init_dot_profile shell dot_profile =
 
 type command = unit Term.t * Term.info
 
-let def_cc =
-  (* @@DRA This should be based on the availability of a detected C compiler. *)
-  (* We'll do this by pulling a minimal part of the registry detection from msvs-detect *)
-  if OpamStd.Sys.(os () = Win32) then
-    lazy `cc
-  else
-    lazy `cc
-
-let def_libc =
-  if OpamStd.Sys.(os () = Win32) then
-    `msvc
-  else
-    `libc
-
-let def_arch =
-  if OpamStd.Sys.(os () = Win32) then
-    match OpamStd.Sys.arch () with
-    | "i686" ->
-        `x86
-    | "x86_64" ->
-        `x64
-    | _ ->
-        assert false
-  else
-    `Other
-
+(* This is a little bit ad-hoc. In order to make the command line help clearer, the parameters describe default behaviour, even though
+   the implementation of this default behaviour is actually left to the root packages themselves (OPAM simply passes the value "default"
+   for any missing item). *)
 let cc =
   let values = [("cc", `cc); ("cl", `cl)] in
-  mk_opt ["cc"] "CCOMPTYPE" ("Specify the type of the C compiler to use. Must be " ^ Arg.doc_alts_enum values)
+  mk_opt ["cc"] "CCOMPTYPE" ("Specify the type of the C compiler to use (Windows only). Must be " ^ Arg.doc_alts_enum values)
   Arg.(some ~none:(if OpamStd.Sys.(os () = Win32) then "dynamically-determined" else "cc") & enum values) None
 
 let libc =
+  let def_libc =
+    if OpamStd.Sys.(os () = Win32) then
+      `msvc
+    else
+      `libc
+  in
   let values = [("libc", `libc); ("msvc", `msvc)] in
-  mk_opt ["libc"] "LIBCTYPE" ("Specify the type of C runtime library to use (Windows-only)" ^ Arg.doc_alts_enum values)
+  mk_opt ["libc"] "LIBCTYPE" ("Specify the type of C runtime library to use (Windows only). Must be " ^ Arg.doc_alts_enum values)
   Arg.(some ~none:(string_of_libc def_libc) & enum values) None
 
 let arch =
+  let none =
+    if OpamStd.Sys.(os () = Win32) then
+      match OpamStd.Sys.arch () with
+      | "i686" ->
+          "i686"
+      | "x86_64" ->
+          "x86_64 (if available)"
+      | _ ->
+          assert false
+    else
+      "other"
+  in
   let values = [("i686", `x86); ("x86", `x86); ("x86_64", `x64); ("x64", `x64); ("other", `Other)] in
-  mk_opt ["arch"] "ARCH" ("Specify the target architecture for the compiler (Windows-only)" ^ Arg.doc_alts_enum values)
-  Arg.(some ~none:(string_of_target_arch def_arch) & enum values) None
+  mk_opt ["arch"] "ARCH" ("Specify the target architecture for the compiler (Windows only). Must be " ^ Arg.doc_alts_enum values)
+  Arg.(some ~none & enum values) None
 
 let process_triple cc libc arch =
-  let act_cc =
-    match cc with
-    | Some cc ->
-        cc
-    | None ->
-        Lazy.force def_cc
-  in
-  (cc <> None || libc <> None || arch <> None, (act_cc, OpamStd.Option.default def_libc libc, OpamStd.Option.default def_arch arch))
+  let f x = OpamStd.Option.default `Default x in
+  (cc <> None || libc <> None || arch <> None, (f cc, f libc, f arch))
 
 (* INIT *)
 let init_doc = "Initialize OPAM state."
@@ -220,9 +209,12 @@ let init =
     let triple =
       if compiler = "system" then
         if tripled then
-          OpamConsole.error_and_exit "Options --cc, --libc and --arch may not be specified for a system compiler"
+          if no_compiler then
+            OpamConsole.error_and_exit "Options --cc, --lib and --arch are incompatible with --bare"
+          else
+            OpamConsole.error_and_exit "Options --cc, --libc and --arch may not be specified for a system compiler"
         else
-          (`System, `System, `System)
+          (`Default, `Default, `Default)
       else
         triple
     in
@@ -582,6 +574,7 @@ let config =
                          in-place rather than putting the new path in front. This means programs \
                          installed in OPAM that were shadowed will remain so after \
                          $(b,opam config env)" in
+  let reverse_doc     = "Reverse environment variable changes (for updates)" in
   let profile         = mk_flag ["profile"]        profile_doc in
   let ocamlinit       = mk_flag ["ocamlinit"]      ocamlinit_doc in
   let no_complete     = mk_flag ["no-complete"]    no_complete_doc in
@@ -592,19 +585,22 @@ let config =
   let list            = mk_flag ["l";"list"]       list_doc in
   let sexp            = mk_flag ["sexp"]           sexp_doc in
   let inplace_path    = mk_flag ["inplace-path"]   inplace_path_doc in
+  let reverse         = mk_flag ["r";"reverse"]    reverse_doc in
 
   let config global_options
-      command shell sexp inplace_path
+      command shell sexp inplace_path reverse
       dot_profile_o list all global user
       profile ocamlinit no_complete no_switch_eval
       params =
     apply_global_options global_options;
+    if reverse && command <> Some `env then
+      OpamConsole.error_and_exit "--reverse can only be used with the env command";
     match command, params with
     | Some `env, [] ->
       OpamGlobalState.with_ `Lock_none @@ fun gt ->
       OpamSwitchState.with_ `Lock_none gt @@ fun st ->
       `Ok (OpamConfigCommand.env st
-             ~cmd:(shell=`cmd || shell=`clink) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish) ~inplace_path)
+             ~cmd:(shell=`cmd || shell=`clink) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish) ~inplace_path ~reverse)
     | Some `setup, [] ->
       let user        = all || user in
       let global      = all || global in
@@ -767,7 +763,7 @@ let config =
   Term.ret (
     Term.(pure config
           $global_options $command $shell_opt $sexp
-          $inplace_path
+          $inplace_path $reverse
           $dot_profile_flag $list $all $global $user
           $profile $ocamlinit $no_complete $no_switch_eval
           $params)
@@ -1132,7 +1128,7 @@ let switch =
           if tripled then
             OpamConsole.error_and_exit "Options --cc, --libc and --arch may not be specified for a system compiler"
           else
-            (`System, `System, `System)
+            (`Default, `Default, `Default)
       | _ ->
           triple
     in
@@ -1140,14 +1136,17 @@ let switch =
       OpamRepositoryState.with_ `Lock_none gt @@ fun rt ->
       OpamSwitchCommand.guess_compiler_package rt s
     in
+    if empty && packages <> Some [] && packages <> None then
+      OpamConsole.error_and_exit "Options --packages and --empty may not be specified at the same time";
     let compiler_packages gt switch =
       match packages, alias_of with
       | Some pkgs, None -> pkgs
       | None, Some al -> guess_compiler_package gt al
       | None, None -> guess_compiler_package gt switch
       | Some _, Some _ ->
-        OpamConsole.error_and_exit
-          "Options --alias-of and --packages are incompatible"
+          let opt = if empty then "empty" else "packages" in
+          OpamConsole.error_and_exit
+            "Options --alias-of and --%s are incompatible" opt
     in
     match command, params with
     | None      , []

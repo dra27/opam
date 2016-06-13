@@ -766,6 +766,10 @@ module OpamSys = struct
           Sys.getcwd ()) in
     fun () -> Lazy.force home
 
+  let system () =
+    (* CSIDL_SYSTEM = 0x25; SHGFP_TYPE_CURRENT = 0x0 *)
+    Win32.shGetFolderPath 0x25 0
+
   let uname_s () =
     try
       with_process_in "uname" "-s"
@@ -966,9 +970,9 @@ module OpamSys = struct
     ) in
     fun () -> Lazy.force path_sep
 
-  let search_path_for_command ?(env=Env.initial_env) name =
+  let get_path_dirs path =
+    let path_sep = path_sep () in
     let search =
-      let path = Env.env_var env "PATH" in
       let length = String.length path in
       let rec f acc index current last normal =
         if index = length
@@ -976,7 +980,7 @@ module OpamSys = struct
              if current <> "" then current::acc else acc
         else let c = path.[index]
              and next = succ index in
-             if c = ';' && normal || c = '"' then
+             if c = path_sep && normal || c = '"' then
                let current = current ^ String.sub path last (index - last) in
                if c = '"' then
                  f acc next current next (not normal)
@@ -986,8 +990,11 @@ module OpamSys = struct
              else
                f acc next current last normal in
       f [] 0 "" 0 true in
-    let name = if Filename.check_suffix name ".exe" then name else name ^ ".exe" in
-    Filename.concat (List.find (fun path -> let name = Filename.concat path name in Sys.file_exists name && (Unix.stat name).Unix.st_kind = Unix.S_REG) (List.rev search)) name
+    List.rev search
+
+  let search_path_for_command ?(env=Env.initial_env) name =
+    let name = if os () = Win32 then if Filename.check_suffix name ".exe" then name else name ^ ".exe" else name in
+    Filename.concat (List.find (fun path -> let name = Filename.concat path name in Sys.file_exists name && (Unix.stat name).Unix.st_kind = Unix.S_REG) (get_path_dirs (Env.env_var env "PATH"))) name
 
   let is_cygwin_variant =
     if (os () = Win32) then

@@ -464,6 +464,9 @@ module Sys : sig
   (** The user's home directory. Queried lazily *)
   val home: unit -> string
 
+  (** The system directory (Windows only) *)
+  val system: unit -> string
+
   type os = Darwin
           | Linux
           | FreeBSD
@@ -498,6 +501,9 @@ module Sys : sig
   (** The separator character used in the PATH variable (varies depending on
       OS) *)
   val path_sep: unit -> char
+
+  (** Return the list of directories currently in the given PATH *)
+  val get_path_dirs: string -> string list
 
   (** Return the full path to a command in the environment. *)
   val search_path_for_command: ?env:string array -> string -> string

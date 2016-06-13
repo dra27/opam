@@ -387,6 +387,17 @@ let parallel_apply t action action_graph =
     PackageActionGraph.explicit action_graph
   in
 
+  let target_versions =
+    let f action acc =
+      match action with
+      | `Install nv ->
+          nv::acc
+      | _ ->
+          acc
+    in
+    PackageActionGraph.fold_vertex f action_graph []
+  in
+
   let timings = Hashtbl.create 17 in
   (* the child job to run on each action *)
   let job ~pred action =
@@ -415,6 +426,33 @@ let parallel_apply t action action_graph =
         (* !X note : t.switch_config.bindings should be updated as well to
            handle compiler upgrades better *)
       in
+      let conf_files =
+        (* Add simulated conf files for packages which will be installed *)
+        let f conf_files nv =
+          let conf =
+            try
+              let conf = OpamPackage.Map.find nv conf_files in
+              OpamFile.Dot_config.with_vars ((OpamVariable.of_string "target-version", OpamPackage.version nv |> OpamPackage.Version.to_string |> OpamVariable.string)::(OpamFile.Dot_config.bindings conf)) conf
+            with Not_found ->
+              OpamFile.Dot_config.create [(OpamVariable.of_string "target-version", OpamPackage.version nv |> OpamPackage.Version.to_string |> OpamVariable.string)]
+          in
+          OpamPackage.Map.add nv conf conf_files
+        in
+        List.fold_left f t.conf_files target_versions
+      in
+      let t = {t with conf_files} in
+      (*
+      let string_of_action = function
+      | `Install nv -> OpamPackage.to_string nv |> Printf.sprintf "Install %s"
+      | `Build nv -> OpamPackage.to_string nv |> Printf.sprintf "Build %s"
+      | `Remove nv -> OpamPackage.to_string nv |> Printf.sprintf "Remove %s"
+      | _ -> assert false
+      in
+      string_of_action action |> Printf.eprintf "Action: %s\nKnown variables:\n%!";
+      OpamPackage.Map.iter (fun nv t -> OpamPackage.to_string nv |> Printf.eprintf "  %s\n%!"; List.iter (fun (name, binding) -> Printf.eprintf "    %s = %s\n%!" (OpamVariable.to_string name) (OpamVariable.string_of_variable_contents binding)) (OpamFile.Dot_config.bindings t)) t.conf_files;
+      *)
+      (*Printf.eprintf "target-version matrix:\n%!";
+      PackageActionGraph.iter_vertex (fun x -> string_of_action x |> Printf.eprintf "    %s\n%!") action_graph;*)
       let nv = action_contents action in
       let source =
         try Some (OpamPackage.Map.find nv package_sources)

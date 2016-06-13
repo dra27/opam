@@ -199,6 +199,8 @@ let update_switch_state ?installed ?installed_roots ?reinstall ?pinned st =
   in
   if not OpamStateConfig.(!r.dryrun) then (
     write_selections st;
+    (*if OpamStd.Sys.(os () = Win32) then
+      OpamEnv.set_cmd_env (OpamEnv.get_opam ~force_path:true st);*)
     if not (OpamPackage.Set.equal reinstall0 reinstall) then
       OpamFile.PkgList.write
         (OpamPath.Switch.reinstall st.switch_global.root st.switch)
@@ -207,6 +209,11 @@ let update_switch_state ?installed ?installed_roots ?reinstall ?pinned st =
   st
 
 let add_to_installed st ?(root=false) nv =
+  let conf =
+    OpamFile.Dot_config.safe_read
+      (OpamPath.Switch.config st.switch_global.root st.switch nv.name)
+  in
+  let st = { st with conf_files = OpamPackage.Map.add nv conf st.conf_files } in
   let st =
     update_switch_state st
       ~installed:(OpamPackage.Set.add nv st.installed)
@@ -217,11 +224,6 @@ let add_to_installed st ?(root=false) nv =
          else st.installed_roots)
   in
   let opam = OpamSwitchState.opam st nv in
-  let conf =
-    OpamFile.Dot_config.safe_read
-      (OpamPath.Switch.config st.switch_global.root st.switch nv.name)
-  in
-  let st = { st with conf_files = OpamPackage.Map.add nv conf st.conf_files } in
   if not OpamStateConfig.(!r.dryrun) then (
     install_metadata st nv;
     if OpamFile.OPAM.env opam <> [] &&
@@ -229,8 +231,7 @@ let add_to_installed st ?(root=false) nv =
     then
       OpamEnv.write_dynamic_init_scripts st;
   );
-  if OpamPackage.Set.mem nv st.compiler_packages &&
-     List.mem Pkgflag_Compiler (OpamFile.OPAM.flags opam)
+  if List.mem Pkgflag_Compiler (OpamFile.OPAM.flags opam)
   then
     (* Make package variables global for compiler packages *)
     (* /!\ !X this can lead to inconsistencies in the 'available:' field of

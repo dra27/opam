@@ -140,9 +140,13 @@ let print_fish_env env =
 let print_cmd_env env =
   List.iter (fun (k, v, _) -> OpamConsole.msg "set %s=%s\n" k v) env
 
-let env st ~cmd ~csh ~sexp ~fish ~inplace_path =
+let env st ~cmd ~csh ~sexp ~fish ~inplace_path ~reverse =
   log "config-env";
-  let env = OpamEnv.get_opam ~force_path:(not inplace_path) st in
+  let env =
+    if reverse then
+      OpamEnv.get_reverse_opam ~force_path:(not inplace_path) st
+    else
+      OpamEnv.get_opam ~force_path:(not inplace_path) st in
   if sexp then
     print_sexp_env env
   else if csh then

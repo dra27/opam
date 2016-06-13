@@ -194,6 +194,7 @@ let remove gt ?(confirm = true) switch =
 
 let install_compiler_packages t atoms =
   (* install the compiler packages *)
+  OpamSolution.check_availability t  (Lazy.force t.available_packages) atoms;
   let roots = OpamPackage.Name.Set.of_list (List.map fst atoms) in
   let not_found =
     OpamPackage.Name.Set.diff roots @@
@@ -251,7 +252,7 @@ let install_compiler_packages t atoms =
       ~requested:roots
       solution in
   OpamSolution.check_solution ~quiet:true t result;
-  let vars =
+  (*let vars =
     let f (name, _) =
       let name = OpamVariable.to_string name in
       (name <> "switch-cc" && name <> "switch-arch" && name <> "switch-libc")
@@ -262,6 +263,7 @@ let install_compiler_packages t atoms =
     {t with switch_config = OpamFile.Dot_config.with_vars vars t.switch_config}
   in
   OpamSwitchAction.install_global_config t.switch_global.root t.switch t.switch_config;
+  *)
   t
 
 let install_cont gt ~update_config ~packages switch triple =

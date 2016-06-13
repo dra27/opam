@@ -16,7 +16,7 @@ all:
 
 # --
 
-OCAMLFLAGS = -g -w +a-4-44-48 -bin-annot -short-paths
+OCAMLFLAGS = -g -w +a-4-44-48 -warn-error +a -bin-annot -short-paths
 OCAMLLDFLAGS = -g -w +a-4-44-48 -bin-annot
 ifeq ($(OCAML_4_02),true)
   OCAMLFLAGS += -safe-string
