@@ -224,8 +224,7 @@ let add_to_installed st ?(root=false) nv =
     then
       OpamEnv.write_dynamic_init_scripts st;
   );
-  if OpamPackage.Set.mem nv st.compiler_packages &&
-     List.mem Pkgflag_Compiler (OpamFile.OPAM.flags opam)
+  if List.mem Pkgflag_Compiler (OpamFile.OPAM.flags opam)
   then
     (* Make package variables global for compiler packages *)
     (* /!\ !X this can lead to inconsistencies in the 'available:' field of
