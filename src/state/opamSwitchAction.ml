@@ -202,6 +202,11 @@ let update_switch_state ?installed ?installed_roots ?reinstall ?pinned st =
   st
 
 let add_to_installed st ?(root=false) nv =
+  let conf =
+    OpamFile.Dot_config.safe_read
+      (OpamPath.Switch.config st.switch_global.root st.switch nv.name)
+  in
+  let st = { st with conf_files = OpamPackage.Map.add nv conf st.conf_files } in
   let st =
     update_switch_state st
       ~installed:(OpamPackage.Set.add nv st.installed)
@@ -212,11 +217,6 @@ let add_to_installed st ?(root=false) nv =
          else st.installed_roots)
   in
   let opam = OpamSwitchState.opam st nv in
-  let conf =
-    OpamFile.Dot_config.safe_read
-      (OpamPath.Switch.config st.switch_global.root st.switch nv.name)
-  in
-  let st = { st with conf_files = OpamPackage.Map.add nv conf st.conf_files } in
   if not OpamStateConfig.(!r.dryrun) then (
     install_metadata st nv;
     if OpamFile.OPAM.env opam <> [] &&
