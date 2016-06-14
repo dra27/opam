@@ -466,7 +466,7 @@ let arguments env (a,f) =
       try
         let fident = filter_ident_of_string i in
         Some (value_string (resolve_ident env fident))
-      with Failure msg -> log "ERR in replacement: %s" msg; None
+      with Failure msg -> log "ERR in replacement: %s" msg; Some ""
   else
     None
 
