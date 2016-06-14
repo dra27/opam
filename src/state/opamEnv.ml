@@ -29,8 +29,8 @@ let apply_env_update_op ?(inplace_match = fun _ -> false) op arg prev_value =
   in
   match op with
   | Eq -> arg
-  | PlusEq -> join_value (arg :: split_value ())
-  | EqPlus -> join_value (split_value () @ [arg])
+  | PlusEq -> if arg = "" then prev_value else join_value (arg :: split_value ())
+  | EqPlus -> if arg = "" then prev_value else join_value (split_value () @ [arg])
   | EqPlusEq ->
     let l = split_value () in
     let rec update acc = function
@@ -436,7 +436,7 @@ let string_of_update st shell updates =
         (Printf.sprintf "for /f \"delims=\" %%%%D in ('cygpath \"%s\"') do " string, "%%D")
       else
         ("", string) in
-    let key, value =
+    let key, value, skip =
       let separator = match ident with
       | "PATH" | "CAML_LD_LIBRARY_PATH" | "PERL5LIB" ->
           OpamStd.Sys.path_sep ()
@@ -448,13 +448,17 @@ let string_of_update st shell updates =
         else
           "$" ^ ident in
       match symbol with
-      | Eq  -> ident, string
-      | PlusEq | ColonEq | EqPlusEq -> ident, Printf.sprintf "%s%c%a" string separator retrieve ident
+      | Eq  -> ident, string, false
+      | PlusEq | ColonEq | EqPlusEq ->
+          ident, Printf.sprintf "%s%c%a" string separator retrieve ident, (string = "")
       | EqColon | EqPlus ->
         ident, (match shell with `csh -> Printf.sprintf "${%s}:%s" ident string
-                               | _ -> Printf.sprintf "%a%c%s" retrieve ident separator string)
+                               | _ -> Printf.sprintf "%a%c%s" retrieve ident separator string), (string = "")
     in
-    export prefix (key, value, comment) in
+    if skip then
+      ""
+    else
+      export prefix (key, value, comment) in
   OpamStd.List.concat_map "" aux updates
 
 let rem = function
