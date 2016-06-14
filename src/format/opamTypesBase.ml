@@ -113,7 +113,33 @@ let env_update_op_of_string = function
   | _ -> raise (Invalid_argument "env_update_op_of_string")
 
 let env_array l =
-  Array.of_list (List.rev_map (fun (k,v, _) -> k^"="^v) l)
+  let upper =
+    if OpamStd.Sys.(os () = Win32) then
+      String.uppercase
+    else
+      fun x -> x
+  in
+  let rec f acc = function
+    ((k,_,_) as elt)::env ->
+      let k = upper k in
+      let acc =
+        if List.exists (fun (k',_,_) -> upper k' = k) env then
+          acc
+        else
+          elt::acc
+      in
+      f acc env
+  | [] ->
+      acc
+  in
+  (* Unix (possibly by design, though I can't find a reference) uses the last
+     binding in an environment when there are duplicates. Windows (similarly
+     without a reference) uses the first. Cygwin (unsurprisingly) follows the
+     Unix interpretation. If a variable has been updated, it will appear
+     several times in an OPAM environment, with the most recent binding last.
+     Curiously, this means that this always worked for Windows, and not for
+     Unix! *)
+  Array.of_list (List.rev_map (fun (k,v, _) -> k^"="^v) (f [] l))
 
 
 let string_of_filter_ident (pkgs,var,converter) =
