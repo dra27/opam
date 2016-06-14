@@ -189,6 +189,7 @@ let remove gt ?(confirm = true) switch =
 
 let install_compiler_packages t atoms =
   (* install the compiler packages *)
+  OpamSolution.check_availability t (Lazy.force t.available_packages) atoms;
   let roots = OpamPackage.Name.Set.of_list (List.map fst atoms) in
   let not_found =
     OpamPackage.Name.Set.diff roots @@
