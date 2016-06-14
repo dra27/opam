@@ -286,6 +286,11 @@ let get_opam ~force_path st =
   let rev_updates = get_current_reverse st in
   add ?rev_updates [] (updates ~opamswitch ~force_path st)
 
+let get_reverse_opam ~force_path st =
+  let opamswitch = OpamStateConfig.(!r.switch_from <> `Default) in
+  let rev_updates = updates ~opamswitch ~force_path st in
+  add ~rev_updates [] []
+
 let get_full ?(opamswitch=true) ~force_path st =
   let env0 = List.map (fun (v,va) -> v,va,None) (OpamStd.Env.list ()) in
   let rev_updates = get_current_reverse st in

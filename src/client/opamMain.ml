@@ -726,6 +726,7 @@ let config =
                          in-place rather than putting the new path in front. This means programs \
                          installed in OPAM that were shadowed will remain so after \
                          $(b,opam config env)" in
+  let reverse_doc     = "Reverse environment variable changes (for updates)" in
   let profile         = mk_flag ["profile"]        profile_doc in
   let ocamlinit       = mk_flag ["ocamlinit"]      ocamlinit_doc in
   let no_complete     = mk_flag ["no-complete"]    no_complete_doc in
@@ -736,19 +737,22 @@ let config =
   let list            = mk_flag ["l";"list"]       list_doc in
   let sexp            = mk_flag ["sexp"]           sexp_doc in
   let inplace_path    = mk_flag ["inplace-path"]   inplace_path_doc in
+  let reverse         = mk_flag ["r";"reverse"]    reverse_doc in
 
   let config global_options
-      command shell sexp inplace_path
+      command shell sexp inplace_path reverse
       dot_profile_o list all global user
       profile ocamlinit no_complete no_switch_eval
       params =
     apply_global_options global_options;
+    if reverse && command <> Some `env then
+      OpamConsole.error_and_exit "--reverse can only be used with the env command";
     match command, params with
     | Some `env, [] ->
       OpamGlobalState.with_ `Lock_none @@ fun gt ->
       OpamSwitchState.with_ `Lock_none gt @@ fun st ->
       `Ok (OpamConfigCommand.env st
-             ~cmd:(shell=`cmd || shell=`clink) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish) ~inplace_path)
+             ~cmd:(shell=`cmd || shell=`clink) ~csh:(shell=`csh) ~sexp ~fish:(shell=`fish) ~inplace_path ~reverse)
     | Some `setup, [] ->
       let user        = all || user in
       let global      = all || global in
@@ -911,7 +915,7 @@ let config =
   Term.ret (
     Term.(pure config
           $global_options $command $shell_opt $sexp
-          $inplace_path
+          $inplace_path $reverse
           $dot_profile_flag $list $all $global $user
           $profile $ocamlinit $no_complete $no_switch_eval
           $params)
