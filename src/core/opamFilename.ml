@@ -248,8 +248,7 @@ let install ?exec ~src ~dst () =
 
 let move ~src ~dst =
   if src <> dst then
-    OpamSystem.command ~verbose:(OpamSystem.verbose_for_base_commands ())
-      [ "mv"; to_string src; to_string dst ]
+    OpamSystem.mv (to_string src) (to_string dst)
 
 let link ~src ~dst =
   if src <> dst then OpamSystem.link (to_string src) (to_string dst)
