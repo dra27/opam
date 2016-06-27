@@ -172,22 +172,31 @@ let update_switch_state ?installed ?installed_roots ?reinstall ?pinned st =
   let installed = installed +! st.installed in
   let reinstall0 = st.reinstall in
   let reinstall = (reinstall +! reinstall0) %% installed in
-  let compiler_packages =
+  let installed_roots = (installed_roots +! st.installed_roots) %% installed in
+  let (compiler_packages, installed_roots) =
     if OpamPackage.Set.is_empty (st.compiler_packages -- installed) then
-      st.compiler_packages
+      (st.compiler_packages, installed_roots)
     else (* adjust version of installed compiler packages *)
       let names = OpamPackage.names_of_packages st.compiler_packages in
       let installed_base = OpamPackage.packages_of_names installed names in
-      installed_base ++
-      (* keep version of uninstalled compiler packages *)
-      OpamPackage.packages_of_names st.compiler_packages
-        (OpamPackage.Name.Set.diff names
-           (OpamPackage.names_of_packages installed_base))
+      let universe = OpamSwitchState.universe {st with installed} Depends in
+      let base_depends = OpamSolver.dependencies ~depopts:true ~build:true ~installed:true ~unavailable:true universe installed_base |> OpamPackage.Set.of_list in
+      let installed_roots =
+        installed_roots -- (base_depends -- installed_base) in
+      let installed_base = installed_base ++ base_depends in
+      let compiler_packages =
+        installed_base ++
+        (* keep version of uninstalled compiler packages *)
+        OpamPackage.packages_of_names st.compiler_packages
+          (OpamPackage.Name.Set.diff names
+             (OpamPackage.names_of_packages installed_base))
+      in
+      (compiler_packages, installed_roots)
   in
   let st =
     { st with
       installed;
-      installed_roots = (installed_roots +! st.installed_roots) %% installed;
+      installed_roots;
       reinstall;
       pinned = pinned +! st.pinned;
       compiler_packages; }
