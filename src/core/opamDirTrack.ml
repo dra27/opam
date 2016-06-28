@@ -70,7 +70,7 @@ let item_digest = function
   | _perms, Link l -> "L:" ^ l
   | _perms, Special (a,b) -> Printf.sprintf "S:%d:%d" a b
 
-let track dir ?(except=OpamFilename.Base.Set.empty) job_f =
+let track dir ?(except=OpamFilename.Base.Set.empty) ?bin job_f =
   let module SM = OpamStd.String.Map in
   let rec make_index acc prefix dir =
     let files =
@@ -100,13 +100,49 @@ let track dir ?(except=OpamFilename.Base.Set.empty) job_f =
   let before = make_index SM.empty str_dir "" in
   log ~level:2 "before install: %a elements"
     (slog @@ string_of_int @* SM.cardinal) before;
-  job_f () @@| fun result ->
+  job_f () @@| fun (installed, result) ->
+  let installed = OpamStd.String.Set.map String.lowercase installed in
   let after = make_index SM.empty str_dir "" in
   let diff =
-    SM.merge (fun _ before after ->
+    let f =
+      if OpamStd.Sys.(os () <> Win32) then
+        fun _ -> ()
+      else
+        fun file ->
+          let file = Filename.concat str_dir file in
+          if not (OpamStd.String.Set.mem (String.lowercase file) installed) then
+            (* See similar process in OpamSystem.install *)
+            let cygcheck =
+              match OpamSystem.classify_executable file with
+                `Exe _ ->
+                  if not (Filename.check_suffix file ".exe") && not (Filename.check_suffix file ".dll") then
+                    if OpamStd.Option.map_default (fun bin -> OpamFilename.starts_with bin (OpamFilename.of_string file)) true bin then
+                      OpamConsole.warning "%s is executable but doesn't end .exe (almost certainly a packaging error)" file;
+                  (* TODO Could ensure that these appear to be in the correct directory (cf. OpamSystem.install)? *)
+                  true
+              | `Dll _ ->
+                  (* TODO Could ensure that these appear to be in the correct directory (cf. OpamSystem.install)? *)
+                  true
+              | `Script ->
+                  OpamConsole.warning "%s is a script; the command won't be available" file;
+                  false
+              | `Unknown ->
+                  false in
+            if cygcheck then
+              match OpamStd.Sys.is_cygwin_variant file with
+                `Native ->
+                  ()
+              | `Cygwin ->
+                  OpamConsole.warning "%s is a Cygwin-linked image" file
+              | `CygLinked ->
+                  OpamConsole.warning "%s links with a Cygwin-compiled DLL (almost certainly a packaging or environment error)" file in
+    SM.merge (fun file before after ->
         match before, after with
         | None, None -> assert false
         | Some _, None -> Some Removed
+        | None, Some ((_, File _) as item) ->
+            f file;
+            Some (Added (item_digest item))
         | None, Some item -> Some (Added (item_digest item))
         | Some (perma, a), Some ((permb, b) as item) ->
           if a = b then
@@ -114,9 +150,12 @@ let track dir ?(except=OpamFilename.Base.Set.empty) job_f =
             else Some (Perm_changed (item_digest item))
           else
           match a, b with
-          | File _, File _ | Link _, Link _
+          | File _, File _ ->
+              f file;
+              Some (Contents_changed (item_digest item))
+          | Link _, Link _
           | Dir, Dir | Special _, Special _ ->
-            Some (Contents_changed (item_digest item))
+              Some (Contents_changed (item_digest item))
           | _ -> Some (Kind_changed (item_digest item)))
       before after
   in
