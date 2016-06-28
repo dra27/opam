@@ -36,7 +36,8 @@ val string_of_digest: digest -> string
     tracked too, for consistency with jobs without commands) *)
 val track:
   OpamFilename.Dir.t -> ?except:OpamFilename.Base.Set.t ->
-  (unit -> 'a OpamProcess.job) -> ('a * t) OpamProcess.job
+  ?bin:OpamFilename.Dir.t ->
+  (unit -> (OpamStd.String.Set.t * 'a) OpamProcess.job) -> ('a * t) OpamProcess.job
 
 (** Removes the added and kind-changed items unless their contents changed and
     [force] isn't set, and prints warnings for other changes unless [verbose] is
