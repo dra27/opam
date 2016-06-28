@@ -28,7 +28,7 @@ val get_opam: force_path:bool -> 'a switch_state -> env
 (** Update an environment. (Note: depends on the currently defined
     [OpamStateConfig.(!r.root_dir)] to detect existing OPAM-added paths and
     replace them when using the +=, =:, etc. update operators *)
-val add: env -> env_update list -> env
+val add: ?rev_updates:env_update list -> env -> env_update list -> env
 
 (** Check if the shell environment is in sync with the current OPAM switch *)
 val is_up_to_date: 'a switch_state -> bool

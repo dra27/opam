@@ -81,23 +81,23 @@ let reverse_env_update ?inplace_holder op arg cur_value =
      | None -> Some cur_value)
   | EqPlus ->
     (match rem_first_instance [] (List.rev (split ())) with
-     | Some [] -> None
+     | Some [] -> Some ""
      | Some sl -> Some (String.concat str_sep (List.rev sl))
      | None -> Some cur_value)
   | EqPlusEq ->
     let f r = match inplace_holder with None -> r | Some p -> p::r in
     (match rem_first_instance ~f [] (split ()) with
-     | Some [] -> None
+     | Some [] -> Some ""
      | Some sl -> Some (String.concat str_sep sl)
      | None -> Some cur_value)
   | ColonEq ->
     (match rem_first_instance [] (split ()) with
-     | Some ([] | [""]) -> None
+     | Some ([] | [""]) -> Some ""
      | Some sl -> Some (String.concat str_sep sl)
      | None -> Some cur_value)
   | EqColon ->
     (match rem_first_instance [] (List.rev (split ())) with
-     | Some ([] | [""]) -> None
+     | Some ([] | [""]) -> Some ""
      | Some sl -> Some (String.concat str_sep (List.rev sl))
      | None -> Some cur_value)
 
@@ -106,7 +106,8 @@ let expand_update ?inplace_match (ident, op, string, comment) value =
   apply_env_update_op ?inplace_match op string value,
   comment
 
-let expand (updates: env_update list) : env =
+let expand ?rev_updates (updates: env_update list) : env =
+  let rev_updates = OpamStd.Option.default updates rev_updates in
   let inplace_holder =
     Printf.sprintf "placeholder_%Ld" (Random.int64 Int64.max_int)
   in
@@ -120,7 +121,7 @@ let expand (updates: env_update list) : env =
         match reverse_env_update ~inplace_holder op arg v with
         | Some v -> (var, v)::defs
         | None -> defs)
-      updates []
+      rev_updates []
   in
   (* And re-apply them *)
   let env =
@@ -129,15 +130,28 @@ let expand (updates: env_update list) : env =
           let f, var = if OpamStd.Sys.(os () = Win32) then String.uppercase, String.uppercase var else (fun x -> x), var in
           try List.find (fun (v, _, _) -> f v = var) env |> fun (_, v, _) -> v
           with Not_found ->
-          try List.assoc var defs
+          try let (_, r) = List.find (fun (v, _) -> f v = var) defs in r
           with Not_found -> ""
         in
         expand_update ~inplace_match:(fun s -> s = inplace_holder) upd v :: env)
       [] updates
   in
-  List.rev env
+  let exists (var, value) =
+    let f =
+      if OpamStd.Sys.(os () = Win32) then
+        String.uppercase
+      else
+        fun x -> x
+    in
+    let v' = f var in
+    if List.exists (fun (v, _, _) -> f v = v') env then
+      None
+    else
+      Some (var, value, None)
+  in
+  List.rev_append env (OpamStd.List.filter_map exists defs)
 
-let add (env: env) (updates: env_update list) =
+let add ?rev_updates (env: env) (updates: env_update list) =
   let env =
     if OpamStd.(Sys.os () = Sys.Win32) then
       (*
@@ -149,7 +163,7 @@ let add (env: env) (updates: env_update list) =
       List.filter (fun (k,_,_) -> List.for_all (fun (u,_,_,_) -> u <> k) updates)
         env
   in
-  env @ expand updates
+  env @ expand ?rev_updates updates
 
 let compute_updates st =
   (* Todo: put these back into their packages !
@@ -185,14 +199,25 @@ let compute_updates st =
     Some "Prefix of the current opam switch"
   in
   let pkg_env = (* XXX: Does this need a (costly) topological sort ? *)
+    let sep = OpamStd.Sys.path_sep () in
     OpamPackage.Set.fold (fun nv acc ->
         let opam = OpamSwitchState.opam st nv in
-        List.map (fun (name,op,str,cmt) ->
+        (List.map (fun (name,op,str,cmt) ->
             let s =
               OpamFilter.expand_string ~default:(fun _ -> "") (fenv ~opam) str
             in
-            name, op, s, cmt)
-          (OpamFile.OPAM.env opam)
+            let items =
+            match op with
+            | Eq
+            | EqPlusEq -> [s]
+            | PlusEq
+            | EqPlus
+            | ColonEq
+            | EqColon -> OpamStd.String.split_delim s sep
+            in
+            OpamStd.List.filter_map (fun s -> if s = "" then None else Some (name, op, s, cmt)) items)
+          (OpamFile.OPAM.env opam) |>
+        List.flatten)
         @ acc)
       st.installed []
   in
@@ -227,6 +252,27 @@ let updates ~opamswitch ?(force_path=false) st =
     else [] in
   new_path :: switch @ update
 
+let get_current_reverse st =
+  try
+    (* Reverse changes made in the current environment - for this, use OPAM_SWITCH_PREFIX rather than any parameters *)
+    let environment_switch =
+      Filename.basename (OpamStd.Env.get "OPAM_SWITCH_PREFIX")
+    in
+    let reverse_switch = OpamSwitch.of_string environment_switch in
+    if not (List.mem reverse_switch (OpamFile.Config.installed_switches st.switch_global.config)) then begin
+      OpamConsole.warning "The environment appears to have been configured for %s, but this switch no longer exists:\nYou may wish to reload your shell to clear out any OPAM changes to the environment." environment_switch;
+      raise Not_found
+    end;
+    let add_to_path =
+      OpamSwitchState.with_ `Lock_none ~switch:reverse_switch st.switch_global @@ fun st -> OpamPath.Switch.bin st.switch_global.root reverse_switch st.switch_config in
+    let new_path =
+      "PATH",
+      PlusEq,
+      OpamFilename.Dir.to_string add_to_path,
+      Some "Current opam switch binary dir" in
+    OpamFile.Environment.read_opt (OpamPath.Switch.environment st.switch_global.root reverse_switch) |> OpamStd.Option.map (fun env -> new_path::env)
+  with Not_found -> None
+
 (* This function is used by 'opam config env' and 'opam switch' to
    display the environment variables. We have to make sure that
    OPAMSWITCH is always the one being reported in '~/.opam/config'
@@ -237,16 +283,13 @@ let updates ~opamswitch ?(force_path=false) st =
    we really want to get the environment for this switch. *)
 let get_opam ~force_path st =
   let opamswitch = OpamStateConfig.(!r.switch_from <> `Default) in
-  (* todo: [updates] reverts the current env. It may be more clever, when
-     switch_from is [`Command_line], to get the previous switch from OPAMSWITCH
-     or the default, load the corresponding env file, and revert that instead,
-     before applying the new updates *)
-  add [] (updates ~opamswitch ~force_path st)
+  let rev_updates = get_current_reverse st in
+  add ?rev_updates [] (updates ~opamswitch ~force_path st)
 
 let get_full ?(opamswitch=true) ~force_path st =
   let env0 = List.map (fun (v,va) -> v,va,None) (OpamStd.Env.list ()) in
-  (* todo: see above *)
-  add env0 (updates ~opamswitch ~force_path st)
+  let rev_updates = get_current_reverse st in
+  add ?rev_updates env0 (updates ~opamswitch ~force_path st)
 
 let path ~force_path root switch =
   let bindir =
