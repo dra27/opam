@@ -69,6 +69,8 @@ module Switch = struct
 
   let build t a nv = build_dir t a / OpamPackage.to_string nv
 
+  let prev_dir t a s n = meta t a / "prev" / s / OpamFilename.Base.to_string n
+
   let build_ocaml t a = build_dir t a / "ocaml"
 
   let build_install t a nv =

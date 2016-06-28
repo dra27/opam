@@ -20,7 +20,7 @@ open OpamProcess.Job.Op
 module PackageActionGraph = OpamSolver.ActionGraph
 
 (* Install the package files *)
-let process_dot_install st nv =
+let process_dot_install st nv changes =
   let root = st.switch_global.root in
   if OpamStateConfig.(!r.dryrun) then begin
     OpamConsole.msg "Installing %s.\n" (OpamPackage.to_string nv);
@@ -61,7 +61,7 @@ let process_dot_install st nv =
         OpamFilename.exists src_file in
 
       (* Install a list of files *)
-      let install_files exec dst_fn files_fn installed =
+      let install_files ?backup exec dst_fn files_fn installed =
         let dst_dir = dst_fn root st.switch name in
         let files = files_fn install in
         if not (OpamFilename.exists_dir dst_dir) && files <> [] then (
@@ -81,18 +81,51 @@ let process_dot_install st nv =
               else
                 (base, false) in
             let src_file = OpamFilename.create build_dir base.c in
-            let dst_file = match dst with
-              | None   -> OpamFilename.create dst_dir (OpamFilename.basename src_file)
+            let (dst_file, base_dst) = match dst with
+              | None   ->
+                  let base = OpamFilename.basename src_file in
+                  (OpamFilename.create dst_dir base, base)
               | Some d ->
-                  if append && not (OpamFilename.Base.check_suffix d ".exe") then
-                    OpamFilename.create dst_dir (OpamFilename.Base.add_extension d "exe")
+                  let d =
+                    if append && not (OpamFilename.Base.check_suffix d ".exe") then
+                      OpamFilename.Base.add_extension d "exe"
+                    else
+                      d in
+                  (OpamFilename.create dst_dir d, d) in
+            let backup_previous subdir =
+              if OpamFilename.exists dst_file && not (OpamFilename.Set.mem dst_file changes) then
+                let prev_dir = OpamPath.Switch.prev_dir root st.switch subdir base_dst in
+                let (index, skip) =
+                  if OpamFilename.exists_dir prev_dir then
+                    (* OpamFilename.files returns full filenames, and we actually want relative ones! *)
+                    let files = Sys.readdir (OpamFilename.Dir.to_string prev_dir) in
+                    let f ((index, skip) as acc) ent =
+                      if String.length ent >= 6 && ent.[2] = '-' && not (OpamFilename.exists_dir (prev_dir / ent)) then
+                        try
+                          let index' = int_of_string ("0x" ^ String.sub ent 0 2) in
+                          let package = OpamPackage.of_string (String.sub ent 3 (String.length ent - 3)) in
+                          (max index index', skip || OpamPackage.equal package nv)
+                        with _ ->
+                          acc
+                      else
+                        acc
+                    in
+                    List.fold_left f (-1, false) (Array.to_list files)
                   else
-                    OpamFilename.create dst_dir d in
+                    (-1, false)
+                in
+                  if not skip then begin
+                    let index = succ index in
+                    log "Backing up %s in slot %d" (OpamFilename.to_string dst_file) index;
+                    OpamFilename.move ~src:dst_file ~dst:(prev_dir // (OpamPackage.to_string nv |> Printf.sprintf "%02x-%s" index))
+                  end
+            in
             if check ~src:build_dir ~dst:dst_dir base then begin
+              OpamStd.Option.iter backup_previous backup;
               OpamFilename.install ~exec ~src:src_file ~dst:dst_file ();
               OpamStd.String.Set.add (OpamFilename.to_string dst_file) installed
             end else
-              installed
+             installed
           ) installed files in
 
       let module P = OpamPath.Switch in
@@ -102,26 +135,26 @@ let process_dot_install st nv =
 
       let installed =
       (* bin *)
-      install_files true (instdir_gen P.bin) I.bin OpamStd.String.Set.empty |>
+      install_files ~backup:"bin" true (instdir_gen P.bin) I.bin OpamStd.String.Set.empty |>
 
       (* sbin *)
-      install_files true (instdir_gen P.sbin) I.sbin |>
+      install_files ~backup:"sbin" true (instdir_gen P.sbin) I.sbin |>
 
       (* lib *)
       install_files false (instdir_pkg P.lib) I.lib |>
       install_files true (instdir_pkg P.lib) I.libexec |>
 
       (* toplevel *)
-      install_files false (instdir_gen P.toplevel) I.toplevel |>
+      install_files ~backup:"toplevel" false (instdir_gen P.toplevel) I.toplevel |>
 
-      install_files true (instdir_gen P.stublibs) I.stublibs |>
+      install_files ~backup:"stublibs" true (instdir_gen P.stublibs) I.stublibs |>
 
       (* Man pages *)
-      install_files false (instdir_gen P.man_dir) I.man |>
+      install_files ~backup:"man" false (instdir_gen P.man_dir) I.man |>
 
       (* Shared files *)
       install_files false (instdir_pkg P.share) I.share |>
-      install_files false (instdir_gen P.share_dir) I.share_root |>
+      install_files ~backup:"share" false (instdir_gen P.share_dir) I.share_root |>
 
       (* Etc files *)
       install_files false (instdir_pkg P.etc) I.etc |>
@@ -458,14 +491,80 @@ let remove_package_aux
     let install =
       OpamFile.Dot_install.safe_read dot_install
     in
-    let remove_files dst_fn files =
+    let remove_files ?backup dst_fn files =
       let files = files install in
       let dst_dir = dst_fn t.switch_global.root t.switch t.switch_config in
       List.iter (fun (base, dst) ->
-          let dst_file = match dst with
-            | None   -> dst_dir // Filename.basename (OpamFilename.Base.to_string base.c)
-            | Some b -> OpamFilename.create dst_dir b in
-          OpamFilename.remove dst_file
+          let (dst_file, base_dst) = match dst with
+            | None   ->
+                let base = OpamFilename.Base.of_string (Filename.basename (OpamFilename.Base.to_string base.c)) in
+                (OpamFilename.create dst_dir base, base)
+            | Some b -> (OpamFilename.create dst_dir b, b) in
+          let restore_previous subdir =
+            let prev_dir = OpamPath.Switch.prev_dir t.switch_global.root t.switch subdir base_dst in
+            let clean () =
+              let meta = OpamPath.Switch.meta t.switch_global.root t.switch in
+              let rec f dir =
+                if OpamFilename.dir_is_empty dir then
+                  OpamFilename.rmdir dir;
+                  let dir = OpamFilename.dirname_dir dir in
+                  if dir <> meta then
+                    f dir
+              in
+              f prev_dir
+            in
+            let (max_index, our_index, next_ent, min_ent) =
+              if OpamFilename.exists_dir prev_dir then
+                (* OpamFilename.files returns full filenames, and we actually want relative ones! *)
+                let files = Sys.readdir (OpamFilename.Dir.to_string prev_dir) in
+                let f ent =
+                  if String.length ent >= 6 && ent.[2] = '-' && not (OpamFilename.exists_dir (prev_dir / ent)) then
+                    try
+                      Some (int_of_string ("0x" ^ String.sub ent 0 2), String.sub ent 3 (String.length ent - 3) |> OpamPackage.of_string, ent)
+                    with _ ->
+                      None
+                  else
+                    None
+                and g (max_index, our_index, next_ent, _) (index, package, name) =
+                  let (our_index, next_ent) =
+                    if OpamPackage.equal package nv then
+                      (index, next_ent)
+                    else
+                      if our_index = -1 then
+                        (-1, name)
+                      else
+                        (our_index, next_ent)
+                  in
+                  (max max_index index, our_index, next_ent, name)
+                in
+                List.fold_left g (-1, -1, "", "") (List.sort (fun x y -> -1 * compare x y) (OpamStd.List.filter_map f (Array.to_list files)))
+              else
+                (-1, -1, "", "")
+            in
+            if our_index <> -1 then
+              let our_file = prev_dir // (OpamPackage.to_string nv |> Printf.sprintf "%02x-%s" our_index) in
+              if max_index = our_index then begin
+                log "Restoring %s from slot %s" (OpamFilename.to_string dst_file) (OpamFilename.to_string our_file);
+                OpamFilename.move ~src:our_file ~dst:dst_file;
+                clean ();
+                false
+              end else begin
+                log "Replacing prev version %s with %s" next_ent (OpamFilename.to_string our_file);
+                OpamFilename.move ~src:our_file ~dst:(prev_dir // next_ent);
+                false
+              end
+            else
+              if min_ent = "" then
+                true
+              else begin
+                log "Original file removed - destroying lowest slot in %s" min_ent;
+                (prev_dir // min_ent) |> OpamFilename.remove;
+                clean ();
+                false
+              end
+          in
+          if OpamStd.Option.map_default restore_previous true backup then
+            OpamFilename.remove dst_file;
         ) files
     in
     let remove_files_and_dir dst_fn files =
@@ -475,16 +574,17 @@ let remove_package_aux
     in
 
     log "Removing files from .install";
-    remove_files OpamPath.Switch.sbin OpamFile.Dot_install.sbin;
-    remove_files OpamPath.Switch.bin OpamFile.Dot_install.bin;
+    remove_files ~backup:"sbin" OpamPath.Switch.sbin OpamFile.Dot_install.sbin;
+    remove_files ~backup:"bin" OpamPath.Switch.bin OpamFile.Dot_install.bin;
     remove_files_and_dir
       OpamPath.Switch.lib OpamFile.Dot_install.libexec;
     remove_files_and_dir OpamPath.Switch.lib OpamFile.Dot_install.lib;
-    remove_files OpamPath.Switch.stublibs OpamFile.Dot_install.stublibs;
+    remove_files ~backup:"toplevel" OpamPath.Switch.toplevel OpamFile.Dot_install.toplevel;
+    remove_files ~backup:"stublibs" OpamPath.Switch.stublibs OpamFile.Dot_install.stublibs;
     remove_files_and_dir OpamPath.Switch.share OpamFile.Dot_install.share;
-    remove_files OpamPath.Switch.share_dir OpamFile.Dot_install.share_root;
+    remove_files ~backup:"share" OpamPath.Switch.share_dir OpamFile.Dot_install.share_root;
     remove_files_and_dir OpamPath.Switch.etc OpamFile.Dot_install.etc;
-    remove_files (OpamPath.Switch.man_dir ?num:None) OpamFile.Dot_install.man;
+    remove_files ~backup:"man" (OpamPath.Switch.man_dir ?num:None) OpamFile.Dot_install.man;
     remove_files_and_dir OpamPath.Switch.doc OpamFile.Dot_install.doc;
 
     (* Remove the misc files *)
@@ -647,12 +747,35 @@ let install_package t nv =
     | []::commands -> run_commands commands
     | [] -> Done None
   in
+  let root = t.switch_global.root in
+  let switch_prefix = OpamPath.Switch.root root t.switch in
+  let rel_meta_dir =
+    OpamFilename.(Base.of_string (remove_prefix_dir switch_prefix
+                                    (OpamPath.Switch.meta root t.switch)))
+  in
+  let except = OpamFilename.Base.Set.singleton rel_meta_dir in
+  let bin = OpamPath.Switch.Default.bin t.switch_global.root t.switch in
   let install_job () =
-    run_commands commands @@+ function
-    | Some _ as err -> Done (OpamStd.String.Set.empty, err)
-    | None ->
+    let commands () =
+      run_commands commands @@+ function err -> Done (OpamStd.String.Set.empty, err)
+    in
+    OpamDirTrack.track switch_prefix ~except ~bin commands @@+ function
+    | (Some _ as err, _) -> Done (OpamStd.String.Set.empty, err)
+    | (None, changes) ->
       try
-        let result = process_dot_install t nv in
+        let changes =
+          let f file change added =
+            match change with
+            | OpamDirTrack.Added _
+            | OpamDirTrack.Contents_changed _
+            | OpamDirTrack.Kind_changed _ ->
+                OpamFilename.Set.add (OpamFilename.create switch_prefix (OpamFilename.Base.of_string file)) added
+            | _ ->
+                added
+          in
+          OpamStd.String.Map.fold f changes OpamFilename.Set.empty
+        in
+        let result = process_dot_install t nv changes in
         try
           OpamConsole.msg "%s installed %s.%s\n"
             (if not (OpamConsole.utf8 ()) then "->"
@@ -665,16 +788,7 @@ let install_package t nv =
           Done (result, Some e)
       with e -> Done (OpamStd.String.Set.empty, Some e)
   in
-  let root = t.switch_global.root in
-  let switch_prefix = OpamPath.Switch.root root t.switch in
-  let rel_meta_dir =
-    OpamFilename.(Base.of_string (remove_prefix_dir switch_prefix
-                                    (OpamPath.Switch.meta root t.switch)))
-  in
-  OpamDirTrack.track switch_prefix
-    ~except:(OpamFilename.Base.Set.singleton rel_meta_dir)
-    ~bin:(OpamPath.Switch.Default.bin t.switch_global.root t.switch)
-    install_job
+  OpamDirTrack.track switch_prefix ~except ~bin install_job
   @@+ function
   | Some e, changes ->
     remove_package t ~keep_build:true ~silent:true ~changes nv @@| fun () ->

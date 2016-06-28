@@ -93,6 +93,9 @@ module Switch: sig
   (** Temporary folder: {i $meta/build} *)
   val build_dir: t -> switch -> dirname
 
+  (** Previous versions folder: {i $meta/prev/$subdir/$file} *)
+  val prev_dir: t -> switch -> string -> OpamFilename.Base.t -> dirname
+
   (** Temporary location of install files: {i
       $meta/build/$package/$name.install} *)
   val build_install: t -> switch -> package -> OpamFile.Dot_install.t OpamFile.t
