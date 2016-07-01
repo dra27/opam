@@ -152,7 +152,7 @@ let process args =
         OpamFile.OPAM.with_substs
           [OpamFilename.Base.of_string "ocaml.config"]
       in
-      OpamFile.OPAM.write (OpamRepositoryPath.opam repo (Some "ocaml") nv) opam;
+      OpamFile.OPAM.write ~margin:150 (OpamRepositoryPath.opam repo (Some "ocaml") nv) opam;
       let config =
         OpamFile.Dot_config.create @@
         List.map (fun (v,c) -> OpamVariable.of_string v, c) @@

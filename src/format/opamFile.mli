@@ -36,7 +36,7 @@ module type IO_FILE = sig
   val empty: t
 
   (** Write some contents to a file *)
-  val write: t typed_file -> t -> unit
+  val write: ?margin:int -> t typed_file -> t -> unit
 
   (** Read file contents. Raise an error if the file does not exist. *)
   val read: t typed_file -> t
@@ -746,11 +746,11 @@ end
 module Syntax : sig
 
   val pp_channel:
-    'a typed_file -> in_channel -> out_channel ->
+    ?margin:int -> 'a typed_file -> in_channel -> out_channel ->
     (unit, opamfile) OpamFormat.Pp.t
 
   val of_channel: 'a typed_file -> in_channel  -> opamfile
-  val to_channel: 'a typed_file -> out_channel -> opamfile -> unit
+  val to_channel: ?margin:int -> 'a typed_file -> out_channel -> opamfile -> unit
   val of_string: 'a typed_file -> string -> opamfile
   val to_string: 'a typed_file -> opamfile -> string
   val to_string_with_preserved_format:

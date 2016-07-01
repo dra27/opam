@@ -38,7 +38,7 @@ let exists f = OpamFilename.exists (filename f)
 module type IO_FILE = sig
   type t
   val empty: t
-  val write: 'a typed_file -> t -> unit
+  val write: ?margin:int -> 'a typed_file -> t -> unit
   val read : 'a typed_file -> t
   val read_opt: 'a typed_file -> t option
   val safe_read: 'a typed_file -> t
@@ -53,7 +53,7 @@ module type IO_Arg = sig
   type t
   val empty : t
   val of_channel : 'a typed_file -> in_channel  -> t
-  val to_channel : 'a typed_file -> out_channel -> t -> unit
+  val to_channel : ?margin:int -> 'a typed_file -> out_channel -> t -> unit
   val of_string : 'a typed_file -> string -> t
   val to_string : 'a typed_file -> t -> string
 end
@@ -80,7 +80,7 @@ module MakeIO (F : IO_Arg) = struct
     OpamConsole.log (Printf.sprintf "FILE(%s)" F.internal) ?level fmt
   let slog = OpamConsole.slog
 
-  let write f v =
+  let write ?margin f v =
     let filename = OpamFilename.to_string f in
     let chrono = OpamConsole.timer () in
     let oc =
@@ -90,7 +90,7 @@ module MakeIO (F : IO_Arg) = struct
     in
     try
       Unix.lockf (Unix.descr_of_out_channel oc) Unix.F_LOCK 0;
-      F.to_channel f oc v;
+      F.to_channel ?margin f oc v;
       close_out oc;
       Stats.write_files := filename :: !Stats.write_files;
       log "Wrote %s in %.3fs" filename (chrono ())
@@ -192,7 +192,7 @@ module DescrIO = struct
     in
     x, y
 
-  let to_channel _ oc (x,y) =
+  let to_channel ?margin:_ _ oc (x,y) =
     output_string oc x;
     output_char oc '\n';
     if y <> "" then
@@ -232,7 +232,7 @@ module SubstIO = struct
   let of_channel _ ic =
     OpamSystem.string_of_channel ic
 
-  let to_channel _ oc t =
+  let to_channel ?margin:_ _ oc t =
     output_string oc t
 
   let of_string _ str = str
@@ -295,7 +295,7 @@ module LinesBase = struct
   let of_channel (_:filename) ic =
     OpamLineLexer.main (Lexing.from_channel ic)
 
-  let to_channel (_:filename) oc t =
+  let to_channel ?margin:_ (_:filename) oc t =
     List.iter (function
         | [] -> ()
         | w::r ->
@@ -355,7 +355,7 @@ module LineFile (X: LineFileArg) = struct
   module IO = struct
     include X
 
-    let to_channel _ oc t = Pp.print (Lines.pp_channel stdin oc -| pp) t
+    let to_channel ?margin:_ _ oc t = Pp.print (Lines.pp_channel stdin oc -| pp) t
 
     let to_string _ t = Pp.print (Lines.pp_string -| pp) t
 
@@ -677,7 +677,7 @@ module Syntax = struct
      re-writing files with a guarantee that it hasn't been rewritten in the
      meantime *)
 
-  let pp_channel filename ic oc =
+  let pp_channel ?margin filename ic oc =
     Pp.pp
       (fun ~pos:_ () ->
          let lexbuf = Lexing.from_channel ic in
@@ -687,13 +687,14 @@ module Syntax = struct
          OpamParser.main OpamLexer.token lexbuf filename)
       (fun file ->
          let fmt = Format.formatter_of_out_channel oc in
+         OpamStd.Option.iter (Format.pp_set_margin fmt) margin;
          OpamFormat.Print.format_opamfile fmt file)
 
   let of_channel (filename:filename) (ic:in_channel) =
     Pp.parse ~pos:(pos_file filename) (pp_channel filename ic stdout) ()
 
-  let to_channel filename oc t =
-    Pp.print (pp_channel filename stdin oc) t
+  let to_channel ?margin filename oc t =
+    Pp.print (pp_channel ?margin filename stdin oc) t
 
   let of_string (filename:filename) str =
     let lexbuf = Lexing.from_string str in
@@ -822,8 +823,8 @@ module SyntaxFile(X: SyntaxFileArg) : IO_FILE with type t := X.t = struct
       Pp.parse X.pp ~pos:(pos_file filename) (Syntax.of_channel filename ic)
       |> snd
 
-    let to_channel filename oc t =
-      Syntax.to_channel filename oc (to_opamfile filename t)
+    let to_channel ?margin filename oc t =
+      Syntax.to_channel ?margin filename oc (to_opamfile filename t)
 
     let of_string (filename:filename) str =
       Pp.parse X.pp ~pos:(pos_file filename) (Syntax.of_string filename str)
