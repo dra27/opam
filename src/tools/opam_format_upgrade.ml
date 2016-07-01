@@ -74,6 +74,26 @@ let process args =
           comp descr
       in
       let nv = OpamFile.OPAM.package opam in
+      let (build, install) =
+        let install = OpamFile.OPAM.install opam in
+        let build = OpamFile.OPAM.build opam in
+        if install = [] then
+          let rec f acc = function
+          | (([(CIdent "make", None); (CString "install", None)], None)::_ as install)
+          | (([(CString "%{make}%", None); (CString "install", None)], None)::_ as install)
+          | (((CIdent "make", None)::_::[(CString "install", None)], None)::_ as install)
+          | (((CString "%{make}%", None)::_::[(CString "install", None)], None)::_ as install) ->
+              (List.rev acc, install)
+          | command::commands ->
+              f (command::acc) commands
+          | [] ->
+              OpamPackage.to_string nv |> OpamConsole.warning "Couldn't find make install for %s";
+              (build, [])
+          in
+          f [] build
+        else
+          (build, install)
+      in
       let patches = OpamFile.Comp.patches comp in
       if patches <> [] then
         OpamConsole.msg "Fetching patches of %s to check their checksums...\n"
@@ -125,6 +145,8 @@ let process args =
       else
       let opam =
         opam |>
+        OpamFile.OPAM.with_build build |>
+        OpamFile.OPAM.with_install install |>
         OpamFile.OPAM.with_extra_sources
           (OpamStd.List.filter_some extra_sources) |>
         OpamFile.OPAM.with_substs
