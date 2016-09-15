@@ -137,7 +137,7 @@ module Print = struct
     | Variable (_, _, List (_,[List(_,[])])) -> ()
     | Variable (_, i, List (_,l)) ->
       if List.exists
-          (function List _ | Option (_,_,_::_) -> true | _ -> false)
+          (function List _ -> true | Option (_, String _, _::_) -> false | Option (_,_,_::_) -> true | _ -> false)
           l
       then Format.fprintf fmt "@[<v>%s: [@;<0 2>@[<v>%a@]@,]@]"
           i format_values l
