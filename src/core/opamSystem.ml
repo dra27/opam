@@ -115,6 +115,9 @@ let remove_file file =
   then (
     try
       log "rm %s" file;
+      (* Ensure the read-only attribute is removed *)
+      if OpamStd.Sys.(os () = Win32) then
+        Unix.chmod file 0o666;
       Unix.unlink file
     with Unix.Unix_error _ as e ->
       internal_error "Cannot remove %s (%s)." file (Printexc.to_string e)
