@@ -24,6 +24,8 @@ let args =
   in
   Term.(pure (fun clear_cache -> { clear_cache; }) $ clear_cache)
 
+let ocaml_3_11_0 = OpamPackage.Version.of_string "3.11.0"
+
 let process args =
 
   let cache_file : string list list OpamFile.t =
@@ -166,7 +168,7 @@ let process args =
              ... or just let them be fixed by hand ? *)
           "ocaml-native", B true;
           "ocaml-native-tools", B true;
-          "ocaml-native-dynlink", B true;
+          "ocaml-native-dynlink", B (OpamPackage.Version.compare (OpamPackage.version nv) ocaml_3_11_0 >= 0);
           "ocaml-stubsdir", S "%{lib}%/stublibs"; ]
       in
       OpamFile.Dot_config.write
