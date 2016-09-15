@@ -169,7 +169,7 @@ let process args =
           "ocaml-native", B true;
           "ocaml-native-tools", B true;
           "ocaml-native-dynlink", B (OpamPackage.Version.compare (OpamPackage.version nv) ocaml_3_11_0 >= 0);
-          "ocaml-stubsdir", S "%{lib}%/stublibs"; ]
+          "ocaml-stubsdir", S "%{<$lib$/stublibs}%"; ]
       in
       OpamFile.Dot_config.write
         (OpamFile.make

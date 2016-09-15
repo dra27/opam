@@ -139,7 +139,7 @@ OpamStd.String.Map.iter (fun c comp_file ->
         "ocaml-native", B true;
         "ocaml-native-tools", B true;
         "ocaml-native-dynlink", B (OpamPackage.Version.compare (OpamPackage.version nv) (OpamPackage.Version.of_string "3.11.0") >= 0);
-        "ocaml-stubsdir", S "%{lib}%/stublibs"; ]
+        "ocaml-stubsdir", S "%{<$lib$/stublibs}%"; ]
     in
     OpamFile.Dot_config.write
       (OpamFile.make
