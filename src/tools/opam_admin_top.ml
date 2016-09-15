@@ -41,7 +41,7 @@ let of_action o = function
   | `Update x -> Some x
   | `Remove   -> None
 
-let iter_packages_gen ?(quiet=false) f =
+let iter_packages_gen ?margin ?(quiet=false) f =
   let packages = OpamRepository.packages_with_prefixes repo in
   let changed_pkgs = ref 0 in
   let changed_files = ref 0 in
@@ -71,7 +71,7 @@ let iter_packages_gen ?(quiet=false) f =
       let changed = ref false in
       let upd () = changed := true; incr changed_files in
       if opam <> opam2 then
-        (upd (); OpamFile.OPAM.write_with_preserved_format opam_file opam2);
+        (upd (); OpamFile.OPAM.write_with_preserved_format ?margin opam_file opam2);
       if descr <> descr2 then
         (upd (); wopt OpamFile.Descr.write descr_file descr2);
       if url <> url2 then
@@ -89,10 +89,10 @@ let iter_packages_gen ?(quiet=false) f =
     OpamConsole.msg "Done. Updated %d files in %d packages.\n"
       !changed_files !changed_pkgs
 
-let iter_packages ?quiet
+let iter_packages ?margin ?quiet
     ?(filter=true_) ?f ?(opam=identity) ?descr ?url ?dot_install
     () =
-  iter_packages_gen ?quiet
+  iter_packages_gen ?margin ?quiet
     (fun p ~prefix ~opam:o ~descr:d ~url:u ~dot_install:i ->
       if filter p then (
         apply f p prefix o;

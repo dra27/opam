@@ -707,7 +707,7 @@ module Syntax = struct
     OpamFormat.Print.opamfile t
 
   let to_string_with_preserved_format
-      filename ?(format_from=filename) ~empty ?(sections=[]) ~fields pp t =
+      ?margin filename ?(format_from=filename) ~empty ?(sections=[]) ~fields pp t =
     let current_str_opt =
       try Some (OpamFilename.read format_from)
       with OpamSystem.File_not_found _ -> None
@@ -774,7 +774,9 @@ module Syntax = struct
                    let f =
                      List.find (fun i -> it_name i = name) syn_t.file_contents
                    in
-                   OpamFormat.Print.items [f] :: strs
+                   let s = OpamFormat.Print.items ?margin [f]
+                   in
+                   s :: strs
                  with Not_found -> strs
              with Not_found ->
                if OpamStd.String.starts_with ~prefix:"x-" name then
@@ -795,7 +797,9 @@ module Syntax = struct
                  let f =
                    List.find (fun i -> it_name i = name) syn_t.file_contents
                  in
-                 OpamFormat.Print.items [f] :: strs
+                 let s = OpamFormat.Print.items ?margin [f]
+                 in
+                 s :: strs
                with Not_found -> strs
              with Not_found -> strs)
         )
@@ -803,7 +807,7 @@ module Syntax = struct
     in
     String.concat "\n"
       (List.rev_append strs
-         (if rem = [] then [""] else [OpamFormat.Print.items rem;""]))
+         (if rem = [] then [""] else [OpamFormat.Print.items ?margin rem;""]))
 
 end
 
@@ -2033,12 +2037,12 @@ module OPAMSyntax = struct
                (OpamFilename.prettify filename);
            {t with name = None; version = None})
 
-  let to_string_with_preserved_format ?format_from filename t =
-    Syntax.to_string_with_preserved_format ?format_from filename ~empty
+  let to_string_with_preserved_format ?margin ?format_from filename t =
+    Syntax.to_string_with_preserved_format ?margin ?format_from filename ~empty
       ~sections ~fields:raw_fields pp t
 
-  let write_with_preserved_format ?format_from filename t =
-    let s = to_string_with_preserved_format ?format_from filename t in
+  let write_with_preserved_format ?margin ?format_from filename t =
+    let s = to_string_with_preserved_format ?margin ?format_from filename t in
     OpamFilename.write filename s
 
   let contents ?(filename=dummy_file) t =

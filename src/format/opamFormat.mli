@@ -42,7 +42,7 @@ module Print : sig
 
   val value_list: value list -> string
 
-  val items: opamfile_item list -> string
+  val items: ?margin:int -> opamfile_item list -> string
 
   val opamfile: opamfile -> string
 

@@ -478,13 +478,13 @@ module OPAM: sig
   (** Prints to a string, while keeping the format of the original file as much
       as possible *)
   val to_string_with_preserved_format:
-    ?format_from:(t typed_file) -> t typed_file -> t -> string
+    ?margin:int -> ?format_from:(t typed_file) -> t typed_file -> t -> string
 
   (** Writes an opam file, but preserving the existing formatting as much as
       possible. The format is taken from the file that is being overwritten
       unless [format_from] is specified. *)
   val write_with_preserved_format:
-    ?format_from:(t typed_file) -> t typed_file -> t -> unit
+    ?margin:int -> ?format_from:(t typed_file) -> t typed_file -> t -> unit
 
   (** Low-level values used for linting and similar processing *)
 
@@ -754,7 +754,7 @@ module Syntax : sig
   val of_string: 'a typed_file -> string -> opamfile
   val to_string: 'a typed_file -> opamfile -> string
   val to_string_with_preserved_format:
-    'a typed_file -> ?format_from:'a typed_file ->
+    ?margin:int -> 'a typed_file -> ?format_from:'a typed_file ->
     empty:'a ->
     ?sections: ('a, opamfile_item list) OpamFormat.Pp.I.fields_def ->
     fields:('a, value) OpamFormat.Pp.I.fields_def ->

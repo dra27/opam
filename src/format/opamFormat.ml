@@ -167,7 +167,8 @@ module Print = struct
     format_items fmt f.file_contents;
     Format.pp_print_newline fmt ()
 
-  let items l =
+  let items ?(margin=78) l =
+    Format.pp_set_margin Format.str_formatter margin;
     format_items Format.str_formatter l; Format.flush_str_formatter ()
 
   let opamfile f =
