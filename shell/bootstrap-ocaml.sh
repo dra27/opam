@@ -1,8 +1,8 @@
 #!/bin/sh -e
 
-V=ocaml-4.02.3
-URL=http://caml.inria.fr/pub/distrib/ocaml-4.02/${V}.tar.gz
-FV=0.34
+V=ocaml-4.03.0
+URL=http://caml.inria.fr/pub/distrib/ocaml-4.03/${V}.tar.gz
+FV=0.35
 FV_URL=http://alain.frisch.fr/flexdll/flexdll-bin-${FV}.zip
 if command -v curl > /dev/null; then
   CURL="curl -OL -o"
@@ -35,7 +35,6 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
   LIB_PREPEND=
   INC_PREPEND=
 
-  patch -p1 -i ${ROOT}../../src_ext/patches/ocaml.pkg/0001-Symbolic-link-support-for-Windows.patch
   case "$1" in
     "mingw"|"mingw64")
       BUILD=$1
@@ -119,7 +118,7 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
   CPREFIX=`cd .. ; pwd`/bin
   PATH="${PATH_PREPEND}:${CPREFIX}:${PATH}" Lib="${LIB_PREPEND}${Lib}" Include="${INC_PREPEND}${Include}" make -f Makefile.nt world opt opt.opt install
   mkdir -p ../../src_ext
-  echo "export PATH:=${PATH_PREPEND}:${CPREFIX}:\$(PATH)" > ../../src_ext/Makefile.config
+  echo "export PATH:=\"${PATH_PREPEND}:${CPREFIX}:\$(PATH)\"" > ../../src_ext/Makefile.config
   echo "export Lib:=${LIB_PREPEND}\$(Lib)" >> ../../src_ext/Makefile.config
   echo "export Include:=${INC_PREPEND}\$(Include)" >> ../../src_ext/Makefile.config
   echo "export OCAMLLIB=" >> ../../src_ext/Makefile.config
