@@ -1,0 +1,42 @@
+From 03849572115a8bd59e4bfb468fe2a3b0ee1e6f5d Mon Sep 17 00:00:00 2001
+From: Anil Madhavapeddy <anil@recoil.org>
+Date: Mon, 19 Sep 2016 12:37:20 +0100
+Subject: [PATCH 2/2] debug
+
+---
+ configure.make | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/configure.make b/configure.make
+index 1740934..ca5a33f 100644
+--- a/configure.make
++++ b/configure.make
+@@ -56,9 +56,9 @@ OCAML_NATIVE_TOOLS ?= $(OCAML_NATIVE)
+ Makefile.config:
+ 	(echo "# This file was generated from configure.make"; \
+ 	echo ;\
+-	echo "OCAML_PREFIX=$(OCAML_PREFIX)"; \
+-	echo "OCAML_BINDIR=$(OCAML_BINDIR)"; \
+-	echo "OCAML_LIBDIR=$(OCAML_LIBDIR)"; \
++	echo "OCAML_PREFIX=\"$(OCAML_PREFIX)\""; \
++	echo "OCAML_BINDIR=\"$(OCAML_BINDIR)\""; \
++	echo "OCAML_LIBDIR=\"$(OCAML_LIBDIR)\""; \
+ 	echo ;\
+ 	echo "EXT_OBJ=$(EXT_OBJ)"; \
+ 	echo "EXT_ASM=$(EXT_ASM)"; \
+@@ -71,9 +71,9 @@ Makefile.config:
+ 	echo "NATDYNLINK=$(NATDYNLINK)"; \
+ 	echo "SUPPORT_SHARED_LIBRARIES=$(SUPPORTS_SHARED_LIBRARIES)"; \
+ 	echo ;\
+-	echo "PREFIX=$(OCAMLBUILD_PREFIX)"; \
+-	echo "BINDIR=$(OCAMLBUILD_BINDIR)"; \
+-	echo "LIBDIR=$(OCAMLBUILD_LIBDIR)"; \
++	echo "PREFIX=\"$(OCAMLBUILD_PREFIX)\""; \
++	echo "BINDIR=\"$(OCAMLBUILD_BINDIR)\""; \
++	echo "LIBDIR=\"$(OCAMLBUILD_LIBDIR)\""; \
+ 	) > $@
+ 
+ src/ocamlbuild_config.ml:
+-- 
+2.9.2.windows.1
+

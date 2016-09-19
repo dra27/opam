@@ -1,30 +1,42 @@
 EXT_LIB=$(shell ocamlc -config | fgrep ext_lib | sed -e "s/ext_lib: \.//")
 EXT_EXE=$(if $(filter Win32,$(shell ocamlc -config | fgrep os_type)),.exe)
-OCAMLBIN=$(dir $(shell which ocamlc))
+PATH:=C:/Users/ANILMA~1/DOCUME~1/opam/bootstrap/bin:$(PATH)
+export PATH
+OCAMLC_BIN:=$(shell env PATH="$(PATH)" which ocamlc)
+OCAMLBIN:=$(shell dirname "$(OCAMLC_BIN)")
 ifeq ($(shell which cygpath 2>/dev/null),)
 OCAMLROOT=$(dir $(OCAMLBIN))
 else
-OCAMLROOT=$(shell echo $(dir $(OCAMLBIN)) | cygpath -f - -m)
+OCAMLROOT="$(shell dirname "$(OCAMLBIN)"| cygpath -f - -m)"
 endif
 
 # Package dependencies
+result.pkgbuild: findlib.pkgbuild
+
+topkg.pkgbuild: result.pkgbuild
+
 graph.pkgbuild: findlib.pkgbuild
 
-cmdliner.pkgbuild: findlib.pkgbuild
+cmdliner.pkgbuild: findlib.pkgbuild ocamlbuild.pkgbuild
 
-uutf.pkgbuild: cmdliner.pkgbuild
+uutf.pkgbuild: cmdliner.pkgbuild ocamlbuild.pkgbuild
 
-jsonm.pkgbuild: uutf.pkgbuild
+jsonm.pkgbuild: uutf.pkgbuild ocamlbuild.pkgbuild topkg.pkgbuild
 
 camlp4.pkgbuild: findlib.pkgbuild
 
 extlib.pkgbuild: findlib.pkgbuild camlp4.pkgbuild
 
-re.pkgbuild: findlib.pkgbuild
+re.pkgbuild: findlib.pkgbuild ocamlbuild.pkgbuild
 
 cudf.pkgbuild: camlp4.pkgbuild findlib.pkgbuild extlib.pkgbuild
 
 dose.pkgbuild: camlp4.pkgbuild findlib.pkgbuild extlib.pkgbuild re.pkgbuild graph.pkgbuild cudf.pkgbuild
+
+ocamlbuild-pkg-build:
+	make -f configure.make OCAML_NATIVE=true OCAML_NATIVE_TOOLS=true PREFIX=$(OCAMLROOT) BINDIR=$(OCAMLROOT)/bin LIBDIR=$(OCAMLROOT)/lib Makefile.config
+	make
+	make install
 
 findlib-pkg-build:
 	./configure
@@ -41,12 +53,19 @@ cmdliner-pkg-build:
 uutf-pkg-build:
 	ocaml pkg/build.ml native=true native-dynlink=true cmdliner=true
 	ocamlfind install uutf _build/pkg/META _build/src/uutf.{$(EXT_LIB),mli} _build/src/uutf.cm{a,i,ti,x,xa,xs}
-	cp _build/test/utftrip.native $(OCAMLBIN)/utftrip$(EXT_EXE)
+	cp _build/test/utftrip.native "$(OCAMLBIN)/utftrip$(EXT_EXE)"
+
+result-pkg-build:
+	make
+	ocamlfind install result META result.$(EXT_LIB) result.cm{a,i,x,xa,xs}
+
+topkg-pkg-build:
+	ocaml pkg/pkg.ml build --pkg-name topkg --pinned false
+	ocamlfind install topkg _build/pkg/META _build/src/topkg.{$(EXT_LIB),mli} _build/src/topkg.cm{a,i,ti,x,xa,xs}
 
 jsonm-pkg-build:
-	ocaml setup.ml -configure --prefix $(OCAMLROOT)
-	ocaml setup.ml -build
-	ocaml setup.ml -install
+	ocaml pkg/pkg.ml build
+	ocamlfind install jsonm _build/pkg/META _build/src/jsonm.{$(EXT_LIB),mli} _build/src/jsonm.cm{a,i,ti,x,xa,xs}
 
 camlp4-pkg-build:
 	./configure

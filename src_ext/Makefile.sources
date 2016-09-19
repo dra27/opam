@@ -1,13 +1,22 @@
 URL_PKG_findlib = http://download.camlcity.org/download/findlib-1.5.5.tar.gz
 MD5_PKG_findlib = 703eae112f9e912507c3a2f8d8c48498
 
-URL_PKG_camlp4 = https://github.com/ocaml/camlp4/archive/4.02+6.tar.gz
-MD5_PKG_camlp4 = 5bf758bb799e7a5ef9cad9cd1df91053
+URL_PKG_result = https://github.com/janestreet/result/archive/1.2.tar.gz
+MD5_PKG_result = 3d5b66c5526918f0f2ca9d6811ef09c8
+
+URL_PKG_topkg = https://github.com/dbuenzli/topkg/archive/v0.7.8.tar.gz
+MD5_PKG_topkg = fafbc3dbeb209ecacaec1dae4e743508
+
+URL_PKG_camlp4 = https://github.com/ocaml/camlp4/archive/4.03+1.tar.gz
+MD5_PKG_camlp4 = 65ece8d2c8f4b1e06d62323e78759a7c
+
+URL_PKG_ocamlbuild = https://github.com/ocaml/ocamlbuild/archive/0.9.2.tar.gz
+MD5_PKG_ocamlbuild = b8c90bac4e54e3b5b8243c4845122dd2
 
 URL_extlib = http://ocaml-extlib.googlecode.com/files/extlib-1.5.3.tar.gz
 MD5_extlib = 3de5f4e0a95fda7b2f3819c4a655b17c
 
-URL_PKG_extlib = http://ocaml-extlib.googlecode.com/files/extlib-1.6.1.tar.gz
+URL_PKG_extlib = http://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/ocaml-extlib/extlib-1.6.1.tar.gz
 MD5_PKG_extlib = 5643237a6410dc915347956cff97df86
 
 URL_re = https://github.com/ocaml/ocaml-re/archive/ocaml-re-1.5.0.tar.gz
@@ -47,7 +56,7 @@ MD5_uutf = 708c0421e158b390c7cc341f37b40add
 URL_PKG_uutf = http://erratique.ch/software/uutf/releases/uutf-0.9.4.tbz
 MD5_PKG_uutf = bf5880a8f2e75d0a9152d896ea288ba7
 
-URL_jsonm = http://erratique.ch/software/jsonm/releases/jsonm-0.9.1.tbz
-MD5_jsonm = 631a5dabdada83236c83056f60e42685
+URL_jsonm = https://github.com/dbuenzli/jsonm/archive/master.tar.gz
+MD5_jsonm = 5ab0cf8d02bf624c171e582aa8cb64dc
 
 $(call PKG_SAME,jsonm)
