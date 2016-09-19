@@ -10,7 +10,7 @@ CAN_PKG=0
 endif
 
 ifndef FETCH
-ifneq ($(shell command -v curl > /dev/null),)
+ifneq ($(shell command -v curl 2> /dev/null),)
 FETCH=curl -L -o $(2) $(1)
 else
 FETCH=wget -O $(2) $(1)
