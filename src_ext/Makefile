@@ -111,6 +111,9 @@ archives-pkg: $(PKG_EXTS:=.pkgdownload)
 	rm -rf $*
 	@for ii in tmp-$*/*; do if [ -d $${ii} ]; then mv $${ii} $*; fi; done; \
 	rm -rf tmp-$*
+	@if [ "$*" == "extlib" ] ; then \
+     mv extlib/extlib/* extlib/ ; \
+   fi
 	@if [ -d patches/$* ]; then \
           cd $* && \
 	  for p in ../patches/$*/*.patch; do \

@@ -4,8 +4,8 @@ MD5_PKG_findlib = 703eae112f9e912507c3a2f8d8c48498
 URL_PKG_camlp4 = https://github.com/ocaml/camlp4/archive/4.02+6.tar.gz
 MD5_PKG_camlp4 = 5bf758bb799e7a5ef9cad9cd1df91053
 
-URL_extlib = http://ocaml-extlib.googlecode.com/files/extlib-1.5.3.tar.gz
-MD5_extlib = 3de5f4e0a95fda7b2f3819c4a655b17c
+URL_extlib = https://github.com/ygrek/ocaml-extlib/archive/1.5.3.tar.gz
+MD5_extlib = f150445cbe9a8072f09cfd0cc8c94837
 
 URL_PKG_extlib = http://ocaml-extlib.googlecode.com/files/extlib-1.6.1.tar.gz
 MD5_PKG_extlib = 5643237a6410dc915347956cff97df86
