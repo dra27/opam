@@ -45,8 +45,12 @@ endif
 ARCHIVES = $(foreach lib,$(SRC_EXTS),$(notdir $(URL_$(lib))))
 lib_of = $(foreach lib,$(SRC_EXTS),$(if $(findstring $(1),$(URL_$(lib))),$(lib),,))
 
+ifdef OCAML
 # Portable md5check
-MD5CHECK = $(OCAML) ../shell/md5check.ml
+MD5CHECK = $(OCAML) ../shell/md5check.ml $(1) $(2)
+else
+MD5CHECK = test "`md5sum $(1) | sed -e 's/^[^a-f0-9]*\([a-f0-9]*\).*/\1/'`" = "$(2)" || (rm $(1) && false)
+endif
 
 lib-ext: clone build copy
 	@
@@ -79,13 +83,13 @@ endef
 define get_from_cache
 { $(FETCH) $(call cache_url,$(1)) && \
   mv $(MD5_$(1)) $(notdir $(URL_$(1))) && \
-  $(MD5CHECK) $(notdir $(URL_$(1))) $(MD5_$(1)); }
+  $(call MD5CHECK,$(notdir $(URL_$(1))),$(MD5_$(1))); }
 endef
 
 %.download:
 	[ -e  $(notdir $(URL_$*)) ] || \
     cp archives/$(notdir $(URL_$*)) . 2>/dev/null || \
-	$(FETCH) $(URL_$*) && $(MD5CHECK) $(notdir $(URL_$*)) $(MD5_$*) || \
+	$(FETCH) $(URL_$*) && $(call MD5CHECK,$(notdir $(URL_$*)),$(MD5_$*)) || \
 	$(call get_from_cache,$*)
 
 %.stamp: %.download
