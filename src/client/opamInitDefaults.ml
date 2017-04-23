@@ -12,8 +12,8 @@ open OpamTypes
 
 let repository_url = {
   OpamUrl.
-  transport = "https";
-  path = "github.com/dra27/opam-repository";
+  transport = "file";
+  path = "C:\\DRA\\opam-repository";
   hash = Some "windows";
   backend = `git;
 }
