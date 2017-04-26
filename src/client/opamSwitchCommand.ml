@@ -266,16 +266,47 @@ let install gt ?rt ?synopsis ?repos ~update_config ~packages switch =
       let gt =
         OpamSwitchAction.create_empty_switch gt ?synopsis ?repos switch
       in
+      let () =
+        (* @@DRA OCaml-specific - this needs to move to OpamInitDefaults
+         *)
+        let config_f = OpamPath.Switch.switch_config gt.root switch in
+        let conf =
+          let conf = OpamFile.Switch_config.read config_f in
+          let variables =
+            let var name value = (OpamVariable.of_string name, S value) in
+            let (arch, cc, libc) =
+              let system = OpamPackage.Name.of_string "ocaml-system" in
+              try
+                if List.exists (fun (package, _) -> OpamPackage.Name.compare system package = 0) packages then
+                  let f name =
+                    match OpamPackageVar.resolve_global gt (OpamVariable.Full.global (OpamVariable.of_string name)) with
+                      Some (S value) ->
+                        value
+                    | _ ->
+                        raise Exit
+                  in
+                  (f "sys-ocaml-arch", f "sys-ocaml-cc", f "sys-ocaml-libc")
+                else
+                  raise Exit
+              with Exit ->
+                (OpamStd.Sys.arch (), "cc", (if OpamStd.Sys.(os () = Win32) then "msvc" else "libc"))
+            in
+            (var "switch-arch" arch)::(var "switch-cc" cc)::(var "switch-libc" libc)::conf.OpamFile.Switch_config.variables
+          in
+          {conf with OpamFile.Switch_config.variables}
+        in
+        OpamFile.Switch_config.write config_f conf
+      in
       if update_config then
         gt, OpamSwitchAction.set_current_switch `Lock_write gt ?rt switch
       else
-      let rt = match rt with
-        | None -> OpamRepositoryState.load `Lock_none gt
-        | Some rt ->
-          ({ rt with repos_global = (gt :> unlocked global_state)  }
-           :> unlocked repos_state)
-      in
-      gt, OpamSwitchState.load `Lock_write gt rt switch
+        let rt = match rt with
+          | None -> OpamRepositoryState.load `Lock_none gt
+          | Some rt ->
+            ({ rt with repos_global = (gt :> unlocked global_state)  }
+             :> unlocked repos_state)
+        in
+        gt, OpamSwitchState.load `Lock_write gt rt switch
     else
       gt,
       let rt = match rt with
