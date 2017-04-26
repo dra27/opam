@@ -279,6 +279,15 @@ let do_upgrade repo_root =
       if variant = None then begin
         (* "official" compiler release: generate a system compiler package *)
         let sys_nv = OpamPackage.create ocaml_system_pkgname nv.version in
+        let sys_switch_eq name =
+          let switch_name = "switch-"^name in
+          let ident = FIdent ([],OpamVariable.of_string ("sys-ocaml-"^name),None) in
+          FNot (FAnd (
+            FDefined ident,
+            FOp (ident,
+                 `Neq,
+                 FIdent ([],OpamVariable.of_string switch_name,None))))
+        in
         let system_opam =
           O.create sys_nv |>
           O.with_substs [OpamFilename.Base.of_string conf_script_name] |>
@@ -298,9 +307,11 @@ let do_upgrade repo_root =
             (OpamFile.Descr.create
                  "The OCaml compiler (system version, from outside of opam)") |>
           O.with_available
-            (FOp (FIdent ([],OpamVariable.of_string "sys-ocaml-version",None),
-                  `Eq,
-                  FString (OpamPackage.Version.to_string nv.version)))
+            (FAnd (FOp (FIdent ([],OpamVariable.of_string "sys-ocaml-version",None),
+                        `Eq,
+                        FString (OpamPackage.Version.to_string nv.version)),
+             FAnd (sys_switch_eq "arch",
+             FAnd (sys_switch_eq "cc", sys_switch_eq "libc"))))
             (* add depext towards an 'ocaml' package ? *)
         in
         write_opam ~add_files:[conf_script_name^".in", system_conf_script]
