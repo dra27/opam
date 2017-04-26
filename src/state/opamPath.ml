@@ -44,6 +44,8 @@ let repos_config t = t / "repo" /- "repos-config"
 
 let init  t = t / "opam-init"
 
+let configure_switch t = t / "opam-init" // "configure-switch" |> OpamFilename.opt_file
+
 let log t = t / "log"
 
 let download_cache t = t / "download-cache"
