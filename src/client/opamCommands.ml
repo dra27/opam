@@ -259,6 +259,10 @@ let init =
         ~init_config ?repo ~bypass_checks
         shell dot_profile update_config
     in
+    let switch_defaults =
+      OpamFile.InitConfig.switch_defaults init_config
+        |> OpamStd.Option.default OpamInitDefaults.switch_defaults
+    in
     if not no_compiler &&
        OpamFile.Config.installed_switches gt.config = [] then
       match compiler with
@@ -269,7 +273,8 @@ let init =
         OpamConsole.header_msg "Creating initial switch (%s)"
           (OpamFormula.string_of_atoms packages);
         OpamSwitchCommand.install
-          gt ~rt ~packages ~update_config:true (OpamSwitch.of_string comp)
+          gt ~rt ~packages ~update_config:true ~switch_defaults
+          (OpamSwitch.of_string comp)
         |> ignore
       | None ->
         let candidates = OpamFormula.to_dnf default_compiler in
@@ -288,7 +293,7 @@ let init =
           OpamConsole.header_msg "Creating initial switch (%s)"
             (OpamFormula.string_of_atoms packages);
           OpamSwitchCommand.install
-            gt ~rt ~packages ~update_config:true
+            gt ~rt ~packages ~update_config:true ~switch_defaults
             (OpamSwitch.of_string "default")
           |> ignore
         | None ->
@@ -1801,11 +1806,54 @@ let switch =
        existing switch."
       Arg.(some string) None
   in
+  let config_file =
+    mk_opt_all ["config"] "FILE"
+      "Use the given init config file. If repeated, latest has the highest \
+       priority ($(b,i.e.) each field gets its value from where it was defined \
+       latest). Specifying a URL pointing to a config file instead is \
+       allowed."
+      OpamArg.url
+  in
+  let no_config_file =
+    mk_flag ["no-opamrc"]
+      (Printf.sprintf
+      "Don't read `/etc/opamrc' or `~%s.opamrc': use the default settings and \
+       the files specified through $(b,--config) only" Filename.dir_sep)
+  in
   let switch
       global_options build_options command print_short
-      no_switch packages empty descr repos params =
+      no_switch packages empty descr config_file no_config_file repos params =
     apply_global_options global_options;
     apply_build_options build_options;
+    let config_files =
+      let principal_config_files =
+        if no_config_file then []
+        else
+          let f f =
+            if OpamFile.exists f then
+              Some (OpamFile.to_string f |> OpamFilename.of_string, `InitConfig)
+            else
+              None
+          in
+          OpamStd.List.filter_map f (OpamPath.init_config_files ())
+      in
+      principal_config_files
+      @ List.map (fun url ->
+          match OpamUrl.local_file url with
+          | Some f -> (f, `SwitchDefaults)
+          | None ->
+            let f = OpamFilename.of_string (OpamSystem.temp_file "conf") in
+            OpamProcess.Job.run (OpamDownload.download_as ~overwrite:false url f);
+            let hash = OpamHash.compute ~kind:`SHA256 (OpamFilename.to_string f) in
+            if OpamConsole.confirm
+                "Using configuration file from %s. \
+                 Please verify the following SHA256:\n    %s\n\
+                 Is this correct ?"
+                (OpamUrl.to_string url) (OpamHash.contents hash)
+            then (f, `SwitchDefaults)
+            else OpamStd.Sys.exit 10
+        ) config_file
+    in
     let packages =
       match packages, empty with
       | None, true -> Some []
@@ -1879,6 +1927,29 @@ let switch =
         compilers;
       `Ok ()
     | Some `install, switch::params ->
+      let switch_defaults =
+        try
+          OpamConsole.note "Will configure switch from built-in defaults%s."
+            (OpamStd.List.concat_map ~nil:"" ~left:", " ", "
+               (fun (f, _) -> OpamFilename.to_string f) config_files);
+          List.fold_left (fun acc (f, kind) ->
+            let config =
+              match kind with
+              | `InitConfig ->
+                  OpamFile.InitConfig.read (OpamFile.make f) |> OpamFile.InitConfig.switch_defaults
+              | `SwitchDefaults ->
+                  Some (OpamFile.SwitchDefaults.read (OpamFile.make f))
+            in
+            OpamStd.Option.map_default (OpamFile.SwitchDefaults.add acc) acc config)
+            OpamInitDefaults.switch_defaults
+            config_files
+        with e ->
+          OpamConsole.error
+            "Error in configuration file, fix it, use '--no-opamrc', or check \
+             your '--config FILE' arguments:";
+          OpamConsole.errmsg "%s\n" (Printexc.to_string e);
+          OpamStd.Sys.exit 10
+      in
       OpamGlobalState.with_ `Lock_write @@ fun gt ->
       let repos, rt = get_repos_rt gt repos in
       let switch = OpamSwitch.of_string switch in
@@ -1889,7 +1960,7 @@ let switch =
         OpamSwitchCommand.install gt ~rt
           ?synopsis:descr ?repos
           ~update_config:(not no_switch)
-          ~packages
+          ~packages ~switch_defaults
           switch
       in
       ignore (OpamSwitchState.unlock st);
@@ -1989,7 +2060,7 @@ let switch =
              $global_options $build_options $command
              $print_short_flag
              $no_switch
-             $packages $empty $descr $repos $params)),
+             $packages $empty $descr $config_file $no_config_file $repos $params)),
   term_info "switch" ~doc ~man
 
 (* PIN *)
