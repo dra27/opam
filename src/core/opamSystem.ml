@@ -813,7 +813,13 @@ let patch ~dir p =
   if not (Sys.file_exists p) then
     (OpamConsole.error "Patch file %S not found." p;
      raise Not_found);
-  make_command ~name:"patch" ~dir "patch" ["-p1"; "-i"; p] @@> fun r ->
+  let (patch_command, patch_args) =
+    if command_exists "git" then
+      ("git", fun p -> ["apply"; p])
+    else
+      ("patch", fun p -> ["-p1"; "-i"; p])
+  in
+  make_command ~name:"patch" ~dir patch_command (patch_args p) @@> fun r ->
   if OpamProcess.is_success r then Done None
   else Done (Some (Process_error r))
 
