@@ -52,6 +52,9 @@ val repos_config: t -> OpamFile.Repos_config.t OpamFile.t
 (** Init scripts *)
 val init: t -> dirname
 
+(** Switch configuration script {i $opam/opam-init/configure-switch} *)
+val configure_switch : t -> filename option
+
 (** Log dir {i $opam/log} *)
 val log: t -> dirname
 
