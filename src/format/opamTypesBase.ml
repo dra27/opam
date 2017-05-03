@@ -102,25 +102,50 @@ let string_of_filter_ident (pkgs,var,converter) =
    | Some (it,ifu) -> "?"^it^":"^ifu
    | None -> "")
 
+let rec filter_ident_of_string_aux s i last state =
+  match s.[i], state with
+  | '\'', `Start ->
+      filter_ident_of_string_aux s (pred i) (pred i) `FalseStr
+  | '\'', `FalseStr ->
+      filter_ident_of_string_aux s (pred i) 0 (`Else (false, (String.sub s (i + 1) (last - i))))
+  | ':', `Else val_if_false ->
+      filter_ident_of_string_aux s (pred i) 0 (`True val_if_false)
+  | ':', `Start ->
+      filter_ident_of_string_aux s (pred i) (pred i) (`True (true, (String.sub s (i + 1) (last - i))))
+  | _, `Start ->
+      filter_ident_of_string_aux s (pred i) last `Start
+  | '\'', `True val_if_false ->
+      filter_ident_of_string_aux s (pred i) (pred i) (`TrueStr val_if_false)
+  | _, `True val_if_false ->
+      filter_ident_of_string_aux s (pred i) i (`TrueVar val_if_false)
+  | '\'', `TrueStr val_if_false ->
+      filter_ident_of_string_aux s (pred i) i (`Branch ((false, (String.sub s (i + 1) (last - i))), val_if_false))
+  | '?', `TrueVar val_if_false ->
+      (String.sub s 0 i, Some ((true, String.sub s (i + 1) (last - i)), val_if_false))
+  | _, `TrueVar _ ->
+      filter_ident_of_string_aux s (pred i) last state
+  | '?', `Branch converter ->
+      (String.sub s 0 i, Some converter)
+  | _ ->
+      (* @@DRA String is not valid *)
+      failwith "bleurgh"
+
 let filter_ident_of_string s =
-  match OpamStd.String.rcut_at s ':' with
-  | None -> [], OpamVariable.of_string s, None
-  | Some (p,last) ->
+  if s = "" then
+    [], OpamVariable.of_string s, None
+  else
+    let i = String.length s - 1 in
+    let p, converter =
+      filter_ident_of_string_aux s i i `Start
+    in
     let get_names s =
       List.map
         (function "_" -> None | s -> Some (OpamPackage.Name.of_string s))
         (OpamStd.String.split s '+')
     in
-    match OpamStd.String.rcut_at p '?' with
-    | None ->
-      get_names p, OpamVariable.of_string last, None
-    | Some (p,val_if_true) ->
-      let converter = Some (val_if_true, last) in
-      match OpamStd.String.rcut_at p ':' with
-      | None ->
-        [], OpamVariable.of_string p, converter
-      | Some (packages,var) ->
-        get_names packages, OpamVariable.of_string var, converter
+      match OpamStd.String.rcut_at s ':' with
+      | None -> [], OpamVariable.of_string p, converter
+      | Some (p,s) -> get_names p, OpamVariable.of_string s, converter
 
 let all_package_flags = [
   Pkgflag_LightUninstall;
