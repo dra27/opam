@@ -48,3 +48,5 @@ val iter_packages:
   ?url:(OpamPackage.t -> URL.t -> URL.t) ->
   ?dot_install:(OpamPackage.t -> Dot_install.t -> Dot_install.t) ->
   unit -> unit
+
+val print_full_variable : Format.formatter -> OpamVariable.Full.t -> unit
