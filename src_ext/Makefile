@@ -395,7 +395,8 @@ export PROJ_jsonm
 SRC_opam_file_format = \
   opamParserTypes.mli \
   opamLexer.mli opamLexer.mll \
-  opamParser.mly \
+  opamBaseParser.mly \
+  opamParser.mli opamParser.ml \
   opamPrinter.mli  opamPrinter.ml
 
 define PROJ_opam_file_format

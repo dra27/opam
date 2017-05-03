@@ -1,8 +1,8 @@
 URL_PKG_findlib = http://download.camlcity.org/download/findlib-1.7.1.tar.gz
 MD5_PKG_findlib = 108717618e724295d8a01c21ba3f7311
 
-URL_opam_file_format = https://github.com/ocaml/opam-file-format/archive/2.0-alpha5.tar.gz
-MD5_opam_file_format = 2ccdf87e2bd8ed8541dda1d3369b3199
+URL_opam_file_format = https://github.com/ocaml/opam-file-format/archive/9dbcf8a1ec44b6b3ec72e280de609db791c7a3d5.tar.gz
+MD5_opam_file_format = c71ee1aaa004b5d1491a559d735bd70f
 
 $(call PKG_SAME,opam_file_format)
 
