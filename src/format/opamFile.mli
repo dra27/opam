@@ -173,6 +173,23 @@ module Config: sig
 
 end
 
+(** Switch defaults file *)
+module SwitchDefaults: sig
+  include IO_FILE
+
+  val opam_version: t -> opam_version
+  val switch_variables:
+    t -> ((variable * variable_contents * string) * filter option) list
+
+  val with_opam_version: opam_version -> t -> t
+  val with_switch_variables:
+    ((variable * variable_contents * string) * filter option) list -> t -> t
+
+  (** [add t1 t2] is [t2], with the field values falling back to those of [t1]
+      when not set in [t2] *)
+  val add: t -> t -> t
+end
+
 (** Init config file [/etc/opamrc] *)
 module InitConfig: sig
   include IO_FILE
@@ -189,6 +206,7 @@ module InitConfig: sig
   val wrappers: t -> Wrappers.t
   val global_variables: t -> (variable * variable_contents * string) list
   val eval_variables: t -> (variable * string list * string) list
+  val switch_defaults: t -> SwitchDefaults.t option
 
   val with_opam_version: opam_version -> t -> t
   val with_repositories:
@@ -203,6 +221,7 @@ module InitConfig: sig
   val with_wrappers: Wrappers.t -> t -> t
   val with_global_variables: (variable * variable_contents * string) list -> t -> t
   val with_eval_variables: (variable * string list * string) list -> t -> t
+  val with_switch_defaults: SwitchDefaults.t -> t -> t
 
   (** [add t1 t2] is [t2], with the field values falling back to those of [t1]
       when not set in [t2] *)
