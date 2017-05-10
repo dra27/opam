@@ -32,6 +32,34 @@ let eval_variables = [
   "OCaml version present on your system independently of opam, if any";
 ]
 
+let switch_variables =
+  let open OpamTypes in
+  let ocaml_system =
+    FIdent ([Some (OpamPackage.Name.of_string "ocaml-system")], OpamVariable.of_string "installed", None)
+  in
+  let not_ocaml_system =
+    FNot ocaml_system
+  in
+  let is_base_windows =
+    let os = FIdent ([], OpamVariable.of_string "os", None) in
+    let win32 = FString "win32" in
+    fun op -> FAnd (not_ocaml_system, FOp (os, op, win32))
+  in
+  let switch_var_name name = OpamVariable.of_string ("switch-"^name) in
+  let sys_var name description =
+    ((switch_var_name name, S (Printf.sprintf "%%{sys-ocaml-%s}%%" name), description), Some ocaml_system)
+  in
+  let var ?(filter=not_ocaml_system) name value description =
+    ((switch_var_name name, S value, description), Some filter)
+  in
+  [sys_var "arch" "Switch architecture (taken from system OCaml compiler)";
+   sys_var "cc" "Switch C compiler type (taken from system OCaml compiler)";
+   sys_var "libc" "Switch C runtime flavour (taken from system OCaml compiler)";
+   var "arch" "%{arch}%" "Switch architecture";
+   var "cc" "cc" "Switch C compiler type";
+   var ~filter:(is_base_windows `Eq) "libc" "msvc" "Switch C runtime flavour";
+   var ~filter:(is_base_windows `Neq) "libc" "libc" "Switch C runtime flavour"]
+
 let os_filter os =
   FOp (FIdent ([], OpamVariable.of_string "os", None), `Eq, FString os)
 
@@ -128,7 +156,7 @@ module I = OpamFile.InitConfig
 let (@|) g f = OpamStd.Op.(g @* f) ()
 
 let switch_defaults =
-  OpamFile.SwitchDefaults.empty
+  OpamFile.SwitchDefaults.with_switch_variables switch_variables OpamFile.SwitchDefaults.empty
 
 let init_config ?(sandboxing=true) () =
   I.empty |>
