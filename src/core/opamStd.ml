@@ -333,6 +333,10 @@ module Option = struct
     | None -> dft
     | some -> some
 
+  let map_default f dft = function
+    | None -> dft
+    | Some x -> f x
+
   let compare cmp o1 o2 = match o1,o2 with
     | None, None -> 0
     | Some _, None -> 1
