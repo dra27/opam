@@ -96,6 +96,28 @@ module V = struct
       (fun ~pos:_ -> function String (_,s) -> s | _ -> unexpected ())
       (fun str -> String (pos_null,str))
 
+  let posix_regex =
+    let parse ~pos =
+      function
+      | String (_,s) ->
+          let re =
+            try
+              Re.Posix.re s
+            with
+            | Re.Posix.Not_supported ->
+                (* XXX For want of a better idea *)
+                bad_format ~pos "Internal opam error"
+            | Re.Posix.Parse_error ->
+                bad_format ~pos "Expected a valid POSIX regex"
+          in
+          (* The original string must be kept or we can't print it *)
+          (re, s)
+      | _ -> unexpected ()
+    in
+    pp ~name:"posix-regex"
+      parse
+      (fun (_,str) -> String (pos_null,str))
+
   let string_tr = string -| pp (fun ~pos:_ -> OpamStd.String.strip) (fun x -> x)
 
   let simple_arg =

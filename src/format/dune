@@ -2,7 +2,7 @@
   (name        opam_format)
   (public_name opam-format)
   (synopsis    "OCaml Package Manager file format handling library")
-  (libraries   opam-core opam-file-format re)
+  (libraries   opam-core opam-file-format re re.posix)
   (modules_without_implementation OpamTypes)
   (flags       (:standard
                (:include ../ocaml-flags-standard.sexp)

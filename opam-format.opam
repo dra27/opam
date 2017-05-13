@@ -23,6 +23,7 @@ build: [
 depends: [
   "opam-core" {= "2.0.0"}
   "opam-file-format" {>= "2.0.0~rc2"}
+  "re" {>= "1.7.2"}
   "dune" {build & >= "1.2.1"}
 ]
 available: ocaml-version >= "4.02.3"
