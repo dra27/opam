@@ -119,7 +119,8 @@ let self_upgrade_status global_options = snd global_options
 
 type command = unit Term.t * Term.info
 
-let get_init_config ~no_sandboxing ~no_default_config_file ~add_config_file =
+let get_init_config ?(quiet=false) ~no_sandboxing ~no_default_config_file
+                                   ~add_config_file () =
   let builtin_config =
     OpamInitDefaults.init_config ~sandboxing:(not no_sandboxing) ()
   in
@@ -133,7 +134,9 @@ let get_init_config ~no_sandboxing ~no_default_config_file ~add_config_file =
           let f = OpamFilename.of_string (OpamSystem.temp_file "conf") in
           OpamProcess.Job.run (OpamDownload.download_as ~overwrite:false url f);
           let hash = OpamHash.compute ~kind:`SHA256 (OpamFilename.to_string f) in
-          if OpamConsole.confirm
+          (* quiet=true means that we're just probing for help text, so the lack
+             of confirmation doesn't matter *)
+          if quiet || OpamConsole.confirm
               "Using configuration file from %s. \
                Please verify the following SHA256:\n    %s\n\
                Is this correct?"
@@ -151,7 +154,8 @@ let get_init_config ~no_sandboxing ~no_default_config_file ~add_config_file =
         (OpamStd.List.concat_map ~nil:"" ~right:", and finally from " ", then "
            OpamFile.to_string (List.rev config_files))
     in
-    OpamConsole.note "Will configure from %sbuilt-in defaults." others;
+    if not quiet then
+      OpamConsole.note "Will configure from %sbuilt-in defaults." others;
     List.fold_left (fun acc f ->
         OpamFile.InitConfig.add acc (OpamFile.InitConfig.read f))
       builtin_config config_files
@@ -165,6 +169,23 @@ let get_init_config ~no_sandboxing ~no_default_config_file ~add_config_file =
 let is_simple_alternation =
   let open Re in
   compile (whole_string (rep (alt [wordc; char '|'])))
+
+let peek_variables_validation switch_defaults no_config_file config_file =
+  let switch_defaults = switch_defaults no_config_file config_file in
+  let validation =
+    OpamFile.SwitchDefaults.switch_variables_validation switch_defaults
+  in
+  let f acc (var, (_, regex), help) =
+    let regex =
+      if Re.execp is_simple_alternation regex then
+        Arg.doc_alts (OpamStd.String.split_delim regex '|')
+      else
+        regex
+    in
+    let var = OpamVariable.to_string var in
+    (`I (Printf.sprintf "$(i,%s) (%s)" var regex, help))::acc
+  in
+  List.fold_left f [] (List.rev validation)
 
 let process_cli_set_variables switch_defaults set_variables =
   let validation =
@@ -234,7 +255,7 @@ let process_cli_set_variables switch_defaults set_variables =
 let init_doc = "Initialize opam state, or set init options."
 let init =
   let doc = init_doc in
-  let man = [
+  let man switch_variables = [
     `S "DESCRIPTION";
     `P "Initialise the opam state, or update opam init options";
     `P "The $(b,init) command initialises a local \"opam root\" (by default, \
@@ -251,6 +272,7 @@ let init =
         dialog), but also at any later time.";
     `S "ARGUMENTS";
     `S "OPTIONS";
+    `S "SWITCH GLOBAL VARIABLES";] @ switch_variables @ [
     `S "CONFIGURATION FILE";
     `P "Any field from the built-in initial configuration can be overridden \
         through $(i,~/.opamrc), $(i,/etc/opamrc), or a file supplied with \
@@ -360,8 +382,7 @@ let init =
   let set_variables =
     mk_opt_all ["set"] "NAME=VALUE"
       "Set the given switch global variable for the default switch. Any variable \
-       may be specified, though $(i,switch-variables-validation) rules may apply \
-       (see section $(b,CONFIGURATION FILE))"
+       may be specified (see section $(b,SWITCH GLOBAL VARIABLES))"
       Arg.string
   in
   let init global_options
@@ -425,8 +446,8 @@ let init =
     if already_init then
       if reinit then
         let init_config =
-          get_init_config ~no_sandboxing
-            ~no_default_config_file:no_config_file ~add_config_file:config_file
+          get_init_config ~no_sandboxing ~no_default_config_file:no_config_file
+            ~add_config_file:config_file ()
         in
         OpamClient.reinit ~init_config ~interactive ~dot_profile
           ?update_config ?env_hook ?completion
@@ -437,7 +458,7 @@ let init =
     else
     let init_config =
       get_init_config ~no_sandboxing
-        ~no_default_config_file:no_config_file ~add_config_file:config_file
+        ~no_default_config_file:no_config_file ~add_config_file:config_file ()
     in
     let (switch_defaults, cli_switch_variables) =
       let switch_defaults =
@@ -512,6 +533,17 @@ let init =
            no switch has been created.\n\
            Use 'opam switch create <compiler>' to get started."
   in
+  let switch_variables =
+    let f no_config_file config_file =
+      get_init_config ~quiet:true ~no_sandboxing:true
+        ~no_default_config_file:no_config_file ~add_config_file:config_file ()
+        |> OpamFile.InitConfig.switch_defaults
+        |> OpamStd.Option.default OpamInitDefaults.switch_defaults
+    in
+    OpamStd.Option.default [] Term.(pure (peek_variables_validation f) $no_config_file $config_file
+      |> eval_peek_opts
+      |> fst)
+  in
   Term.(const init
         $global_options $build_options $repo_kind_flag $repo_name $repo_url
         $interactive $update_config $setup_completion $env_hook $no_sandboxing
@@ -519,7 +551,7 @@ let init =
         $compiler $no_compiler
         $config_file $no_config_file $reinit $show_default_opamrc $bypass_checks
         $set_variables),
-  term_info "init" ~doc ~man
+  term_info "init" ~doc ~man:(man switch_variables)
 
 (* LIST *)
 let list_doc = "Display the list of available packages."
@@ -2075,7 +2107,7 @@ let switch =
     "install", `install, ["SWITCH"],
     "Deprecated alias for 'create'."
   ] in
-  let man = [
+  let man switch_variables = [
     `S "DESCRIPTION";
     `P "This command is used to manage \"switches\", which are independent \
         installation prefixes with their own compiler and sets of installed \
@@ -2100,7 +2132,8 @@ let switch =
         environment. For that, use $(i,eval \\$(opam env \
         --switch=SWITCH --set-switch\\)).";
   ] @ mk_subdoc ~defaults:["","list";"SWITCH","set"] commands
-    @ [`S "OPTIONS"]
+    @ [`S "OPTIONS"; `S "SWITCH GLOBAL VARIABLES"]
+    @ switch_variables
     @ [`S OpamArg.build_option_section]
   in
 
@@ -2180,9 +2213,61 @@ let switch =
   let set_variables =
     mk_opt_all ["set"] "NAME=VALUE"
       "Set the given switch global variable for the new switch. Any variable \
-       may be specified, though $(i,switch-variables-validation) rules may apply \
-       (see section $(b,CONFIGURATION FILE))"
+       may be specified (see section $(b,SWITCH GLOBAL VARIABLES))"
       Arg.string
+  in
+  let get_config_files no_config_file config_file =
+    let principal_config_files =
+      if no_config_file then []
+      else
+        let f f =
+          if OpamFile.exists f then
+            Some (OpamFile.to_string f |> OpamFilename.of_string, `InitConfig)
+          else
+            None
+        in
+        OpamStd.List.filter_map f (OpamPath.init_config_files ())
+    in
+    principal_config_files
+    @ List.map (fun url ->
+        match OpamUrl.local_file url with
+        | Some f -> (f, `SwitchDefaults)
+        | None ->
+          let f = OpamFilename.of_string (OpamSystem.temp_file "conf") in
+          OpamProcess.Job.run (OpamDownload.download_as ~overwrite:false url f);
+          let hash = OpamHash.compute ~kind:`SHA256 (OpamFilename.to_string f) in
+          if OpamConsole.confirm
+              "Using configuration file from %s. \
+               Please verify the following SHA256:\n    %s\n\
+               Is this correct ?"
+              (OpamUrl.to_string url) (OpamHash.contents hash)
+          then (f, `SwitchDefaults)
+          else OpamStd.Sys.exit_because `Aborted
+      ) config_file
+  in
+  let get_switch_defaults ?(quiet=false) config_files =
+    try
+      if not quiet then
+        OpamConsole.note "Will configure switch from built-in defaults%s."
+          (OpamStd.List.concat_map ~nil:"" ~left:", " ", "
+             (fun (f, _) -> OpamFilename.to_string f) config_files);
+      List.fold_left (fun acc (f, kind) ->
+        let config =
+          match kind with
+          | `InitConfig ->
+              OpamFile.InitConfig.read (OpamFile.make f) |> OpamFile.InitConfig.switch_defaults
+          | `SwitchDefaults ->
+              Some (OpamFile.SwitchDefaults.read (OpamFile.make f))
+        in
+        OpamStd.Option.map_default (OpamFile.SwitchDefaults.add acc) acc config)
+        OpamInitDefaults.switch_defaults
+        config_files
+    with e ->
+      OpamConsole.error
+        "Error in configuration file, fix it, use '--no-opamrc', or check \
+         your '--config FILE' arguments:";
+      OpamConsole.errmsg "%s\n" (Printexc.to_string e);
+      OpamStd.Sys.exit_because `Configuration_error
   in
   let switch
       global_options build_options command print_short
@@ -2194,35 +2279,7 @@ let switch =
    OpamArg.deprecated_option d_no_autoinstall false "no-autoinstall" None;
     apply_global_options global_options;
     apply_build_options build_options;
-    let config_files =
-      let principal_config_files =
-        if no_config_file then []
-        else
-          let f f =
-            if OpamFile.exists f then
-              Some (OpamFile.to_string f |> OpamFilename.of_string, `InitConfig)
-            else
-              None
-          in
-          OpamStd.List.filter_map f (OpamPath.init_config_files ())
-      in
-      principal_config_files
-      @ List.map (fun url ->
-          match OpamUrl.local_file url with
-          | Some f -> (f, `SwitchDefaults)
-          | None ->
-            let f = OpamFilename.of_string (OpamSystem.temp_file "conf") in
-            OpamProcess.Job.run (OpamDownload.download_as ~overwrite:false url f);
-            let hash = OpamHash.compute ~kind:`SHA256 (OpamFilename.to_string f) in
-            if OpamConsole.confirm
-                "Using configuration file from %s. \
-                 Please verify the following SHA256:\n    %s\n\
-                 Is this correct ?"
-                (OpamUrl.to_string url) (OpamHash.contents hash)
-            then (f, `SwitchDefaults)
-            else OpamStd.Sys.exit_because `Aborted
-        ) config_file
-    in
+    let config_files = get_config_files no_config_file config_file in
     let packages =
       match packages, empty with
       | None, true -> Some []
@@ -2302,29 +2359,7 @@ let switch =
       `Ok ()
     | Some `install, switch_arg::params ->
       let (switch_defaults, _) =
-        let switch_defaults =
-          try
-            OpamConsole.note "Will configure switch from built-in defaults%s."
-              (OpamStd.List.concat_map ~nil:"" ~left:", " ", "
-                 (fun (f, _) -> OpamFilename.to_string f) config_files);
-            List.fold_left (fun acc (f, kind) ->
-              let config =
-                match kind with
-                | `InitConfig ->
-                    OpamFile.InitConfig.read (OpamFile.make f) |> OpamFile.InitConfig.switch_defaults
-                | `SwitchDefaults ->
-                    Some (OpamFile.SwitchDefaults.read (OpamFile.make f))
-              in
-              OpamStd.Option.map_default (OpamFile.SwitchDefaults.add acc) acc config)
-              OpamInitDefaults.switch_defaults
-              config_files
-          with e ->
-            OpamConsole.error
-              "Error in configuration file, fix it, use '--no-opamrc', or check \
-               your '--config FILE' arguments:";
-            OpamConsole.errmsg "%s\n" (Printexc.to_string e);
-            OpamStd.Sys.exit_because `Configuration_error
-        in
+        let switch_defaults = get_switch_defaults config_files in
         process_cli_set_variables switch_defaults set_variables
       in
       OpamGlobalState.with_ `Lock_write @@ fun gt ->
@@ -2494,6 +2529,15 @@ let switch =
       `Ok ()
     | command, params -> bad_subcommand commands ("switch", command, params)
   in
+  let switch_variables =
+    let f no_config_file config_file =
+      get_config_files no_config_file config_file
+        |> get_switch_defaults ~quiet:true
+    in
+    OpamStd.Option.default [] Term.(pure (peek_variables_validation f) $no_config_file $config_file
+      |> eval_peek_opts
+      |> fst)
+  in
   Term.(ret (const switch
              $global_options $build_options $command
              $print_short_flag
@@ -2501,7 +2545,7 @@ let switch =
              $packages $empty $descr $full $no_install $deps_only
              $repos $d_alias_of $d_no_autoinstall $config_file $no_config_file
              $params $set_variables)),
-  term_info "switch" ~doc ~man
+  term_info "switch" ~doc ~man:(man switch_variables)
 
 (* PIN *)
 let pin_doc = "Pin a given package to a specific version or source."
