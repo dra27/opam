@@ -1216,17 +1216,22 @@ module SwitchDefaultsSyntax = struct
     opam_version : opam_version;
     switch_variables :
       ((variable * variable_contents * string) * filter option) list;
+    switch_variables_validation : (variable * (Re.t * string) * string) list;
   }
 
   let opam_version t = t.opam_version
   let switch_variables t = t.switch_variables
+  let switch_variables_validation t = t.switch_variables_validation
 
   let with_opam_version opam_version t = {t with opam_version}
   let with_switch_variables switch_variables t = {t with switch_variables}
+  let with_switch_variables_validation switch_variables_validation t =
+    {t with switch_variables_validation}
 
   let empty = {
     opam_version = OpamVersion.current_nopatch;
     switch_variables = [];
+    switch_variables_validation = [];
   }
 
   let fields =
@@ -1240,6 +1245,13 @@ module SwitchDefaultsSyntax = struct
                 Pp.V.variable_contents
                 Pp.V.string)
               (Pp.opt Pp.V.filter)));
+      "switch-variables-validation", Pp.ppacc
+        with_switch_variables_validation switch_variables_validation
+        (Pp.V.map_list ~depth:2
+          (Pp.V.map_triple
+            (Pp.V.ident -| Pp.of_module "variable" (module OpamVariable))
+            Pp.V.posix_regex
+            Pp.V.string))
     ]
 
   let pp_contents =
@@ -1264,6 +1276,8 @@ module SwitchDefaultsSyntax = struct
     {
       opam_version = t2.opam_version;
       switch_variables = list t2.switch_variables t1.switch_variables;
+      switch_variables_validation =
+        list t2.switch_variables_validation t1.switch_variables_validation;
     }
 
 end

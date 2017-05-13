@@ -180,10 +180,14 @@ module SwitchDefaults: sig
   val opam_version: t -> opam_version
   val switch_variables:
     t -> ((variable * variable_contents * string) * filter option) list
+  val switch_variables_validation:
+    t -> (variable * (Re.t * string) * string) list
 
   val with_opam_version: opam_version -> t -> t
   val with_switch_variables:
     ((variable * variable_contents * string) * filter option) list -> t -> t
+  val with_switch_variables_validation:
+    (variable * (Re.t * string) * string) list -> t -> t
 
   (** [add t1 t2] is [t2], with the field values falling back to those of [t1]
       when not set in [t2] *)
