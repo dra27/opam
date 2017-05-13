@@ -38,6 +38,8 @@ let eval_variables = [
   "Host C Runtime Library type of the OCaml compiler present on your system";
 ]
 
+let switch_var_name name = OpamVariable.of_string ("switch-"^name)
+
 let switch_variables =
   let open OpamTypes in
   let ocaml_system =
@@ -51,7 +53,6 @@ let switch_variables =
     let win32 = FString "win32" in
     fun op -> FAnd (not_ocaml_system, FOp (os, op, win32))
   in
-  let switch_var_name name = OpamVariable.of_string ("switch-"^name) in
   let sys_var name description =
     ((switch_var_name name, S (Printf.sprintf "%%{sys-ocaml-%s}%%" name), description), Some ocaml_system)
   in
@@ -66,10 +67,23 @@ let switch_variables =
    var ~filter:(is_base_windows `Eq) "libc" "msvc" "Switch C runtime flavour";
    var ~filter:(is_base_windows `Neq) "libc" "libc" "Switch C runtime flavour"]
 
+let switch_variables_validation =
+  let var name regex help =
+    (switch_var_name name, (Re_posix.re regex, regex), help)
+  in
+  [var "arch" "x86_64|i686|other" "Sets the host architecture for this switch";
+   var "cc" "cc|cl" "Sets the C compiler type for this switch ($(b,cc): \
+                     POSIX C, or $(b,cl): Microsoft C)";
+   var "libc" "libc|msvc" "Sets the C runtime flavour for this switch \
+                           ($(b,libc): POSIX C, or $(b,msvc): Microsoft C \
+                           runtime)"]
+
 module I = OpamFile.InitConfig
 
 let switch_defaults =
-  OpamFile.SwitchDefaults.with_switch_variables switch_variables OpamFile.SwitchDefaults.empty
+  let module S = OpamFile.SwitchDefaults in
+  S.with_switch_variables switch_variables S.empty |>
+  S.with_switch_variables_validation switch_variables_validation
 
 let init_config =
   I.empty |>
