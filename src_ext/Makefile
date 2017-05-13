@@ -212,7 +212,7 @@ IO.ml option.ml pMap.ml refList.ml std.ml uChar.ml unzip.ml uTF8.ml optParse.ml	
 dynArray.ml dllist.ml bitSet.ml base64.ml extArray.ml extLib.ml
 $(call BASIC_LIB,extlib,src)
 
-SRC_re = re_cset.ml re_automata.ml re.ml re_glob.ml re_perl.ml re_pcre.ml
+SRC_re = re_cset.ml re_automata.ml re.ml re_glob.ml re_perl.ml re_pcre.ml re_posix.ml
 $(call BASIC_LIB,re,lib)
 
 SRC_cmdliner = cmdliner.ml
