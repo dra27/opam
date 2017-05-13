@@ -162,6 +162,42 @@ let get_init_config ~no_sandboxing ~no_default_config_file ~add_config_file =
     OpamConsole.errmsg "%s\n" (Printexc.to_string e);
     OpamStd.Sys.exit_because `Configuration_error
 
+let process_cli_set_variables switch_defaults set_variables =
+  let (cli_variables, cli_switch_variables) =
+    let f (set, acc) str =
+      match OpamStd.String.cut_at str '=' with
+      | None ->
+          OpamConsole.error_and_exit `Bad_arguments
+            "Invalid argument to --set; must be of the form NAME=VALUE"
+      | Some (name, value) ->
+          if not (OpamVariable.Full.(is_global (of_string name))) then
+            OpamConsole.error_and_exit `Bad_arguments
+              "%s is invalid: only global variables may be set with --set" name
+          else
+            let set = OpamStd.String.Set.add name set in
+            let acc =
+              ((OpamVariable.of_string name, S value, ""), None)::acc
+            in
+            (set, acc)
+    in
+    List.fold_left f (OpamStd.String.Set.empty, []) set_variables
+  in
+  let switch_defaults =
+    let open OpamFile.SwitchDefaults in
+    let variables =
+      let f ((name, _, _), _) =
+        let name = OpamVariable.to_string name in
+        not (OpamStd.String.Set.mem name cli_variables)
+      in
+      let switch_variables =
+        List.filter f (switch_variables switch_defaults)
+      in
+      switch_variables @ cli_switch_variables
+    in
+    with_switch_variables variables switch_defaults
+  in
+  (switch_defaults, cli_switch_variables)
+
 (* INIT *)
 let init_doc = "Initialize opam state, or set init options."
 let init =
@@ -289,11 +325,16 @@ let init =
        $(b,--config) is used). Use this at your own risk, without sandboxing \
        it is possible for a broken package script to delete all your files."
   in
+  let set_variables =
+    mk_opt_all ["set"] "NAME=VALUE"
+      "Set the given switch global variable for the default switch."
+      Arg.string
+  in
   let init global_options
       build_options repo_kind repo_name repo_url
       interactive update_config completion env_hook no_sandboxing shell
       dot_profile_o compiler no_compiler config_file no_config_file reinit
-      show_opamrc bypass_checks =
+      show_opamrc bypass_checks set_variables =
     apply_global_options global_options;
     apply_build_options build_options;
     (* If show option is set, dump opamrc and exit *)
@@ -302,6 +343,9 @@ let init =
          OpamInitDefaults.init_config ~sandboxing:(not no_sandboxing) ();
        OpamStd.Sys.exit_because `Success);
     (* Else continue init *)
+    if no_compiler && set_variables <> [] then
+      OpamConsole.error_and_exit `Bad_arguments
+        "Options --bare and --set are incompatible";
     if compiler <> None && no_compiler then
       OpamConsole.error_and_exit `Bad_arguments
         "Options --bare and --compiler are incompatible";
@@ -361,9 +405,12 @@ let init =
       get_init_config ~no_sandboxing
         ~no_default_config_file:no_config_file ~add_config_file:config_file
     in
-    let switch_defaults =
-      OpamFile.InitConfig.switch_defaults init_config
-        |> OpamStd.Option.default OpamInitDefaults.switch_defaults
+    let (switch_defaults, cli_switch_variables) =
+      let switch_defaults =
+        OpamFile.InitConfig.switch_defaults init_config
+          |> OpamStd.Option.default OpamInitDefaults.switch_defaults
+      in
+      process_cli_set_variables switch_defaults set_variables
     in
     let repo =
       OpamStd.Option.map (fun url ->
@@ -396,7 +443,18 @@ let init =
         OpamConsole.warning
           "No compiler specified, a default compiler will be selected.";
       let candidates = OpamFormula.to_dnf default_compiler in
-      let all_packages = OpamSwitchCommand.get_compiler_packages rt in
+      let all_packages =
+        let repos_global =
+          let f acc ((name, value, help), _) =
+            OpamVariable.Map.add name (lazy (Some value), help) acc
+          in
+          let global_variables =
+            List.fold_left f rt.repos_global.global_variables cli_switch_variables
+          in
+          {rt.repos_global with global_variables}
+        in
+        let rt = {rt with repos_global} in
+        OpamSwitchCommand.get_compiler_packages rt in
       let compiler_packages =
         try
           Some (List.find (fun atoms ->
@@ -425,7 +483,8 @@ let init =
         $interactive $update_config $setup_completion $env_hook $no_sandboxing
         $shell_opt $dot_profile_flag
         $compiler $no_compiler
-        $config_file $no_config_file $reinit $show_default_opamrc $bypass_checks),
+        $config_file $no_config_file $reinit $show_default_opamrc $bypass_checks
+        $set_variables),
   term_info "init" ~doc ~man
 
 (* LIST *)
@@ -2084,10 +2143,16 @@ let switch =
       "Don't read `/etc/opamrc' or `~%s.opamrc': use the default settings and \
        the files specified through $(b,--config) only" Filename.dir_sep)
   in
+  let set_variables =
+    mk_opt_all ["set"] "NAME=VALUE"
+      "Set the given switch global variable for the new switch."
+      Arg.string
+  in
   let switch
       global_options build_options command print_short
       no_switch packages empty descr full no_install deps_only repos
-      d_alias_of d_no_autoinstall config_file no_config_file params =
+      d_alias_of d_no_autoinstall config_file no_config_file params 
+      set_variables =
    OpamArg.deprecated_option d_alias_of None
    "alias-of" (Some "opam switch <switch-name> <compiler>");
    OpamArg.deprecated_option d_no_autoinstall false "no-autoinstall" None;
@@ -2200,28 +2265,31 @@ let switch =
         compilers;
       `Ok ()
     | Some `install, switch_arg::params ->
-      let switch_defaults =
-        try
-          OpamConsole.note "Will configure switch from built-in defaults%s."
-            (OpamStd.List.concat_map ~nil:"" ~left:", " ", "
-               (fun (f, _) -> OpamFilename.to_string f) config_files);
-          List.fold_left (fun acc (f, kind) ->
-            let config =
-              match kind with
-              | `InitConfig ->
-                  OpamFile.InitConfig.read (OpamFile.make f) |> OpamFile.InitConfig.switch_defaults
-              | `SwitchDefaults ->
-                  Some (OpamFile.SwitchDefaults.read (OpamFile.make f))
-            in
-            OpamStd.Option.map_default (OpamFile.SwitchDefaults.add acc) acc config)
-            OpamInitDefaults.switch_defaults
-            config_files
-        with e ->
-          OpamConsole.error
-            "Error in configuration file, fix it, use '--no-opamrc', or check \
-             your '--config FILE' arguments:";
-          OpamConsole.errmsg "%s\n" (Printexc.to_string e);
-          OpamStd.Sys.exit_because `Configuration_error
+      let (switch_defaults, _) =
+        let switch_defaults =
+          try
+            OpamConsole.note "Will configure switch from built-in defaults%s."
+              (OpamStd.List.concat_map ~nil:"" ~left:", " ", "
+                 (fun (f, _) -> OpamFilename.to_string f) config_files);
+            List.fold_left (fun acc (f, kind) ->
+              let config =
+                match kind with
+                | `InitConfig ->
+                    OpamFile.InitConfig.read (OpamFile.make f) |> OpamFile.InitConfig.switch_defaults
+                | `SwitchDefaults ->
+                    Some (OpamFile.SwitchDefaults.read (OpamFile.make f))
+              in
+              OpamStd.Option.map_default (OpamFile.SwitchDefaults.add acc) acc config)
+              OpamInitDefaults.switch_defaults
+              config_files
+          with e ->
+            OpamConsole.error
+              "Error in configuration file, fix it, use '--no-opamrc', or check \
+               your '--config FILE' arguments:";
+            OpamConsole.errmsg "%s\n" (Printexc.to_string e);
+            OpamStd.Sys.exit_because `Configuration_error
+        in
+        process_cli_set_variables switch_defaults set_variables
       in
       OpamGlobalState.with_ `Lock_write @@ fun gt ->
       with_repos_rt gt repos @@ fun (repos, rt) ->
@@ -2396,7 +2464,7 @@ let switch =
              $no_switch
              $packages $empty $descr $full $no_install $deps_only
              $repos $d_alias_of $d_no_autoinstall $config_file $no_config_file
-             $params)),
+             $params $set_variables)),
   term_info "switch" ~doc ~man
 
 (* PIN *)
