@@ -162,7 +162,33 @@ let get_init_config ~no_sandboxing ~no_default_config_file ~add_config_file =
     OpamConsole.errmsg "%s\n" (Printexc.to_string e);
     OpamStd.Sys.exit_because `Configuration_error
 
+let is_simple_alternation =
+  let open Re in
+  compile (whole_string (rep (alt [wordc; char '|'])))
+
 let process_cli_set_variables switch_defaults set_variables =
+  let validation =
+    OpamFile.SwitchDefaults.switch_variables_validation switch_defaults
+  in
+  let f acc (var, (regex, str_regex), _) =
+    let var = OpamVariable.to_string var in
+    let f =
+      let help =
+        if Re.execp is_simple_alternation str_regex then
+          "be " ^ Arg.doc_alts (OpamStd.String.split_delim str_regex '|')
+        else
+          "match " ^ str_regex
+      in
+      let regex = Re.compile (Re.whole_string regex) in
+      fun str ->
+        if not (Re.execp regex str) then
+          OpamConsole.error_and_exit `Bad_arguments "%s must %s" var help
+    in
+    OpamStd.String.Map.add var f acc
+  in
+  let known_variables =
+    List.fold_left f OpamStd.String.Map.empty (List.rev validation)
+  in
   let (cli_variables, cli_switch_variables) =
     let f (set, acc) str =
       match OpamStd.String.cut_at str '=' with
@@ -174,6 +200,12 @@ let process_cli_set_variables switch_defaults set_variables =
             OpamConsole.error_and_exit `Bad_arguments
               "%s is invalid: only global variables may be set with --set" name
           else
+            let () =
+              try
+                (OpamStd.String.Map.find name known_variables) value
+              with Not_found ->
+                ()
+            in
             let set = OpamStd.String.Set.add name set in
             let acc =
               ((OpamVariable.of_string name, S value, ""), None)::acc
@@ -327,7 +359,9 @@ let init =
   in
   let set_variables =
     mk_opt_all ["set"] "NAME=VALUE"
-      "Set the given switch global variable for the default switch."
+      "Set the given switch global variable for the default switch. Any variable \
+       may be specified, though $(i,switch-variables-validation) rules may apply \
+       (see section $(b,CONFIGURATION FILE))"
       Arg.string
   in
   let init global_options
@@ -2145,7 +2179,9 @@ let switch =
   in
   let set_variables =
     mk_opt_all ["set"] "NAME=VALUE"
-      "Set the given switch global variable for the new switch."
+      "Set the given switch global variable for the new switch. Any variable \
+       may be specified, though $(i,switch-variables-validation) rules may apply \
+       (see section $(b,CONFIGURATION FILE))"
       Arg.string
   in
   let switch
