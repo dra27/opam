@@ -56,6 +56,9 @@ module V : sig
   val ident : (value, string) t
   val string : (value, string) t
 
+  (** POSIX regex *)
+  val posix_regex : (value, Re.t * string) t
+
   (** Trimmed string *)
   val string_tr : (value, string) t
 

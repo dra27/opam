@@ -23,6 +23,7 @@ begin library "opam-format"
   requires = [
     "opam-file-format"
     "opam-core"
+    "re.posix"
   ]
 
 end
