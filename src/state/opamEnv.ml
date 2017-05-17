@@ -125,7 +125,7 @@ let expand (updates: env_update list) : env =
   let rec apply_updates reverts acc = function
     | (var, op, arg, doc) :: updates ->
       let zip, reverts =
-        let f, var = if OpamStd.Sys.(os () = Win32) then String.uppercase, String.uppercase var else (fun x -> x), var in
+        let f, var = if OpamStd.Sys.(os () = Win32) then String.uppercase_ascii, String.uppercase_ascii var else (fun x -> x), var in
         match OpamStd.List.find_opt (fun (v, _, _) -> f v = var) acc with
         | Some (_, z, _doc) -> z, reverts
         | None ->
@@ -156,8 +156,8 @@ let add (env: env) (updates: env_update list) =
       (*
        * Environment variable names are case insensitive on Windows
        *)
-      let updates = List.rev_map (fun (u,_,_,_) -> (String.uppercase u, "", "", None)) updates in
-      List.filter (fun (k,_,_) -> let k = String.uppercase k in List.for_all (fun (u,_,_,_) -> u <> k) updates) env
+      let updates = List.rev_map (fun (u,_,_,_) -> (String.uppercase_ascii u, "", "", None)) updates in
+      List.filter (fun (k,_,_) -> let k = String.uppercase_ascii k in List.for_all (fun (u,_,_,_) -> u <> k) updates) env
     else
       List.filter (fun (k,_,_) -> List.for_all (fun (u,_,_,_) -> u <> k) updates)
         env

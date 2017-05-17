@@ -242,10 +242,9 @@ inst_objs = cp $(1)/*.cm*i lib
 
 copy: build
 	mkdir -p lib
-	cp *.cma lib || true
-	cp *.cmxa lib || true
-	cp *.a lib || true
-	cp *.lib lib || true
+	cp *.cma lib 2>/dev/null || true
+	cp *.cmxa lib 2/dev/null || true
+	cp *.a lib 2>/dev/null || cp *.lib lib 2/dev/null || true
 	$(call inst_objs,extlib/src)
 	$(call inst_objs,re/lib)
 	$(call inst_objs,cmdliner/src)

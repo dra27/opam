@@ -115,7 +115,7 @@ let cygwin_create_process_env prog args env fd1 fd2 fd3 =
       match OpamStd.String.cut_at item '=' with
         Some pair -> pair
       | None -> (item, "") in
-    match String.lowercase key with
+    match String.lowercase_ascii key with
     | "cygwin" ->
         let () =
           if key = "CYGWIN" then
@@ -163,12 +163,12 @@ let cygwin_create_process_env prog args env fd1 fd2 fd3 =
           Some (key ^ "=" ^ String.concat " " settings)
     | "path" ->
         let path_dirs = OpamStd.Sys.get_path_dirs item in
-        let winsys = Filename.concat (OpamStd.Sys.system ()) "." |> String.lowercase in
+        let winsys = Filename.concat (OpamStd.Sys.system ()) "." |> String.lowercase_ascii in
         let rec f prefix suffix = function
         | dir::dirs ->
             let contains_cygpath = Sys.file_exists (Filename.concat dir "cygpath.exe") in
             if suffix = [] then
-              if String.lowercase (Filename.concat dir ".") = winsys then
+              if String.lowercase_ascii (Filename.concat dir ".") = winsys then
                 f prefix [dir] dirs
               else
                 if contains_cygpath then

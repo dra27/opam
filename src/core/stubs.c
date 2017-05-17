@@ -439,7 +439,7 @@ CAMLprim value OPAMW_SendMessageTimeout(value hWnd, value uTimeout, value fuFlag
   CAMLxparam1(uTimeout);
   CAMLlocal1(result);
 
-  DWORD dwReturnValue;
+  DWORD_PTR dwReturnValue;
   HRESULT lResult;
   WPARAM rwParam;
   LPARAM rlParam;
@@ -461,7 +461,7 @@ CAMLprim value OPAMW_SendMessageTimeout(value hWnd, value uTimeout, value fuFlag
       }
   }
 
-  lResult = SendMessageTimeout((HWND)Int_val(hWnd), rMsg, rwParam, rlParam, Int_val(fuFlags), Int_val(uTimeout), &dwReturnValue);
+  lResult = SendMessageTimeout((HWND)Long_val(hWnd), rMsg, rwParam, rlParam, Int_val(fuFlags), Int_val(uTimeout), &dwReturnValue);
 
   switch (Int_val(msg))
   {

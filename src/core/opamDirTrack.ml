@@ -127,7 +127,7 @@ let track dir ?(except=OpamFilename.Base.Set.empty) ?bin job_f =
     (slog @@ string_of_int @* SM.cardinal) before (scan_timer ());
   job_f () @@| fun (installed, result) ->
   let scan_timer = OpamConsole.timer () in
-  let installed = OpamStd.String.Set.map String.lowercase installed in
+  let installed = OpamStd.String.Set.map String.lowercase_ascii installed in
   let after = make_index SM.empty str_dir "" in
   let diff =
     let f =
@@ -136,7 +136,7 @@ let track dir ?(except=OpamFilename.Base.Set.empty) ?bin job_f =
       else
         fun file ->
           let file = Filename.concat str_dir file in
-          if not (OpamStd.String.Set.mem (String.lowercase file) installed) then
+          if not (OpamStd.String.Set.mem (String.lowercase_ascii file) installed) then
             (* See similar process in OpamSystem.install *)
             let cygcheck =
               match OpamSystem.classify_executable file with
