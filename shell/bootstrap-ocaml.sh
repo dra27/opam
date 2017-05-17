@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-V=ocaml-4.04.0
+V=ocaml-4.04.1
 URL=http://caml.inria.fr/pub/distrib/ocaml-4.04/${V}.tar.gz
 FV=0.35
 FV_URL=http://alain.frisch.fr/flexdll/flexdll-${FV}.tar.gz
