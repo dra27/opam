@@ -616,6 +616,7 @@ WIN32
 CYGPATH
 ocaml_4_03
 ocaml_4_02
+CONF_OCAMLFLAGS
 DEVELOPER_CACHE
 DEVELOPER
 OBJEXT
@@ -3847,6 +3848,17 @@ else
 
 fi
 DEVELOPER_CACHE=$(echo ${DEVELOPER_CACHE} | sed -e "s/\\\\/\\\\\\\\/g")
+
+
+if test "x${CI}" != "x" -o "x${enable_developer_mode}" = "xyes"; then :
+
+  CONF_OCAMLFLAGS="-warn-error A"
+
+else
+
+  CONF_OCAMLFLAGS=
+
+fi
 
 
 

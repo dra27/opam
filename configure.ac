@@ -95,6 +95,13 @@ AS_IF([test "x${DEVELOPER_CACHE}" != "x"], [
 DEVELOPER_CACHE=$(echo ${DEVELOPER_CACHE} | sed -e "s/\\\\/\\\\\\\\/g")
 AC_SUBST(DEVELOPER_CACHE)
 
+AS_IF([test "x${CI}" != "x" -o "x${enable_developer_mode}" = "xyes"], [
+  CONF_OCAMLFLAGS="-warn-error A"
+],[
+  CONF_OCAMLFLAGS=
+])
+AC_SUBST(CONF_OCAMLFLAGS)
+
 AX_COMPARE_VERSION([$OCAMLVERSION], [ge], [4.02.0])
 AC_SUBST(ocaml_4_02,"$ax_compare_version")
 AX_COMPARE_VERSION([$OCAMLVERSION], [ge], [4.03.0])
