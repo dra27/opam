@@ -183,6 +183,7 @@ AC_CONFIG_FILES(
   src/state.META
   src/client.META
   src/admin.META
+  src/jbuild.config
 )
 AC_OUTPUT
 

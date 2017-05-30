@@ -1,0 +1,22 @@
+(* -*- tuareg -*- *)
+
+#use "../jbuild.common"
+
+let () = out {|
+(jbuild_version 1)
+
+(library
+  ((name opam_state)
+   (public_name opam-state)
+   (libraries (opam-repository))
+   (synopsis "OCaml Package Manager instance management library")
+   (flags (:standard %s))
+   (wrapped false)))
+
+(ml_of_mli (opamStateTypes))
+
+(rule
+  ((targets (opamScript.ml))
+   (deps    (../../shell/crunch.ml complete.sh complete.zsh prompt.sh))
+   (action  (with-stdout-to ${@} (run ocaml ${!^})))))
+|} ocaml_flags

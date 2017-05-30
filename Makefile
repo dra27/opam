@@ -40,15 +40,16 @@ download-ext:
 clean-ext:
 	$(MAKE) -C src_ext distclean
 
-clean:
+clean: fastclean
 	$(MAKE) -C src $@
 	$(MAKE) -C doc $@
 	rm -f *.install *.env *.err *.info *.out
+	rm -rf _build
 
 distclean: clean clean-ext
 	rm -rf autom4te.cache bootstrap
 	rm -f .merlin Makefile.config config.log config.status src/core/opamVersion.ml src/core/opamCoreConfig.ml aclocal.m4
-	rm -f src/*.META
+	rm -f src/*.META src/*/.merlin src/jbuild.config
 
 OPAMINSTALLER_FLAGS = --prefix "$(DESTDIR)$(prefix)"
 OPAMINSTALLER_FLAGS += --mandir "$(DESTDIR)$(mandir)"
