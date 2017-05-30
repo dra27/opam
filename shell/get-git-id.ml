@@ -1,6 +1,7 @@
 let file =
-  if Array.length Sys.argv <> 2 then (
-    Printf.eprintf "usage: ocaml %s <file>\n" Sys.argv.(0);
+  let l = Array.length Sys.argv in
+  if l < 2 || l > 3 then (
+    Printf.eprintf "usage: ocaml %s <file> [root]\n" Sys.argv.(0);
     exit 1
   ) else
     Sys.argv.(1)
@@ -24,7 +25,14 @@ let write file contents =
 
 let (/) = Filename.concat
 
-let git file = ".git" / file
+let root =
+  try
+    Filename.parent_dir_name / Sys.argv.(2)
+  with _ ->
+    Filename.parent_dir_name
+
+let git file =
+  Filename.dirname Sys.argv.(0) / root / ".git" / file
 
 let () =
   let version_none () =
@@ -35,8 +43,8 @@ let () =
     let reference =
       try (* look for "ref: refs/heads/..." *)
         let c = String.rindex s ' ' in
-	let namedref = String.sub s (c+1) (String.length s -c-1) in
-	read (git namedref)
+        let namedref = String.sub s (c+1) (String.length s -c-1) in
+        read (git namedref)
       with Not_found -> (* detached state, .git/HEAD contains sha1 *)
         Some s in
     match reference with
