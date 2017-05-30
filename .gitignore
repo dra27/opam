@@ -1,3 +1,4 @@
+_build/
 _obuild/
 _opam/
 _olint/
@@ -73,6 +74,7 @@ src/*.META
 aclocal.m4
 autom4te.cache
 .merlin
+src/ocaml-flags-standard.sexp
 # doc
 doc/dev-manual/*aux
 doc/dev-manual/*.html
