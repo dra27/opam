@@ -1,0 +1,30 @@
+(* -*- tuareg -*- *)
+
+#use "../jbuild.common"
+
+let () = out {|
+(jbuild_version 1)
+
+(library
+  ((name opam_client)
+   (public_name opam-client)
+   (synopsis "OCaml Package Manager client and CLI library")
+   (modules (:standard \ opamMain))
+   (libraries (opam-state opam-solver re.glob cmdliner))
+   (flags (:standard %s))
+   (wrapped false)))
+
+(executable
+  ((name opamMain)
+   (public_name opam)
+   (package opam)
+   (modules opamMain)
+   (flags (:standard %s))
+   (libraries (opam-client))))
+
+; @@DRA Need a way of indicating that this target is always dirty?
+(rule
+  ((targets (opamGitVersion.ml))
+   (deps    (../../shell/get-git-id.ml))
+   (action (run ocaml ../../shell/get-git-id.ml ${@} ../..))))
+|} ocaml_flags ocaml_flags

@@ -1,0 +1,20 @@
+#use "../jbuild.config"
+
+module J = Jbuild_plugin.V1
+
+let (ocaml_major, ocaml_minor) =
+  Scanf.sscanf J.ocaml_version "%u.%u" (fun a b -> (a, b))
+
+let () =
+  if ocaml_major < 4 || ocaml_minor = 0 then begin
+    Printf.eprintf "OCaml %s is not supported\n" J.ocaml_version;
+    exit 1
+  end
+
+let ocaml_flags =
+  if ocaml_minor >= 2 then
+    ocaml_flags ^ " -safe-string"
+  else
+    ocaml_flags
+
+let out = Printf.ksprintf J.send

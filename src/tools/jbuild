@@ -1,0 +1,32 @@
+(* -*- tuareg -*- *)
+
+#use "../jbuild.common"
+
+let () = out {|
+(jbuild_version 1)
+
+(executable
+  ((name opam_admin_topstart)
+   (modules (opam_admin_top opam_admin_topstart))
+   (ocamlc_flags (:standard %s -linkall))
+   (libraries (opam-client opam-file-format compiler-libs.toplevel re.glob))))
+
+(install
+  ((section bin)
+   (package opam-admin)
+   (files ((opam_admin_topstart.bc as opam-admin.top)))))
+
+(executable
+  ((name opam_check)
+   (modules (opam_check))
+   (flags (:standard %s))
+   (libraries (opam-client))))
+
+(executable
+  ((name opam_installer)
+   (package opam)
+   (public_name opam-installer)
+   (modules (opam_installer))
+   (libraries (opam-state cmdliner))
+   (flags (:standard %s))))
+|} ocaml_flags ocaml_flags ocaml_flags

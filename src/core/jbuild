@@ -1,0 +1,31 @@
+(* -*- tuareg -*- *)
+
+#use "../jbuild.common"
+
+let compat_version =
+  match ocaml_minor with
+  | 01 -> "4.01"
+  | 02 -> "4.02"
+  | _  -> "4.03"
+
+let () = out {|
+(jbuild_version 1)
+
+(library
+  ((name opam_core)
+   (public_name opam-core)
+   (synopsis "OCaml Package Manager core internal stdlib")
+   (libraries (jsonm re ocamlgraph unix bigarray))
+   (flags (:standard %s))
+   (wrapped false)))
+
+(rule
+  ((targets (opamCompat.ml))
+   (deps    (opamCompat.ml.%s))
+   (action  (copy ${^} ${@}))))
+
+(rule
+  ((targets (opamCompat.mli))
+   (deps    (opamCompat.mli.%s))
+   (action  (copy ${^} ${@}))))
+|} ocaml_flags compat_version compat_version
