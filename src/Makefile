@@ -371,6 +371,10 @@ clean-aux:
 	rm -f $(foreach e,obj o cmo cmx cmxs cmi cmt cmti,$(wildcard */*.$e))
 
 clean: clean-aux
+	@
+
+fastclean:
+	@
 
 %:
 	$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBTARGET=$@
