@@ -48,7 +48,7 @@ else
 MD5CHECK = test "`md5sum $(1) | sed -e 's/^[^a-f0-9]*\([a-f0-9]*\).*/\1/'`" = "$(2)" || (rm $(1) && false)
 endif
 
-lib-ext: $(JBUILDER_DEP) build copy
+lib-ext: clone
 	@
 
 ifeq ($(CAN_PKG),1)
@@ -76,9 +76,6 @@ endif
 
 jbuilder/_build/install/default/bin/jbuilder.exe: $(JBUILDER_CLONE)
 	cd jbuilder && ocaml bootstrap.ml && ./boot
-
-build: $(JBUILDER_DEP) clone
-	"$(JBUILDER)" build @install
 
 build-pkg: clone-pkg $(PKG_EXTS:=.pkgbuild)
 	@
@@ -183,19 +180,10 @@ endef
 	@touch $@ && rm -f $*.stamp
 
 clean:
-	rm -rf lib
+	@
 
 distclean: clean
 	rm -rf jbuilder $(SRC_EXTS) $(PKG_EXTS)
 	rm -f Makefile.config
 	rm -f *.tar.gz *.tbz *.*stamp *.*download *.pkgbuild
 	[ -d archives ] && ([ "$$(find archives -maxdepth 0 -type d -empty)" != "" ] && rmdir archives || echo "WARNING! $$(pwd)/archives/ not empty so left") || true
-
-LIB_EXTS = extlib re cmdliner ocamlgraph cudf dose3 opam-file-format result
-
-copy: build
-	mkdir -p lib
-	for d in $(LIB_EXTS:%=$$(find ../_build/install/default/lib/% -type d)); do \
-    cp $$d/* lib/ 2>/dev/null; \
-  done
-	rm lib/META lib/opam lib/*.cmxs lib/*.mli

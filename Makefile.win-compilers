@@ -12,8 +12,7 @@ win-zips: ../opam-msvc.zip ../opam-msvc64.zip ../opam-mingw.zip \
           ../opam-mingw64.zip
 	@
 
-SYMLINKS=configure Makefile Makefile.ocp-build OCamlMakefile \
-         Makefile.config.in .merlin.in opam.opam opam-admin.opam \
+SYMLINKS=configure Makefile Makefile.config.in opam.opam opam-admin.opam \
          opam-client.opam opam-core.opam opam-format.opam opam-repository.opam \
          opam-solver.opam opam-state.opam jbuild-ignore
 
@@ -58,9 +57,9 @@ archives:
 	for i in $(SYMLINKS) ; do ln -sf ../../$$i $*/$$i ; done
 	+$(BUILD_LIB_PKG) || $(MAKE) -C $* lib-pkg
 	cd $* ; ./configure --prefix=$(shell pwd | cygpath -f - -m)/$*/opam
-	+$(BUILD_LIB_EXT) || $(MAKE) -C $*/src_ext clone
+	+$(BUILD_LIB_EXT) || $(MAKE) -C $*/src_ext lib-ext
 	+$(MAKE) -C $* jbuilder
-	+$(MAKE) -C $* jbuilder-install
+	+$(MAKE) -C $* install
 
 %/bootstrap/bin/ocamlopt.exe: archives
 	mkdir -p $*

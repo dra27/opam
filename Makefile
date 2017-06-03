@@ -28,9 +28,6 @@ src_ext/jbuilder.stamp:
 jbuilder: $(JBUILDER_DEP)
 	@$(JBUILDER) build @install
 
-jbuilder-install: opam.install
-	$(JBUILDER) exec -- opam-installer $(OPAMINSTALLER_FLAGS) $<
-
 ALWAYS:
 	@
 
@@ -72,15 +69,15 @@ download-pkg:
 clean-ext:
 	$(MAKE) -C src_ext distclean
 
-clean: fastclean
+clean:
 	$(MAKE) -C src $@
 	$(MAKE) -C doc $@
 	rm -f *.install *.env *.err *.info *.out opam-*.zip
-	rm -rf _obuild _build
+	rm -rf _build
 
 distclean: clean clean-ext
 	rm -rf autom4te.cache bootstrap
-	rm -f .merlin Makefile.config config.log config.status src/core/opamVersion.ml src/core/opamCoreConfig.ml aclocal.m4
+	rm -f Makefile.config config.log config.status src/core/opamVersion.ml src/core/opamCoreConfig.ml aclocal.m4
 	rm -f src/*.META src/*/.merlin src/ocaml-flags-standard.sexp src/cc64.sexp
 
 OPAMINSTALLER_FLAGS = --prefix "$(DESTDIR)$(prefix)"
@@ -101,14 +98,13 @@ ifneq ($(LIBINSTALL_DIR),)
 endif
 
 opam-%.install: ALWAYS
-	$(MAKE) -C src ../opam-$*.install
+	$(JBUILDER) build $@
 
 opam.install:
-	@echo 'bin: [' >$@
-	@echo '  "src/opam$(EXE)"' >>$@
-	@echo '  "src/opam-installer$(EXE)"' >>$@
-	@echo '  "?src/opam-putenv.exe"' >>$@
-	@echo ']' >>$@
+	$(JBUILDER) build $@
+
+opam-actual.install: opam.install
+	@sed -n -e "/^bin: /,/^]/p" $< > $@
 	@echo 'man: [' >>$@
 	@$(patsubst %,echo '  "'%'"' >>$@;,$(wildcard doc/man/*.1))
 	@echo ']' >>$@
@@ -121,26 +117,26 @@ opam.install:
 
 OPAMLIBS = core format solver repository state client
 
-installlib-%: opam-installer opam-%.install src/opam-%$(LIBEXT)
+installlib-%: opam-installer opam-%.install
 	$(if $(wildcard src_ext/lib/*),\
 	  $(error Installing the opam libraries is incompatible with embedding \
 	          the dependencies. Run 'make clean-ext' and try again))
-	src/opam-installer $(OPAMINSTALLER_FLAGS) opam-$*.install
+	$(JBUILDER) exec -- opam-installer $(OPAMINSTALLER_FLAGS) opam-$*.install
 
-uninstalllib-%: opam-installer opam-%.install src/opam-%$(LIBEXT)
-	src/opam-installer -u $(OPAMINSTALLER_FLAGS) opam-$*.install
+uninstalllib-%: opam-installer opam-%.install
+	$(JBUILDER) exec -- opam-installer -u $(OPAMINSTALLER_FLAGS) opam-$*.install
 
 libinstall: opam-admin.top $(OPAMLIBS:%=installlib-%)
 	@
 
-install: opam.install
-	src/opam-installer $(OPAMINSTALLER_FLAGS) $<
+install: opam-actual.install
+	$(JBUILDER) exec -- opam-installer $(OPAMINSTALLER_FLAGS) $<
 
 libuninstall: $(OPAMLIBS:%=uninstalllib-%)
 	@
 
-uninstall: opam.install
-	src/opam-installer -u $(OPAMINSTALLER_FLAGS) opam.install
+uninstall: opam-actual.install
+	$(JBUILDER) exec -- opam-installer -u $(OPAMINSTALLER_FLAGS) $<
 
 .PHONY: tests tests-local tests-git
 tests:
@@ -166,16 +162,6 @@ release-tag:
 	git tag -d latest || true
 	git tag -a latest -m "Latest release"
 	git tag -a $(version) -m "Release $(version)"
-
-fastclean:: rmartefacts
-
-include Makefile.ocp-build
-
-rmartefacts: ALWAYS
-	@rm -f $(addprefix src/, opam opam-installer opam-check)
-	@$(foreach l,core format solver repository state client tools,\
-	   $(foreach e,a cma cmxa,rm -f src/opam-$l.$e;)\
-	   $(foreach e,o cmo cmx cmxs cmi cmt cmti,rm -f $(wildcard src/$l/*.$e);))
 
 ifeq ($(OCAML_PORT),)
 ifneq ($(COMSPEC),)

@@ -113,15 +113,6 @@ AC_SUBST(ocaml_4_02,"$ax_compare_version")
 AX_COMPARE_VERSION([$OCAMLVERSION], [ge], [4.03.0])
 AC_SUBST(ocaml_4_03,"$ax_compare_version")
 
-AC_CHECK_TOOL([CYGPATH],[cygpath],[no])
-
-if test x"$CYGPATH" = x"no" ; then
-  AR=ar
-else
-  printf "include %s/Makefile.config\nall:\n\t@echo \$(ARCMD)" `$OCAMLC -where | cygpath -f -` > conftestMakefile
-  AR=`make --no-print-directory -f conftestMakefile`
-fi
-
 AS_IF([ test "${OCAML_OS_TYPE}" = "Win32"],[
   WIN32=1
   EXE=.exe
@@ -138,17 +129,6 @@ AS_IF([ test ${WIN32} -eq 1 -a "$GCC" = "yes"],[
   AC_SUBST(CC)
 ])
 
-AC_MSG_CHECKING([for invocation options for $OCAMLDEP])
-AS_IF([ test ${WIN32} -eq 1 ],[
-  OCAMLDEPARGS=-slash
-  AC_SUBST(OCAMLDEP,"$OCAMLDEP -slash")
-  AC_MSG_RESULT([$OCAMLDEPARGS])
-],[
-  OCAMLDEPARGS=
-  AC_MSG_RESULT([none required])
-])
-AC_SUBST(OCAMLDEPARGS)
-
 AS_IF([ test ${WIN32} -eq 1 ],[
   AS_IF([ test "$GCC" = "yes"], [
     AS_IF([ test "x${CC64}" = "x" ], [
@@ -156,7 +136,8 @@ AS_IF([ test ${WIN32} -eq 1 ],[
     AC_CHECK_TOOL(CC64,[${T_CC64}],[no])
     AS_IF([ test "x${CC64}" != "xno" ],[
       CC64_JBUILD="(run ${CC64} -o \${@} -I ../core -D inline=__inline__ -std=c89 \${<})"
-      CC64="${CC64} -o \$(1) -I \$(2) -D inline=__inline__ -std=c89"
+    ],[
+      CC64_JBUILD=
     ])
   ],[
     AC_MSG_CHECKING([whether Microsoft Linker needs a PATH shim])
@@ -172,35 +153,21 @@ AS_IF([ test ${WIN32} -eq 1 ],[
     eval `PATH="$PRE_BOOTSTRAP_PATH" ./shell/findwinsdk $COMP_ARCH`
     AS_IF([ test "x$SDK" = "x" ], [
       AC_MSG_RESULT([no])
-      CC64=no
+      CC64_JBUILD=
     ],[
       AC_MSG_RESULT([via Windows SDK SetEnv])
-      CC64="PATH=\"${SDK}:\$(PATH)\" LIB=\"${SDK_LIB};\$(LIB)\" INCLUDE=\"${SDK_INC};\$(INCLUDE)\" cl /nologo /Fe\$(1) /Fo\$(3)/ /I\$(2)"
       CL_FULL="`PATH="${SDK}:${PATH}" which cl | cygpath -f - -w`"
       SDK="`echo "${SDK}" | cygpath -f - -wp`"
       CC64_JBUILD="(setenv PATH \"${SDK}\" (setenv LIB \"${SDK_LIB};${LIB}\" (setenv INCLUDE \"${SDK_INC};${INCLUDE}\" (run \"${CL_FULL}\" /nologo /Fe\${@} /I../core \${<}))))"
     ])
   ])
-  AS_IF([ test "x${CC64}" = "xno" ],[
-    AC_MSG_WARN([Complementary C compiler not found - opam-putenv will not be built])
-    BUILD_PUTENV=0
-    CC64_JBUILD=
-  ],[
-    BUILD_PUTENV=1
-  ])
+  AS_IF([ test "x${CC64_JBUILD}" = "x" ],[
+    AC_MSG_WARN([Complementary C compiler not found - opam-putenv will not be built])])
 ],[
-  BUILD_PUTENV=0
-  CC64=
   CC64_JBUILD=
 ])
-AC_SUBST(BUILD_PUTENV)
-AC_SUBST(CC64)
 AC_SUBST(CC64_JBUILD)
 
-AS_IF([ test "x$AR" != "x" ],[AC_CHECK_TOOL(AR,$AR)],[AC_SUBST(AR,"no")])
-
-AC_PROG_OCAMLLEX
-AC_PROG_OCAMLYACC
 AC_PROG_FINDLIB
 
 AC_ARG_ENABLE([certificate_check],
@@ -264,11 +231,8 @@ AS_IF([test "x${enable_checks}" != "xno" && {
   echo "============================================================================"
   echo
   AC_SUBST(hasalldeps,"")
-  printf "S src_ext/*\nB src_ext/*" > .merlin
-  grep -v "^PKG" .merlin.in >> .merlin
 ],[
   AC_SUBST(hasalldeps,"true")
-  cp .merlin.in .merlin
 ])
 
 if test "x$prefix" = "xNONE"; then
@@ -279,13 +243,6 @@ AC_CONFIG_FILES(
   Makefile.config
   src/core/opamVersion.ml
   src/core/opamCoreConfig.ml
-  src/core.META
-  src/format.META
-  src/repository.META
-  src/solver.META
-  src/state.META
-  src/client.META
-  src/admin.META
   src/ocaml-flags-standard.sexp
   src/cc64.sexp
 )
