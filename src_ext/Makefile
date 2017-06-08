@@ -75,10 +75,9 @@ build: clone
 build-pkg: clone-pkg $(PKG_EXTS:=.pkgbuild)
 	@
 
-%.pkgbuild: %.pkgstamp
-	$(MAKE) MAKEFLAGS= -f ../Makefile.packages -C $* $*-pkg-build
-	@touch $@
+%.pkgbuild: | %.pkgstamp
 	@rm -f $*.pkgstamp
+	$(MAKE) MAKEFLAGS= -f ../Makefile.packages -C $* $*-pkg-build && touch $@
 
 all: bcl ncl
 

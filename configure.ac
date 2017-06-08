@@ -5,10 +5,10 @@ AC_CONFIG_MACRO_DIR([m4])
 
 # If a bootstrap compiler has been built, always use it
 PATH_PREPEND=
-AS_IF([ test -x bootstrap/bin/ocamlc -o -x bootstrap/bin/ocamlopt ],[
+AS_IF([ test -x bootstrap/ocaml/bin/ocamlc -o -x bootstrap/ocaml/bin/ocamlopt ],[
   echo Bootstrap compiler found -- activating
-  export OCAMLLIB=
-  export PATH_PREPEND=`pwd`/bootstrap/bin:
+  unset OCAMLLIB
+  export PATH_PREPEND=`pwd`/bootstrap/ocaml/bin:
   export PATH="$PATH_PREPEND:$PATH"
 ])
 

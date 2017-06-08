@@ -30,8 +30,8 @@ if [ "$1" = "download" ]; then
 fi
 tar -zxf ${ROOT}${V}.tar.gz
 cd ${V}
+PATH_PREPEND=
 if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
-  PATH_PREPEND=
   LIB_PREPEND=
   INC_PREPEND=
 
@@ -104,8 +104,8 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
   if [ -n "${PATH_PREPEND}" ] ; then
     PATH_PREPEND="${PATH_PREPEND}:"
   fi
-  PREFIX=`cd .. ; pwd | cygpath -f - -m | sed -e 's/\\//\\\\\\//g'`
-  sed -e "s/^PREFIX=.*/PREFIX=${PREFIX}/" config/Makefile.${BUILD} > config/Makefile
+  PREFIX=`cd .. ; pwd | cygpath -f - -m`
+  sed -e "s|^PREFIX=.*|PREFIX=${PREFIX}|" config/Makefile.${BUILD} > config/Makefile
   mv config/s-nt.h config/s.h
   mv config/m-nt.h config/m.h
   cd ..
@@ -116,15 +116,18 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
   tar -xzf ${ROOT}../flexdll-${FV}.tar.gz
   rm -rf flexdll
   mv flexdll-${FV} flexdll
-  CPREFIX=`cd .. ; pwd`/bin
+  CPREFIX=${PREFIX}/bin
   PATH="${PATH_PREPEND}:${CPREFIX}:${PATH}" Lib="${LIB_PREPEND}${Lib}" Include="${INC_PREPEND}${Include}" make -f Makefile.nt flexdll world.opt install
   mkdir -p ../../src_ext
-  echo "export PATH:=${PATH_PREPEND}:${CPREFIX}:\$(PATH)" > ../../src_ext/Makefile.config
+  echo "export PATH:=${PATH_PREPEND}${CPREFIX}:\$(PATH)" > ../../src_ext/Makefile.config
   echo "export Lib:=${LIB_PREPEND}\$(Lib)" >> ../../src_ext/Makefile.config
   echo "export Include:=${INC_PREPEND}\$(Include)" >> ../../src_ext/Makefile.config
-  echo "export OCAMLLIB=" >> ../../src_ext/Makefile.config
+  echo "export OCAMLLIB=${PREFIX}/lib" >> ../../src_ext/Makefile.config
 else
-  ./configure -prefix "`pwd`/../ocaml"
+  PREFIX=`cd .. ; pwd`/ocaml
+  echo "export PATH:=${PREFIX}/bin:\$(PATH)" > ../../src_ext/Makefile.config
+  echo "export OCAMLLIB=${PREFIX}/lib/ocaml" >> ../../src_ext/Makefile.config
+  ./configure -prefix "${PREFIX}"
   ${MAKE:-make} world opt.opt
   ${MAKE:-make} install
 fi
