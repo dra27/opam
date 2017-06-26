@@ -1,0 +1,25 @@
+(* -*- tuareg -*- *)
+
+module J = Jbuild_plugin.V1
+
+let () =
+  let source =
+    let version =
+      Scanf.sscanf J.ocaml_version "%u.%u" (fun a b -> a, b)
+    in
+    if version < (4, 03) then
+      "uchar"
+    else
+      "uchar_null"
+  in
+  Printf.ksprintf J.send {|
+(jbuild_version 1)
+
+(library
+  ((name uchar)
+   (public_name uchar)
+   (modules (%s))
+   (wrapped false)))
+
+(rule (with-stdout-to uchar_null.ml (echo "")))
+|} source

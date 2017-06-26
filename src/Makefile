@@ -37,7 +37,7 @@ endif
 
 ifneq ($(HAS_LIBEXT),)
   EXT_INCDIRS = ../src_ext/lib
-  LIBS = unix bigarray extlib re cmdliner graph cudf dose3_common dose3_algo uchar uutf jsonm opam-file-format
+  LIBS = unix bigarray extlib re re_glob re_posix re_perl re_pcre cmdliner graphlib graph cudf common algo uchar uutf jsonm opam_file_format
 else
   ifeq ($(HAS_PACKAGES),)
     ifeq ($(findstring clean,$(MAKECMDGOALS)),)
