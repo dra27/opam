@@ -594,6 +594,7 @@ OCAML_PKG_dose3_common
 OCAML_PKG_cudf
 OCAML_PKG_ocamlgraph
 OCAML_PKG_cmdliner
+OCAML_PKG_re_posix
 OCAML_PKG_re_glob
 OCAML_PKG_re
 OCAML_PKG_extlib
@@ -1905,7 +1906,7 @@ fi
 
 
   if test "$OCAMLC" != "no"; then
-     OCAMLVERSION=`$OCAMLC -v | sed -n -e 's|.*version* *\(.*\)$|\1|p'`
+     OCAMLVERSION=`$OCAMLC -v | tr -d '\r' | sed -n -e 's|.*version* *\(.*\)$|\1|p'`
      { $as_echo "$as_me:${as_lineno-$LINENO}: result: OCaml version is $OCAMLVERSION" >&5
 $as_echo "OCaml version is $OCAMLVERSION" >&6; }
      # If OCAMLLIB is set, use it
@@ -2019,7 +2020,7 @@ fi
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Cannot find ocamlopt; bytecode compilation only." >&5
 $as_echo "$as_me: WARNING: Cannot find ocamlopt; bytecode compilation only." >&2;}
      else
-	TMPVERSION=`$OCAMLOPT -v | sed -n -e 's|.*version* *\(.*\)$|\1|p' `
+	TMPVERSION=`$OCAMLOPT -v | tr -d '\r' | sed -n -e 's|.*version* *\(.*\)$|\1|p' `
 	if test "$TMPVERSION" != "$OCAMLVERSION" ; then
 	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: versions differs from ocamlc $TMPVERSION != $OCAMLVERSION; ocamlopt discarded." >&5
 $as_echo "versions differs from ocamlc $TMPVERSION != $OCAMLVERSION; ocamlopt discarded." >&6; }
@@ -2125,7 +2126,7 @@ else
 fi
 
      if test "$OCAMLCDOTOPT" != "no"; then
-	TMPVERSION=`$OCAMLCDOTOPT -v | sed -n -e 's|.*version* *\(.*\)$|\1|p' `
+	TMPVERSION=`$OCAMLCDOTOPT -v | tr -d '\r' | sed -n -e 's|.*version* *\(.*\)$|\1|p' `
 	if test "$TMPVERSION" != "$OCAMLVERSION" ; then
 	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: versions differs from ocamlc $TMPVERSION != $OCAMLVERSION; ocamlc.opt discarded." >&5
 $as_echo "versions differs from ocamlc $TMPVERSION != $OCAMLVERSION; ocamlc.opt discarded." >&6; }
@@ -2229,7 +2230,7 @@ else
 fi
 
 	if test "$OCAMLOPTDOTOPT" != "no"; then
-	   TMPVERSION=`$OCAMLOPTDOTOPT -v | sed -n -e 's|.*version* *\(.*\)$|\1|p' `
+	   TMPVERSION=`$OCAMLOPTDOTOPT -v | tr -d '\r' | sed -n -e 's|.*version* *\(.*\)$|\1|p' `
 	   if test "$TMPVERSION" != "$OCAMLVERSION" ; then
 	      { $as_echo "$as_me:${as_lineno-$LINENO}: result: versions differs from ocamlc $TMPVERSION != $OCAMLVERSION; ocamlopt.opt discarded." >&5
 $as_echo "versions differs from ocamlc $TMPVERSION != $OCAMLVERSION; ocamlopt.opt discarded." >&6; }
@@ -2527,7 +2528,7 @@ else
 fi
 
     if test "$OCAMLDEPDOTOPT" != "no"; then
-      TMPVERSION=`$OCAMLDEPDOTOPT -version | sed -n -e 's|.*version* *\(.*\)$|\1|p' `
+      TMPVERSION=`$OCAMLDEPDOTOPT -version | tr -d '\r' | sed -n -e 's|.*version* *\(.*\)$|\1|p' `
       if test "$TMPVERSION" != "$OCAMLVERSION" ; then
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: version differs from ocamlc $TMPVERSION != $OCAMLVERSION; ocamldep.opt discarded." >&5
 $as_echo "version differs from ocamlc $TMPVERSION != $OCAMLVERSION; ocamldep.opt discarded." >&6; }
@@ -3125,7 +3126,7 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for compiler os_type" >&5
 $as_echo_n "checking for compiler os_type... " >&6; }
-OS_TYPE=`$OCAML shell/print_config.ml os_type 2>/dev/null | fgrep -v "Cannot find" || $OCAMLC -config | sed -n -e "s/^os_type: //p"`
+OS_TYPE=`$OCAML shell/print_config.ml os_type 2>/dev/null | fgrep -v "Cannot find" || $OCAMLC -config | tr -d '\r' | sed -n -e "s/^os_type: //p"`
 if  test "$?" -eq 0 ; then :
 
 else
@@ -4648,6 +4649,30 @@ $as_echo "found" >&6; }
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: not found" >&5
 $as_echo "not found" >&6; }
     OCAML_PKG_re_glob=no
+  fi
+
+
+
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OCaml findlib package re.posix" >&5
+$as_echo_n "checking for OCaml findlib package re.posix... " >&6; }
+
+  unset found
+  unset pkg
+  found=no
+  for pkg in re.posix  ; do
+    if $OCAMLFIND query $pkg >/dev/null 2>/dev/null; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: found" >&5
+$as_echo "found" >&6; }
+      OCAML_PKG_re_posix=$pkg
+      found=yes
+      break
+    fi
+  done
+  if test "$found" = "no" ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: not found" >&5
+$as_echo "not found" >&6; }
+    OCAML_PKG_re_posix=no
   fi
 
 
