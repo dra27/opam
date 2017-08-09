@@ -44,12 +44,8 @@ byte:
 src/%: $(JBUILDER_DEP)
 	$(MAKE) -C src $*
 
-# Disable this rule if the only build targets are cold, download-ext or configure
-# to suppress error messages trying to build Makefile.config
-ifneq ($(or $(filter-out cold download-ext configure,$(MAKECMDGOALS)),$(filter own-goal,own-$(MAKECMDGOALS)goal)),)
-%: $(JBUILDER_DEP)
+opam opam-installer opam-admin.top opam-lib opam-lib.native opam-lib.byte: $(JBUILDER_DEP)
 	$(MAKE) -C src $@
-endif
 
 lib-ext:
 	$(MAKE) -j -C src_ext lib-ext
