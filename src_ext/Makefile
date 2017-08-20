@@ -84,7 +84,7 @@ clone: $(JBUILDER_CLONE) $(SRC_EXTS:=.stamp)
 archives: $(SRC_EXTS:=.download)
 	@
 
-cache-archives: $(SRC_EXTS:=.cache)
+cache-archives: $(SRC_EXTS:=.cache) jbuilder.cache
 	@
 
 %.cache:
