@@ -139,7 +139,8 @@ uninstall: opam-actual.install $(JBUILDER_DEP)
 
 .PHONY: tests tests-local tests-git
 tests: $(JBUILDER_DEP)
-	$(JBUILDER) runtest $(JBUILDER_ARGS)
+	$(JBUILDER) build src/client/opamMain.exe src/tools/opam_check.exe
+	$(JBUILDER) runtest $(JBUILDER_ARGS) --no-buffer
 
 # tests-local, tests-git
 tests-%:
