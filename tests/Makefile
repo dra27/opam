@@ -1,5 +1,6 @@
 OCAMLC = ocamlc
 OS_TYPE := $(shell $(OCAMLC) -config | sed -ne "s/os_type: //p" | tr -d '\r')
+EXT_LIB := $(shell $(OCAMLC) -config | sed -ne "s/ext_lib: .//p" | tr -d '\r')
 
 TMP_DIR_ACT = $(realpath .)/tmp
 ifeq ($(OS_TYPE),Win32)
@@ -183,7 +184,7 @@ else
 endif
 endif
 	$(OPAMBIN) update
-	$(OPAMBIN) switch create system --packages ocaml.system
+	$(OPAMBIN) switch create system --packages ocaml.system --set ext_lib=$(EXT_LIB)
 
 list:
 	$(OPAMBIN) list -A
@@ -288,11 +289,11 @@ switch-alias:
 	$(OPAMBIN) remove P3.1~weird-version.test P4.2
 	$(CHECK) -l switch-alias-2 ocaml.system P1.1 P2.1
 	$(OPAMBIN) switch export $(TMP_DIR)/export
-	$(OPAMBIN) switch create test system
+	$(OPAMBIN) switch create test system --set ext_lib=$(EXT_LIB)
 	$(CHECK) -l switch-alias-3 ocaml.system
 	$(OPAMBIN)	switch import $(TMP_DIR)/export
 	$(CHECK) -l switch-alias-4 ocaml.system P1.1 P2.1
-	$(OPAMBIN) switch create test2 20
+	$(OPAMBIN) switch create test2 20 --set ext_lib=$(EXT_LIB)
 	$(CHECK) -l switch-alias-5 ocaml.20
 	$(OPAMBIN) install P1
 	$(CHECK) -l switch-alias-6 ocaml.20 P1.1
@@ -302,7 +303,7 @@ switch-alias:
 
 switch-env-packages:
 	$(CHECK) -l switch-env-packages-1 ocaml.system P1.1 P2.1
-	$(OPAMBIN) switch install 10+a+b --packages=ocaml.10+a+b,P1,P2,P3,P4
+	$(OPAMBIN) switch install 10+a+b --packages=ocaml.10+a+b,P1,P2,P3,P4 --set ext_lib=$(EXT_LIB)
 	$(CHECK) -l switch-env-packages-2 ocaml.10+a+b P1.1 P2.1 P3.1~weird-version.test P4.3
 	./test-TEST.sh $(wildcard $(OPAM_ROOT)/10+a+b/build/P4.3/P4*.env) "1"
 
