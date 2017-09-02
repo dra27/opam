@@ -127,7 +127,7 @@ AC_SUBST(WIN32)
 AC_SUBST(EXE)
 
 AS_IF([ test ${WIN32} -eq 1 -a "$GCC" = "yes"],[
-  CC="$CC -D inline=__inline__ -std=c89"
+  CC="$CC -Wdeclaration-after-statement"
   AC_SUBST(CC)
 ])
 

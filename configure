@@ -3916,7 +3916,7 @@ fi
 
 if  test ${WIN32} -eq 1 -a "$GCC" = "yes"; then :
 
-  CC="$CC -D inline=__inline__ -std=c89"
+  CC="$CC -Wdeclaration-after-statement"
 
 
 fi
