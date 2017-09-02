@@ -282,3 +282,9 @@ val classify_executable : string -> [ `Exe of [ `i386 | `x86 | `x86_64 ]
                                     | `Dll of [ `x86 | `x86_64 ]
                                     | `Script
                                     | `Unknown ]
+
+(** On Unix, a no-op. On Windows, convert / to \ *)
+val forward_to_back : string -> string
+
+(** On Unix, a no-op. On Windows, convert \ to / *)
+val back_to_forward : string -> string

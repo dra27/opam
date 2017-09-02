@@ -313,6 +313,18 @@ let env_var env var =
   in
   aux 0
 
+let forward_to_back =
+  if OpamStd.Sys.is_windows then
+    String.map (function '/' -> '\\' | c -> c)
+  else
+    fun x -> x
+
+let back_to_forward =
+  if OpamStd.Sys.is_windows then
+    String.map (function '\\' -> '/' | c -> c)
+  else
+    fun x -> x
+
 (* OCaml 4.05.0 no longer follows the updated PATH to resolve commands. This
    makes unqualified commands absolute as a workaround. *)
 let resolve_command =
