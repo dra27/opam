@@ -4027,7 +4027,7 @@ fi
 
     if  test "x${CC64}" != "xno" ; then :
 
-      CC64_JBUILD="(run ${CC64} -o \${@} -I ../core -D inline=__inline__ -std=c89 \${<})"
+      CC64_JBUILD="(run ${CC64} -o \${@} -I ../core -Wdeclaration-after-statement \${<})"
 
 fi
 

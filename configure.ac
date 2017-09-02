@@ -137,7 +137,7 @@ AS_IF([ test ${WIN32} -eq 1 ],[
       AS_IF([ test "$ARCH" = "i386" ],[T_CC64=x86_64-w64-mingw32-gcc],[T_CC64=i686-w64-mingw32-gcc])])
     AC_CHECK_TOOL(CC64,[${T_CC64}],[no])
     AS_IF([ test "x${CC64}" != "xno" ],[
-      CC64_JBUILD="(run ${CC64} -o \${@} -I ../core -D inline=__inline__ -std=c89 \${<})"
+      CC64_JBUILD="(run ${CC64} -o \${@} -I ../core -Wdeclaration-after-statement \${<})"
     ])
   ],[
     AC_MSG_CHECKING([whether Microsoft Linker needs a PATH shim])
