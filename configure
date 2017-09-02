@@ -609,7 +609,7 @@ PATH_PREPEND
 EXE
 WIN32
 CONF_OCAMLFLAGS
-MCCS_DISABLED
+MCCS_ENABLED
 DEVELOPER_CACHE
 DEVELOPER
 OBJEXT
@@ -3797,10 +3797,10 @@ DEVELOPER_CACHE=$(echo ${DEVELOPER_CACHE} | sed -e "s/\\\\/\\\\\\\\/g")
 
 
 if test "x${with_mccs}" = "xno"; then :
-  MCCS_DISABLED=true
+  MCCS_ENABLED=false
 
 else
-  MCCS_DISABLED=false
+  MCCS_ENABLED=true
 
 fi
 
@@ -4529,7 +4529,7 @@ $as_echo "not found" >&6; }
 
 
 
-if test "x${OCAML_PKG_mccs}" = "xno" && test "x${MCCS_DISABLED}" != "xtrue"; then :
+if test "x${OCAML_PKG_mccs}" = "xno" && test "x${MCCS_ENABLED}" != "xfalse"; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for glp_create_prob in -lglpk" >&5
 $as_echo_n "checking for glp_create_prob in -lglpk... " >&6; }
 if ${ac_cv_lib_glpk_glp_create_prob+:} false; then :
@@ -4624,7 +4624,7 @@ else
   if test "x${with_mccs}" = "xyes"; then :
   as_fn_error $? "libglpk was not found. Cannot compile mccs" "$LINENO" 5
 else
-  MCCS_DISABLED=true
+  MCCS_ENABLED=false
 
 fi
 
@@ -5834,7 +5834,7 @@ bindir="`eval echo ${bindir}`"
 mandir="`eval echo ${mandir}`"
 mandir="`eval echo ${mandir}`"
 
-if { test "x$MCCS_DISABLED" = "xtrue" && test "x${hasalldeps}" = "x"; } ||
+if { test "x$MCCS_ENABLED" = "xfalse" && test "x${hasalldeps}" = "x"; } ||
        { test "x$OCAML_PKG_mccs" = "xno" && test "x${hasalldeps}" = "xtrue"; }; then :
   echo "Opam will be built WITHOUT a built-in solver"
 else

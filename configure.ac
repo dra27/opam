@@ -61,7 +61,7 @@ AS_IF([test "x${DEVELOPER_CACHE}" != "x"], [
 DEVELOPER_CACHE=$(echo ${DEVELOPER_CACHE} | sed -e "s/\\\\/\\\\\\\\/g")
 AC_SUBST(DEVELOPER_CACHE)
 
-AS_IF([test "x${with_mccs}" = "xno"], [AC_SUBST(MCCS_DISABLED,true)], [AC_SUBST(MCCS_DISABLED,false)])
+AS_IF([test "x${with_mccs}" = "xno"], [AC_SUBST(MCCS_ENABLED,false)], [AC_SUBST(MCCS_ENABLED,true)])
 
 AS_IF([test "x${CI}" != "x" -o "x${enable_developer_mode}" = "xyes"], [
   CONF_OCAMLFLAGS="-warn-error A"
@@ -128,11 +128,11 @@ AC_CHECK_OCAML_PKG(dose3.common,dose.common)
 AC_CHECK_OCAML_PKG(dose3.algo,dose.algo)
 AC_CHECK_OCAML_PKG([opam-file-format])
 AC_CHECK_OCAML_PKG([mccs])
-AS_IF([test "x${OCAML_PKG_mccs}" = "xno" && test "x${MCCS_DISABLED}" != "xtrue"],
+AS_IF([test "x${OCAML_PKG_mccs}" = "xno" && test "x${MCCS_ENABLED}" != "xfalse"],
       AC_CHECK_LIB(glpk,glp_create_prob,[],
                    [AS_IF([test "x${with_mccs}" = "xyes"],
                           [AC_MSG_ERROR([libglpk was not found. Cannot compile mccs])],
-                          AC_SUBST(MCCS_DISABLED,true)])))
+                          AC_SUBST(MCCS_ENABLED,false)])))
 
 AS_IF([test "x${with_mccs}" = "xno" && test "x$OCAML_PKG_mccs" != "xno"],
       [AC_MSG_ERROR([Option --without-mccs is not supported. You need to uninstall the 'mccs' package])])
@@ -189,7 +189,7 @@ bindir="`eval echo ${bindir}`"
 mandir="`eval echo ${mandir}`"
 mandir="`eval echo ${mandir}`"
 
-AS_IF([{ test "x$MCCS_DISABLED" = "xtrue" && test "x${hasalldeps}" = "x"; } ||
+AS_IF([{ test "x$MCCS_ENABLED" = "xfalse" && test "x${hasalldeps}" = "x"; } ||
        { test "x$OCAML_PKG_mccs" = "xno" && test "x${hasalldeps}" = "xtrue"; }],
       [echo "Opam will be built WITHOUT a built-in solver"],
       [echo "Opam will be built WITH a built-in solver"])
