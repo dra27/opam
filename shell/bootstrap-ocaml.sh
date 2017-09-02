@@ -5,7 +5,7 @@ URL=http://caml.inria.fr/pub/distrib/ocaml-4.04/${V}.tar.gz
 FV=0.35
 FV_URL=http://alain.frisch.fr/flexdll/flexdll-${FV}.tar.gz
 if command -v curl > /dev/null; then
-  CURL="curl -L -o"
+  CURL="curl -LSs -o"
 elif command -v wget > /dev/null; then
   CURL="wget -O"
 else
