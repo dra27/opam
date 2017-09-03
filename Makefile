@@ -50,8 +50,8 @@ opam-installer: $(JBUILDER_DEP)
 	$(LN_S) -f _build/default/src/tools/opam_installer.exe $@$(EXE)
 
 opam-admin.top: $(JBUILDER_DEP)
-	$(JBUILDER) build $(JBUILDER_ARGS) src/tools/opam_admin_top.bc
-	$(LN_S) -f _build/default/src/tools/opam_admin_top.bc $@$(EXE)
+	$(JBUILDER) build $(JBUILDER_ARGS) src/tools/opam_admin_topstart.bc
+	$(LN_S) -f _build/default/src/tools/opam_admin_topstart.bc $@$(EXE)
 
 lib-ext:
 	$(MAKE) -j -C src_ext lib-ext

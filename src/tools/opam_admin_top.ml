@@ -129,5 +129,3 @@ let filter fn patterns =
       List.exists (fun re -> OpamStd.String.exact_match re str) regexps
 
 let filter_packages = filter OpamPackage.to_string
-
-let _ = Topmain.main ()
