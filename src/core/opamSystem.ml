@@ -931,15 +931,18 @@ let patch ~dir p =
   if not (Sys.file_exists p) then
     (OpamConsole.error "Patch file %S not found." p;
      raise Not_found);
-  let (patch_command, patch_args) =
+  let main_command, backup_command =
+    let patch_command = make_command ~name:"patch" ~dir "patch" ["-p1"; "-i"; p] in
     if command_exists "git" then
-      ("git", fun p -> ["apply"; p])
+      make_command ~name:"patch" ~dir "git" ["apply"; p], Some patch_command
     else
-      ("patch", fun p -> ["-p1"; "-i"; p])
+      patch_command, None
   in
-  make_command ~name:"patch" ~dir patch_command (patch_args p) @@> fun r ->
+  main_command @@> fun r ->
   if OpamProcess.is_success r then Done None
-  else Done (Some (Process_error r))
+  else match backup_command with
+       | Some command -> command @@> fun r -> if OpamProcess.is_success r then Done None else Done (Some (Process_error r))
+       | None -> Done (Some (Process_error r))
 
 let register_printer () =
   Printexc.register_printer (function
