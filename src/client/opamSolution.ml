@@ -817,7 +817,8 @@ let resolve t action ~orphans ?reinstall ~requested request =
     OpamJson.append "switch" (OpamSwitch.to_json t.switch)
   );
   Json.output_request request action;
-  let rec get_solution also_install request r =
+  let universe = OpamSwitchState.universe t ~requested ?reinstall action in
+  let rec get_solution universe also_install request r =
     match r with
     | Success solution ->
         let action_graph = OpamSolver.get_atomic_action_graph solution in
@@ -856,7 +857,12 @@ let resolve t action ~orphans ?reinstall ~requested request =
                   let f ((also_install, request) as acc) atom =
                     if AtomSet.mem atom also_install then
                       acc
-                    else (AtomSet.add atom also_install, {request with wish_install = atom::request.wish_install})
+                    else
+                      let r =
+                        (AtomSet.add atom also_install, {request with wish_install = atom::request.wish_install})
+                      in
+                      log "also-install: %s" (OpamFormula.string_of_atom atom);
+                      r
                   in
                   List.fold_left f acc atoms
             | _ ->
@@ -866,42 +872,52 @@ let resolve t action ~orphans ?reinstall ~requested request =
         else
           let r =
             OpamSolver.resolve
-              (OpamSwitchState.universe t ~requested ?reinstall action)
+              universe
               ~orphans
               request
           in
-          get_solution also_install' request r
+          get_solution universe also_install' request r
     | _ ->
         r
   in
-  let raw =
+  let base_solution =
     OpamSolver.resolve
-      (OpamSwitchState.universe t ~requested ?reinstall action)
+      universe
       ~orphans
       request
   in
-  let r = get_solution AtomSet.empty request raw in
+  let get_atoms solution =
+    let f act acc =
+      match act with
+      |  `Install nv -> OpamPackage.Set.add nv acc
+      | _ -> acc
+    in
+    OpamSolver.ActionGraph.fold_vertex f (OpamSolver.get_atomic_action_graph solution) OpamPackage.Set.empty
+  in
+  let base_request =
+    match base_solution with
+    | Success r ->
+        get_atoms r
+    | _ ->
+        OpamPackage.Set.empty
+  in
+  log "Base solution obtained: %s" (OpamPackage.Set.elements base_request |> List.map OpamPackage.to_string |> String.concat ", ");
+  (* Compute hypothetical conflicts for this installation to limit the search space for the also-install packages *)
+  let conflicts =
+    OpamSwitchState.conflicts_with t base_request universe.u_available in
+  let r =
+    get_solution {universe with u_available = OpamPackage.Set.diff universe.u_available conflicts} AtomSet.empty request base_solution in
   Json.output_solution t r;
   let extra_packages =
-    match (raw, r) with
-    | Success orig, Success r ->
-        let f solution =
-          let f act acc =
-            match act with
-            |  `Install nv -> OpamPackage.Set.add nv acc
-            | _ -> acc
-          in
-          OpamSolver.ActionGraph.fold_vertex f (OpamSolver.get_atomic_action_graph solution) OpamPackage.Set.empty
-        in
-        let orig_solution =
-          let orig = f orig in
-          OpamPackage.Set.fold (fun elt acc -> OpamPackage.Name.Set.add (OpamPackage.name elt) acc) orig OpamPackage.Name.Set.empty
-        in
-        let new_solution = f r in
-        let r =
-          OpamPackage.Set.filter (fun elt -> not (OpamPackage.Name.Set.mem (OpamPackage.name elt) orig_solution)) new_solution
-        in
-        r
+    match r with
+    | Success r ->
+      let atoms = get_atoms r in
+      let base_request_names = OpamPackage.names_of_packages base_request in
+      let r =
+        OpamPackage.Set.filter (fun elt -> not (OpamPackage.Name.Set.mem (OpamPackage.name elt) base_request_names)) atoms
+      in
+      log "Additional packages to be installed: %s" (OpamPackage.Set.elements r |> List.map OpamPackage.to_string |> String.concat ", ");
+      r
     | _ ->
         OpamPackage.Set.empty in
   r, extra_packages
