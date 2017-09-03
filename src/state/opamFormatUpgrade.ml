@@ -18,6 +18,8 @@ let log fmt = OpamConsole.log "FMT_UPG" fmt
 
 (* - Package and aux functions - *)
 
+let v2_0 = OpamVersion.of_string "2.0"
+
 let opam_file_from_1_2_to_2_0 ?filename opam =
   let ocaml_pkgname = OpamPackage.Name.of_string "ocaml" in
 
@@ -109,7 +111,7 @@ let opam_file_from_1_2_to_2_0 ?filename opam =
     aux available
   in
   let pkg_deps =
-    if not (NMap.mem ocaml_wrapper_pkgname pkg_deps) then
+    if not (OpamVersion.compare (OpamFile.OPAM.opam_version opam) v2_0 >= 0 || NMap.mem ocaml_wrapper_pkgname pkg_deps) then
       NMap.add ocaml_wrapper_pkgname Empty pkg_deps
     else pkg_deps
   in
@@ -265,7 +267,7 @@ let opam_file_from_1_2_to_2_0 ?filename opam =
       (OpamFile.OPAM.dev_repo opam)
   in
   opam |>
-  OpamFile.OPAM.with_opam_version (OpamVersion.of_string "2.0") |>
+  OpamFile.OPAM.with_opam_version v2_0 |>
   OpamFile.OPAM.with_depends depends |>
   OpamFile.OPAM.with_depopts depopts |>
   OpamFile.OPAM.with_conflicts conflicts |>
