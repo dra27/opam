@@ -199,7 +199,7 @@ let compute_upgrade_t
   in
   if all then
     let t, full_orphans, orphan_versions = orphans ~transitive:true t in
-    let to_upgrade = t.installed -- full_orphans in
+    let to_upgrade = t.installed -- full_orphans -- t.compiler_packages in
     names,
     OpamSolution.resolve t Upgrade
       ~orphans:(full_orphans ++ orphan_versions)
