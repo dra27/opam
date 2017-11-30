@@ -132,13 +132,13 @@ let list gt ~print_short =
       (OpamStd.Option.to_string ~none:"unset"
          (fun s -> OpamConsole.colorise `bold (OpamSwitch.to_string s))
          (OpamFile.Config.switch gt.config));
-    if not (OpamEnv.is_up_to_date_switch gt.root switch) then
+    if false && not (OpamEnv.is_up_to_date_switch gt.root switch) then
       OpamConsole.warning
         "The environment is not in sync with the current switch.\n\
          You should run: %s"
         (OpamEnv.eval_string gt (Some switch))
   | Some switch, `Default ->
-    if not (OpamEnv.is_up_to_date_switch gt.root switch) then
+    if false && not (OpamEnv.is_up_to_date_switch gt.root switch) then
       (OpamConsole.msg "\n";
        OpamConsole.warning
          "The environment is not in sync with the current switch.\n\

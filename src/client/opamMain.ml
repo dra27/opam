@@ -252,7 +252,7 @@ let () =
            * However, for opam config env, it means that the parent of opam is not the process which wants
            * injecting, it's the parent of the parent!
            *)
-          if Sys.argv.(3) = "--clink" then
+          if Sys.argv.(2) = "--clink" then
             OpamStd.Win32.parent_of_parent ();
           OpamEnv.set_cmd_env (OpamEnv.get_opam ~force_path:true st)
       | None ->
