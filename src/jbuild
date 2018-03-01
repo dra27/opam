@@ -2,8 +2,8 @@
 
 (rule
   ((targets (ocaml-flags-standard.sexp))
-   (deps (ocaml-flags-standard.sexp.in ../shell/subst_var.ml))
-   (action (with-stdout-to ${@} (run ocaml ../shell/subst_var.ml CONF_OCAMLFLAGS "" ${^})))))
+   (deps (ocaml-flags-standard.sexp.in ../shell/subst_var.ml ../config.status))
+   (action (with-stdout-to ${@} (run ocaml ../shell/subst_var.ml CONF_OCAMLFLAGS "" ocaml-flags-standard.sexp.in)))))
 
 (rule
   ((targets (ocaml-context-flags.sexp))

@@ -221,6 +221,7 @@ module String : sig
 
   val map: (char -> char) -> string -> string
   val strip: string -> string
+  val strip_right: string -> string
   val sub_at: int -> string -> string
   val remove_prefix: prefix:string -> string -> string
   val remove_suffix: suffix:string -> string -> string
@@ -279,15 +280,6 @@ module Format : sig
   (** Display a pretty list: ["x";"y";"z"] -> "x, y and z".
       "and" can be changed by specifying [last] *)
   val pretty_list: ?last:string -> string list -> string
-
-  (** {4 Printing} *)
-
-  (** Prints a table; generally called on tables passed through [align_table].
-      The default [cut] is to wrap on stdout, stderr, keep as-is otherwise.
-      [`Wrap sep] prepends [sep] on wrapped lines *)
-  val print_table:
-    ?cut:[`Wrap of string | `Truncate | `None] -> out_channel -> sep:string ->
-    string list list -> unit
 end
 
 module Exn : sig
@@ -434,6 +426,33 @@ module Sys : sig
   (** Raises [Exit], with the code associated to the exit reason *)
   val exit_because: exit_reason -> 'a
 
+  (**/**)
+
+  type warning_printer =
+    {mutable warning : 'a . ('a, unit, string, unit) format4 -> 'a}
+  val set_warning_printer : warning_printer -> unit
+end
+
+(** {2 Windows-specific functions} *)
+module Win32 : sig
+  (** Win32 Registry Hives and Values *)
+  module RegistryHive : sig
+    val to_string : OpamStubs.registry_root -> string
+    val of_string : string -> OpamStubs.registry_root
+  end
+
+  val set_parent_pid : int32 -> unit
+  (** Change which the pid written to by {!parent_putenv}. This function cannot
+      be called after [parent_putenv]. *)
+
+  val parent_putenv : string -> string -> bool
+  (** Update an environment variable in the parent (i.e. shell) process's
+      environment. *)
+
+  val persistHomeDirectory : string -> unit
+  (** [persistHomeDirectory value] sets the HOME environment variable in this
+      and the parent process and also persists the setting to the user's
+      registry and broadcasts the change to other processes. *)
 end
 
 (** {2 General use infix function combinators} *)
