@@ -271,13 +271,13 @@ endif
 
 upgrade:
 	$(CHECK) -l upgrade-1 ocaml.system P1.1 P2.1 P3.1~weird-version.test P4.1
-	eval `$(OPAMBIN) config env | tr -d '\r'`; [ "X$$P1" = "Xversion1" ]
+	eval `$(OPAMBIN) config env --shell=bash | tr -d '\r'`; [ "X$$P1" = "Xversion1" ]
 	$(OPAMBIN) upgrade
 ifeq ($(REPOKIND), git)
 	$(CHECK) -l upgrade-2 ocaml.system P1.1 P2.1 P3.1~weird-version.test P4.3
 else
 	$(CHECK) -l upgrade-2 ocaml.system P1.2 P2.1 P3.1~weird-version.test P4.3
-	eval `$(OPAMBIN) config env | tr -d '\r'`; [ "X$$P1" = "Xversion2" ]
+	eval `$(OPAMBIN) config env --shell=bash | tr -d '\r'`; [ "X$$P1" = "Xversion2" ]
 endif
 
 downgrade:
