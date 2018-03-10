@@ -950,11 +950,236 @@ let lock_none = {
 let lock_isatleast flag lock =
   lock_max flag lock.kind = lock.kind
 
+type _ read_return = Lines : string list read_return
+                   | CrLf  : bool read_return
+
+let translate_patch ~dir orig corrected =
+  (* @@DRA Note here about how weaknesses are recorded *)
+  (* Weakness: CRLF detection can be more complicated than this. The aim is to
+   *           have a patch file which uses LF only for the patch details but
+   *           may include CRLF in specific chunks.
+   *)
+  let epoch = "Thu Jan 01 00:00:00 1970" in
+  let read_lines : type s . s read_return -> string -> s = fun mode file ->
+    let ch = open_in_bin file in
+    let read_lines f =
+      let rec read_lines cr acc =
+        match input_line ch with
+        | line ->
+            let length = String.length line in
+            let acc = f line acc in
+            read_lines (cr && length > 0 && line.[length - 1] = '\r') acc
+        | exception End_of_file ->
+            close_in ch;
+            let acc =
+              if cr then
+                List.rev_map (fun s -> String.sub s 0 (String.length s - 1)) acc
+              else
+                List.rev acc
+            in
+            (acc, cr)
+      in
+      read_lines true []
+    in
+    match mode with
+    | Lines ->
+        read_lines List.cons |> fst
+    | CrLf ->
+        read_lines (fun _ _ -> []) |> snd
+  in
+  let process ch state line =
+    let length = String.length line in
+    let state' =
+      match state with
+        (* Weakness: no effort is made to identify the diff or Index: lines *)
+      | `Header ->
+          begin
+            let marker = if length > 4 then String.sub line 0 4 else "" in
+            match marker with
+            | "--- " ->
+                let (file, stamp) =
+                  let file = String.sub line 4 (length - 4) in
+                  OpamStd.(Option.default (file, "") (String.cut_at file '\t'))
+                in
+                (* @@DRA The epoch test is completely useless, and probably best dropped *)
+                if file = "/dev/null" || stamp = epoch then
+                  `NewHeader `Unified
+                else
+                  let target =
+                    OpamStd.String.cut_at (back_to_forward file) '/'
+                    |> OpamStd.Option.map_default snd file
+                    |> Filename.concat dir
+                  in
+                  if Sys.file_exists target then
+                    let crlf = read_lines CrLf target in
+                    `Patching (`Unified, file, crlf)
+                  else
+                    `NewHeader `Unified
+            | "*** " ->
+                (* TODO Implement context diff scanning *)
+                (* @@DRA For now, do this as a once-only displayed warning *)
+                assert false
+            | _ ->
+                `Header
+          end
+      | `NewHeader mode ->
+          begin
+            let marker = if length > 4 then String.sub line 0 4 else "" in
+            match marker with
+            | "+++ " when mode = `Unified ->
+                `New `Unified
+            | "--- " when mode = `Context ->
+                `New `Context
+            | _ ->
+                (* TODO Should display some kind of re-sync warning *)
+                `Header
+          end
+      | `New `Context ->
+          (* TODO Implement context diff scanning *)
+          assert false
+      | `New `Unified ->
+          (* Weakness: there should only be one chunk for a new file, which isn't checked *)
+          begin
+            match OpamStd.String.split line ' ' with
+            | "@@"::a::b::"@@"::_ ->
+                (* Weakness: a should always be -0,0 (not checked) *)
+                let l_a = String.length a in
+                let l_b = String.length b in
+                if l_a > 1 && l_b > 1 && a.[0] = '-' && b.[0] = '+' then
+                  try
+                    let f (_, v) = int_of_string v in
+                    let neg =
+                      OpamStd.String.cut_at (String.sub a 1 (l_a - 1)) ','
+                              |> OpamStd.Option.map_default f 1
+                    in
+                    let pos =
+                      OpamStd.String.cut_at (String.sub b 1 (l_b - 1)) ','
+                              |> OpamStd.Option.map_default f 1
+                    in
+                    `NewChunk (`Unified, neg, pos)
+                  with _ ->
+                    (* TODO Should display some kind of re-sync warning *)
+                    `Header
+                else
+                  (* TODO Should display some kind of re-sync warning *)
+                  `Header
+            | _ ->
+                (* Weakness: there should have been at least one chunk *)
+                `Header
+          end
+      | `NewChunk (`Unified, neg, pos) ->
+          (* Weakness: new files should only have + lines *)
+          let neg =
+            if line = "" || line.[0] = ' ' || line.[0] = '-' then
+              neg - 1
+            else
+              neg
+          in
+          let pos =
+            if line = "" || line.[0] = ' ' || line.[0] = '+' then
+              pos - 1
+            else
+              pos
+          in
+          if neg = 0 && pos = 0 then
+            `New `Unified
+          else
+            `NewChunk (`Unified, neg, pos)
+      | `Patching (mode, orig, crlf) ->
+          begin
+            let marker = if length > 4 then String.sub line 0 4 else "" in
+            match marker with
+            | "+++ " when mode = `Unified ->
+                let (file, _) =
+                  let file = String.sub line 4 (length - 4) in
+                  OpamStd.(Option.default (file, "") (String.cut_at file '\t'))
+                in
+                `Processing (`Unified, orig, file, crlf, `Head)
+            | "--- " when mode = `Context ->
+                (* TODO Implement context diff scanning *)
+                (* @@DRA For now, do this as a once-only displayed warning *)
+                assert false
+            | _ ->
+                `Header
+          end
+      | `Processing (`Context, _, _, _, _) ->
+          (* TODO Implement context diff scanning *)
+          assert false
+      | `Processing (`Unified, orig, target, crlf, `Head) ->
+          begin
+            match OpamStd.String.split line ' ' with
+            | "@@"::a::b::"@@"::_ ->
+                let l_a = String.length a in
+                let l_b = String.length b in
+                if l_a > 1 && l_b > 1 && a.[0] = '-' && b.[0] = '+' then
+                  try
+                    let f (_, v) = int_of_string v in
+                    let neg =
+                      OpamStd.String.cut_at (String.sub a 1 (l_a - 1)) ','
+                              |> OpamStd.Option.map_default f 1
+                    in
+                    let pos =
+                      OpamStd.String.cut_at (String.sub b 1 (l_b - 1)) ','
+                              |> OpamStd.Option.map_default f 1
+                    in
+                    `Processing (`Unified, orig, target, crlf, `Chunk (neg, pos))
+                  with _ ->
+                    (* TODO Should display some kind of re-sync warning *)
+                    `Header
+                else
+                  (* TODO Should display some kind of re-sync warning *)
+                  `Header
+            | _ ->
+                (* Weakness: there should have been at least one chunk *)
+                `Header
+          end
+      | `Processing (`Unified, orig, target, crlf, `Chunk (neg, pos)) ->
+          let neg =
+            if line = "" || line.[0] = ' ' || line.[0] = '-' then
+              neg - 1
+            else
+              neg
+          in
+          let pos =
+            if line = "" || line.[0] = ' ' || line.[0] = '+' then
+              pos - 1
+            else
+              pos
+          in
+          if neg = 0 && pos = 0 then
+            `Processing (`Unified, orig, target, crlf, `Head)
+          else
+            `Processing (`Unified, orig, target, crlf, `Chunk (neg, pos))
+    in
+    let line =
+      let add_crlf =
+        match state with
+        | `Processing (_, _, _, crlf, `Chunk _) ->
+            crlf
+        | _ ->
+            false
+      in
+      if add_crlf && length > 0 && line.[length - 1] <> '\r' then
+        line ^ "\r\n"
+      else
+        line ^ "\n"
+    in
+    output_string ch line;
+    state'
+  in
+  (* @@DRA Error handling on write *)
+  let ch = open_out_bin corrected in
+  List.fold_left (process ch) `Header (read_lines Lines orig) |> ignore;
+  close_out ch
+
 let patch ~dir p =
   if not (Sys.file_exists p) then
     (OpamConsole.error "Patch file %S not found." p;
      raise Not_found);
-  make_command ~name:"patch" ~dir "patch" ["-p1"; "-i"; p] @@> fun r ->
+     (* @@DRA finalisation needed for this patch file *)
+  let p' = temp_file ~auto_clean:false "processed-patch" in
+  translate_patch ~dir p p';
+  make_command ~name:"patch" ~dir "patch" ["-p1"; "-i"; p'] @@> fun r ->
   if OpamProcess.is_success r then Done None
   else Done (Some (Process_error r))
 
