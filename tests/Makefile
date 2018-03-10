@@ -101,6 +101,7 @@ git:
 
 define GIT_INIT
   git init && echo '*.sh text eol=lf'> .gitattributes && $(if $1,touch $1 && )\
+	git config user.name 'Bactrian Camel' && git config user.email 'bactrian@ocaml.org' && \
 	git add -A && git commit -m "Initial commit"
 endef
 
