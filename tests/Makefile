@@ -21,7 +21,7 @@ OPAM_GIT = $(TMP_DIR)/OPAM.GIT
 PACKAGES  = P1-0 P1-1 P1-2 P2 P3 P4 P5
 
 ifndef OPAM
-  OPAM = $(realpath ../src/client/opamMain.exe)
+  OPAM = $(realpath ../../install/default/bin/opam)
 endif
 ENV   = PATH="$(PATH)" $(DEBUG) OPAMKEEPBUILDDIR=1 OPAMROOT=$(OPAM_ROOT) OPAMSWITCH= OPAMNOBASEPACKAGES=1 OPAMYES=1 OPAM=$(OPAM)
 OPAMBIN  = $(ENV) $(OPAM)
