@@ -349,12 +349,12 @@ fi
 AS_IF([ test ${BUILD_PUTENV} -eq 1],[
   AC_CONFIG_FILES(src/tools/opam-putenv.inc)
 ],[
-  touch src/tools/opam-putenv.inc
+  > src/tools/opam-putenv.inc
 ])
 AS_IF([ test -n "${CONF_MANIFEST_O}" ],[
   AC_CONFIG_FILES(src/client/manifest.inc)
 ],[
-  touch src/client/manifest.inc
+  > src/client/manifest.inc
 ])
 AC_CONFIG_FILES(
   Makefile.config
@@ -366,6 +366,8 @@ AS_IF([ test ${WIN32} -eq 1],[
   cd src/stubs
   ${LN_S} -f jbuild-win32 jbuild
   cd ../..
+],[
+  rm -f src/stubs/jbuild
 ])
 
 echo

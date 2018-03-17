@@ -5301,7 +5301,7 @@ if  test ${BUILD_PUTENV} -eq 1; then :
 
 else
 
-  touch src/tools/opam-putenv.inc
+  > src/tools/opam-putenv.inc
 
 fi
 if  test -n "${CONF_MANIFEST_O}" ; then :
@@ -5311,7 +5311,7 @@ if  test -n "${CONF_MANIFEST_O}" ; then :
 
 else
 
-  touch src/client/manifest.inc
+  > src/client/manifest.inc
 
 fi
 ac_config_files="$ac_config_files Makefile.config src/client/opamManifest.inc"
@@ -6481,6 +6481,10 @@ if  test ${WIN32} -eq 1; then :
   cd src/stubs
   ${LN_S} -f jbuild-win32 jbuild
   cd ../..
+
+else
+
+  rm -f src/stubs/jbuild
 
 fi
 
