@@ -106,12 +106,14 @@ find $HOME -type f -name config -exec sh -c '
           fi
           ;;
         111)
+          echo "camlp5 is faulty AND installed AND the system compiler is OCaml 4.06.1" >&2
+          echo "" >&2
           if [ $IS_OPAM2 -eq 0 ] ; then
-            echo "THIS ROOT CANNOT BE UPGRADED. DO NOT ALLOW OPAM TO UPGRADE THE SYSTEM COMPILER" >&2
-            echo "DOING SO WILL ATTEMPT TO ERASE YOUR MACHINE" >&2
+            echo "THIS ROOT CANNOT BE UPDATED OR UPGRADED. DO NOT ALLOW OPAM TO UPGRADE THE SYSTEM" >&2
+            echo "COMPILER. DOING SO WILL ATTEMPT TO ERASE YOUR MACHINE" >&2
             echo "Please see https://github.com/ocaml/opam/issues/3322 for more information" >&2
           else
-            echo "This root cannot be upgraded by OPAM 1.2.2, but you are running opam2" >&2
+            echo "This root cannot be updated or upgraded by OPAM 0.2.2, but you are running opam2" >&2
             echo "You SHOULD upgrade this root to opam 2 format" >&2
             echo "OPAM 1.2.2 IS NOT ABLE TO UPDATE THIS ROOT" >&2
             echo "Please see https://github.com/ocaml/opam/issues/3322 for more information" >&2
