@@ -36,7 +36,7 @@ fi
 
 echo "Scanning $HOME for opam roots..." >&2
 find $HOME -type f -name config -exec sh -c '
-  export OPAMROOT="{}"
+  export OPAMROOT="$1"
   if grep -q " *switch *:" "$OPAMROOT" ; then
     if grep -qx " *opam-version *: *\"1\.2\" *" "$OPAMROOT" ; then
       cd "$(dirname "$OPAMROOT")"
@@ -66,4 +66,4 @@ find $HOME -type f -name config -exec sh -c '
       echo ". opam 2.0 root found in $OPAMROOT" >&2
     fi
   fi
-' \;
+' opam-detect.sh '{}' \;
