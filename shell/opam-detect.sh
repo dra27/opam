@@ -38,6 +38,8 @@ fi
 export IS_OPAM2
 
 echo "Scanning $HOME for opam roots..." >&2
+echo "Depending on the number of files you have, this may take some time..." >&2
+echo "" >&2
 find $HOME -type f -name config -exec sh -c '
   export OPAMROOT="$1"
   if grep -q " *switch *:" "$OPAMROOT" ; then
@@ -123,13 +125,15 @@ find $HOME -type f -name config -exec sh -c '
           echo "This root is NOT affected by this issue" >&2
           ;;
       esac
-      echo ""
+      echo "" >&2
        # echo "... DO NOT RUN ANY opam COMMANDS WITH THIS ROOT" >&2
        # echo "... You should run opam update for this root" >&2
     elif grep -q " *opam-version *: *\"2\." "$OPAMROOT" ; then
       OPAMROOT=$(dirname "$OPAMROOT")
-      echo ". opam 2.0 root found in $OPAMROOT" >&2
-      echo ". opam 2.0 is NOT affected by this issue" >&2
+      echo "opam 2.0 root found in $OPAMROOT" >&2
+      echo "opam 2.0 is NOT affected by this issue" >&2
+      echo "" >&2
     fi
   fi
 ' opam-detect.sh '{}' \;
+echo "Scan complete." >&2
