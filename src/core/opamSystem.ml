@@ -565,7 +565,7 @@ module Tar = struct
 
   let guess_type f =
     try
-      let ic = open_in f in
+      let ic = open_in_bin f in
       let c1 = input_char ic in
       let c2 = input_char ic in
       close_in ic;
@@ -611,7 +611,7 @@ end
 module Zip = struct
   let is_archive f =
     try
-      let ic = open_in f in
+      let ic = open_in_bin f in
       let c1 = input_char ic in
       let c2 = input_char ic in
       let c3 = input_char ic in

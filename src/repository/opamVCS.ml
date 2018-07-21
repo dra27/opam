@@ -109,7 +109,7 @@ module Make (VCS: VCS) = struct
       in
       let stdout_file =
         let f = OpamSystem.temp_file "rsync-files" in
-        let fd = open_out f in
+        let fd = open_out_bin f in
         List.iter (fun s -> output_string fd s; output_char fd '\n') files;
         close_out fd;
         f

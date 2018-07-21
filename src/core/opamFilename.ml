@@ -376,7 +376,7 @@ let with_flock flag ?dontblock file f =
           else
             "/dev/null"
         in
-        let ch = Pervasives.open_out null in
+        let ch = Pervasives.open_out_bin null in
         Unix.descr_of_out_channel ch, Some ch
       | fd ->
         fd, None
