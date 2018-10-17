@@ -50,7 +50,7 @@ case "$TARGET" in
       fi
 
       if [ $# -eq 0 ] ; then
-        ~/local/bin/bash $(cygpath -ma ./travis-ci.sh) prepare cygwin
+        ~/local/bin/bash $(cygpath -ma ./.travis-ci.sh) prepare cygwin
         exit $?
       fi
     fi
