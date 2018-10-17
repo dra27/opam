@@ -22,9 +22,6 @@ script:
 
 matrix:
   include:
-    - os: linux
-      env: OCAML_VERSION=4.07.1
-      stage: Build
     - os: windows
       env: COLD=1 CYG_MIRROR=http://mirrors.kernel.org/sourceware/cygwin/
       stage: Test
