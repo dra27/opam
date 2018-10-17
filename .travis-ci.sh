@@ -39,7 +39,7 @@ case "$TARGET" in
     echo "\$HOME is $HOME"
     echo "pwd gives $(pwd)"
     mkdir -p ~/local/bin
-    if [ "$TRAVIS_OS_NAME" = "windows" -a -z "$2" ] ; then
+    if [ "$TRAVIS_OS_NAME" = "windows" -a $# -eq 1 ] ; then
       if [ ! -e ~/local/setup-x86.exe ] ; then
         curl -LSfs -o ~/local/setup-x86.exe http://www.cygwin.com/setup-x86.exe
         ~/local/setup-x86.exe --quiet-mode --no-shortcuts --no-startmenu --no-desktop --only-site --root "$(cygpath -w ~/local)" --site "$CYG_MIRROR" --local-package-dir "$(cygpath ~/local/setup-cache)" --package make,patch,curl,diffutils,tar,unzip,gcc-g++,flexdll > /dev/null
@@ -47,7 +47,7 @@ case "$TARGET" in
         # TODO Upgrade logic
       fi
 
-      if [ -z "$2" ] ; then
+      if [ $# -eq 1 ] ; then
         ~/local/bin/bash ./travis-ci.sh prepare cygwin
         exit $?
       fi
@@ -108,7 +108,7 @@ EOF
     ;;
   install)
     if [[ $COLD -eq 1 ]] ; then
-      if [[ $TRAVIS_OS_NAME = "windows" && -z $2 ]] ; then
+      if [[ $TRAVIS_OS_NAME = "windows" && $# -eq 1 ]] ; then
         ~/local/bin/bash ./.travis-ci.sh install cygwin
         exit $?
       else
@@ -156,7 +156,7 @@ EOF
     exit 0
     ;;
   build)
-    if [[ $TRAVIS_OS_NAME = "windows" && -z $2 ]] ; then
+    if [[ $TRAVIS_OS_NAME = "windows" && $# -eq 1 ]] ; then
       ~/local/bin/bash ./.travis-ci.sh build cygwin
       exit $?
     fi
