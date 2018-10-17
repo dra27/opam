@@ -1,4 +1,4 @@
-language: c
+language: bash
 sudo: false
 
 addons:
