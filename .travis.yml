@@ -55,6 +55,9 @@ matrix:
     - os: linux
       env: COLD=1
       stage: Test
+    - os: windows
+      env: COLD=1 CYG_MIRROR=http://mirrors.kernel.org/sourceware/cygwin/
+      stage: Test
 notifications:
   email:
     - opam-commits@lists.ocaml.org
