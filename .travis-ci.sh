@@ -43,7 +43,7 @@ case "$TARGET" in
       if [ ! -e ~/local/setup-x86.exe ] ; then
         curl -LSfs -o ~/local/setup-x86.exe http://www.cygwin.com/setup-x86.exe
         echo "Starting to install Cygwin $(date)"
-        ~/local/setup-x86.exe --quiet-mode --no-shortcuts --no-startmenu --no-desktop --only-site --root "$(cygpath -w ~/local)" --site "$CYG_MIRROR" --local-package-dir "$(cygpath ~/local/setup-cache)" --packages make,patch,curl,diffutils,tar,unzip,gcc-g++,flexdll > /dev/null
+        ~/local/setup-x86.exe --quiet-mode --no-shortcuts --no-startmenu --no-desktop --only-site --root "$(cygpath -w ~/local)" --site "$CYG_MIRROR" --local-package-dir "$(cygpath ~/local/setup-cache)" --packages make,patch,curl,diffutils,tar,unzip,gcc-g++,flexdll,m4 > /dev/null
         echo "Completed installing Cygwin $(date)"
 #      else
         # TODO Upgrade logic
