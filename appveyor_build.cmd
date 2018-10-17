@@ -56,6 +56,11 @@ rem needs upgrading.
 set CYGWIN_PACKAGES=cygwin make patch curl diffutils tar unzip
 set CYGWIN_COMMANDS=cygcheck make patch curl diff tar unzip
 
+if "%DEP_MODE%" equ "lib-pkg" (
+  set CYGWIN_PACKAGES=%CYGWIN_PACKAGES% m4
+  set CYGWIN_COMMANDS=%CYGWIN_COMMANDS% m4
+)
+
 if "%OCAML_PORT%" equ "mingw" (
   set CYGWIN_PACKAGES=%CYGWIN_PACKAGES% mingw64-i686-gcc-g++
   set CYGWIN_COMMANDS=%CYGWIN_COMMANDS% i686-w64-mingw32-g++
