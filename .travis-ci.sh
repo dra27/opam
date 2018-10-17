@@ -42,7 +42,7 @@ case "$TARGET" in
     if [ "$TRAVIS_OS_NAME" = "windows" -a $# -eq 0 ] ; then
       if [ ! -e ~/local/setup-x86.exe ] ; then
         curl -LSfs -o ~/local/setup-x86.exe http://www.cygwin.com/setup-x86.exe
-        ~/local/setup-x86.exe --quiet-mode --no-shortcuts --no-startmenu --no-desktop --only-site --root "$(cygpath -w ~/local)" --site "$CYG_MIRROR" --local-package-dir "$(cygpath ~/local/setup-cache)" --package make,patch,curl,diffutils,tar,unzip,gcc-g++,flexdll > /dev/null
+        ~/local/setup-x86.exe --quiet-mode --no-shortcuts --no-startmenu --no-desktop --only-site --root "$(cygpath -w ~/local)" --site "$CYG_MIRROR" --local-package-dir "$(cygpath ~/local/setup-cache)" --packages make,patch,curl,diffutils,tar,unzip,gcc-g++,flexdll > /dev/null
 #      else
         # TODO Upgrade logic
       fi
