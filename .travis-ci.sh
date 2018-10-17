@@ -42,13 +42,15 @@ case "$TARGET" in
     if [ "$TRAVIS_OS_NAME" = "windows" -a $# -eq 0 ] ; then
       if [ ! -e ~/local/setup-x86.exe ] ; then
         curl -LSfs -o ~/local/setup-x86.exe http://www.cygwin.com/setup-x86.exe
+        echo "Starting to install Cygwin $(date)"
         ~/local/setup-x86.exe --quiet-mode --no-shortcuts --no-startmenu --no-desktop --only-site --root "$(cygpath -w ~/local)" --site "$CYG_MIRROR" --local-package-dir "$(cygpath ~/local/setup-cache)" --packages make,patch,curl,diffutils,tar,unzip,gcc-g++,flexdll > /dev/null
+        echo "Completed installing Cygwin $(date)"
 #      else
         # TODO Upgrade logic
       fi
 
       if [ $# -eq 0 ] ; then
-        ~/local/bin/bash ./travis-ci.sh prepare cygwin
+        ~/local/bin/bash $(cygpath -ma ./travis-ci.sh) prepare cygwin
         exit $?
       fi
     fi
