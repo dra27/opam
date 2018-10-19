@@ -50,7 +50,7 @@ case "$TARGET" in
       fi
 
       if [ $# -eq 0 ] ; then
-        ~/local/bin/bash $(cygpath -ma ./.travis-ci.sh) prepare cygwin
+        ~/local/bin/bash -xue $(cygpath -ma ./.travis-ci.sh) prepare cygwin
         exit $?
       fi
     fi
@@ -111,7 +111,7 @@ EOF
   install)
     if [[ $COLD -eq 1 ]] ; then
       if [[ $TRAVIS_OS_NAME = "windows" && $# -eq 0 ]] ; then
-        ~/local/bin/bash ./.travis-ci.sh install cygwin
+        ~/local/bin/bash -xue ./.travis-ci.sh install cygwin
         exit $?
       else
         make compiler
@@ -159,7 +159,7 @@ EOF
     ;;
   build)
     if [[ $TRAVIS_OS_NAME = "windows" && $# -eq 0 ]] ; then
-      ~/local/bin/bash ./.travis-ci.sh build cygwin
+      ~/local/bin/bash -xue ./.travis-ci.sh build cygwin
       exit $?
     fi
     ;;
