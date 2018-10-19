@@ -16,7 +16,7 @@ unexport OCAMLLIB
 ifndef OPAM
   OPAM = $(firstword $(realpath ../../install/default/bin/opam$(EXE) ../_build/install/default/bin/opamMain.exe))
 endif
-ENV   = PATH="$(PATH)" $(DEBUG) OPAMKEEPBUILDDIR=1 OPAMROOT=$(OPAM_ROOT) OPAMSWITCH= OPAMNOBASEPACKAGES=1 OPAMYES=1 OPAM=$(OPAM)
+ENV   = PATH=$(PATH) $(DEBUG) OPAMKEEPBUILDDIR=1 OPAMROOT=$(OPAM_ROOT) OPAMSWITCH= OPAMNOBASEPACKAGES=1 OPAMYES=1 OPAM=$(OPAM)
 OPAMBIN  = $(ENV) $(OPAM)
 ifndef CHECK
   CHECK = $(ENV) $(firstword $(realpath ../src/tools/opam_check.exe ../_build/default/src/tools/opam_check.exe))
