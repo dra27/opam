@@ -45,11 +45,41 @@ let iter_packages_gen ?(quiet=false) f =
   let packages = OpamRepository.packages_with_prefixes repo in
   let changed_pkgs = ref 0 in
   let changed_files = ref 0 in
+  let processing_msg = "Processing package " in
   (* packages *)
-  OpamPackage.Map.iter (fun package prefix ->
-      if not quiet then
-        OpamConsole.msg "Processing package %s... "
-          (OpamPackage.to_string package);
+  if not quiet then
+    OpamConsole.msg "%s" processing_msg;
+  let count = OpamPackage.Map.cardinal packages in
+  OpamPackage.Map.fold (fun package prefix (next, last, i) ->
+      let now = Unix.gettimeofday () in
+      let (next, last) =
+        (* The rate limiting is useful on Windows - hammering the console with too many updates
+           really hurts performance (tool spends 50% of time updating the console) *)
+        if now >= next then
+          let last =
+            if not quiet then
+              let () =
+                if last > 0 then
+                  (* @@DRA Work out a better OpamConsole interface for this kind of thing... *)
+                  if OpamStd.Sys.(os () = Win32) then
+                    let bs = String.make last '\b' in
+                    print_string (bs ^ String.make last ' ' ^ bs)
+                  else
+                    OpamConsole.msg "\027[%dD\027[K" last
+              in
+              let msg =
+                Printf.sprintf "(%d/%d) %s..."
+                  i count (OpamPackage.to_string package)
+              in
+              OpamConsole.msg "%s" msg;
+              String.length msg
+            else
+              0
+          in
+          (now +. 0.1, last)
+        else
+          (next, last)
+      in
       let opam_file = OpamRepositoryPath.opam repo prefix package in
       let opam = OpamFile.OPAM.read opam_file in
       let descr_file = OpamRepositoryPath.descr repo prefix package in
@@ -78,18 +108,22 @@ let iter_packages_gen ?(quiet=false) f =
         (upd (); wopt OpamFile.URL.write url_file url2);
       if dot_install <> dot_install2 then
         (upd (); wopt OpamFile.Dot_install.write dot_install_file dot_install2);
+      let i = succ i in
       if !changed then
         (incr changed_pkgs;
          if not quiet then begin
            OpamConsole.carriage_delete ();
            OpamConsole.msg "Updated %s\n" (OpamPackage.to_string package)
-         end)
-      else if not quiet then
-        OpamConsole.carriage_delete ();
-    ) packages;
-  if not quiet then
+         end;
+         (now, 0, i))
+      else
+        (next, last, i)
+    ) packages (0.0, 0, 1) |> ignore;
+  if not quiet then begin
+    OpamConsole.carriage_delete ();
     OpamConsole.msg "Done. Updated %d files in %d packages.\n"
       !changed_files !changed_pkgs
+  end
 
 let iter_packages ?quiet
     ?(filter=true_) ?f ?(opam=identity) ?descr ?url ?dot_install
