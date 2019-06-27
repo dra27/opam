@@ -213,8 +213,6 @@ bootstrap/Makefile:
 	mkdir -p bootstrap
 	ln -sf ../Makefile.win-compilers bootstrap/Makefile
 
-JOBS=$(shell expr 4 \* $(NUMBER_OF_PROCESSORS))
-
 win-builds: bootstrap/Makefile
 	for i in m{svc,ingw}{,64} ; do \
 		if [ -e bootstrap/$$i/src_ext/Makefile.config ] ; then \
@@ -227,10 +225,10 @@ win-builds: bootstrap/Makefile
 		fi \
 	done
 	rm -rf bootstrap/{msvc,msvc64,mingw,mingw64}/{src,opam} bootstrap/source
-	$(MAKE) -C bootstrap -j $(JOBS) win-builds
+	$(MAKE) -C bootstrap -j 1 win-builds
 
 win-zips: bootstrap/Makefile
-	$(MAKE) -C bootstrap -j $(JOBS) win-zips
+	$(MAKE) -C bootstrap -j 1 win-zips
 
 cold: compiler
 	env PATH="`pwd`/bootstrap/ocaml/bin:$$PATH" ./configure --enable-cold-check $(CONFIGURE_ARGS)
