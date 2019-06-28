@@ -19,6 +19,8 @@ let slog = OpamConsole.slog
 
 exception Upgrade_done of OpamFile.Config.t
 
+let v2_0 = OpamVersion.of_string "2.0"
+
 (* - Package and aux functions - *)
 
 let upgrade_depexts_to_2_0_beta5 filename depexts =
@@ -160,7 +162,8 @@ let opam_file_from_1_2_to_2_0 ?filename opam =
     aux available
   in
   let pkg_deps =
-    if NMap.mem ocaml_wrapper_pkgname pkg_deps ||
+    if OpamVersion.compare (OpamFile.OPAM.opam_version opam) v2_0 >= 0 ||
+       NMap.mem ocaml_wrapper_pkgname pkg_deps ||
        OpamFile.OPAM.has_flag Pkgflag_Conf opam
     then pkg_deps
     else NMap.add ocaml_wrapper_pkgname Empty pkg_deps
@@ -329,7 +332,7 @@ let opam_file_from_1_2_to_2_0 ?filename opam =
         | ft -> ft)
   in
   opam |>
-  OpamFile.OPAM.with_opam_version (OpamVersion.of_string "2.0") |>
+  OpamFile.OPAM.with_opam_version v2_0 |>
   OpamFile.OPAM.with_depends depends |>
   OpamFile.OPAM.with_depopts depopts |>
   OpamFile.OPAM.with_conflicts conflicts |>
