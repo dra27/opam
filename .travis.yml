@@ -1,0 +1,14 @@
+language: c
+sudo: false
+
+before_install:
+    - bash -exu .travis-ci.sh prepare
+install:
+    - bash -exu .travis-ci.sh install
+script:
+    - bash -exu .travis-ci.sh build
+
+matrix:
+  include:
+    - os: linux
+      stage: Hygiene

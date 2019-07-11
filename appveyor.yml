@@ -1,0 +1,18 @@
+platform:
+    - x64
+
+image: Visual Studio 2017
+
+install:
+  - echo Installation phase
+
+build_script:
+  - echo Build phase
+
+test_script:
+  - echo Test phase
+
+# Uncomment this to enable Remote Desktop on the build worker at the end of the
+# build. The worker is available for the remainder of the allocated hour.
+#on_finish:
+#    - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
