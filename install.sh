@@ -11,7 +11,7 @@ DEFAULT_BINDIR=/usr/local/bin
 
 bin_sha512() {
   case "$OPAM_BIN" in
-    opam-$TAG-arm64-linux)     echo "1ce4aa66a390c84dd56771a7aa9bda53913ed1d551fe24a5f54dc0a3305f53f6be440222bb9fc491474b6008b1cbbb4dcf6a8d9796c744651e40cbe02fde34d1";;
+    opam-$TAG-arm64-linux)     echo "1ce4aa66a390c84dd56771a7aa9bda53913ed1d551fe24a5f54dc0a3305f53f6be440222bb9fc491474b6008b1cbbb4dcf6a8d9796c744651e40cbe02fde34d";;
     opam-$TAG-armhf-linux)     echo "85e6f9a44a0f86a2695fa5ecf1ef31c2f439298ce67a564b735272d9c5d735d93428b0d47cd53e4774027893366717c6a03f85c4cbefed3c720448406cbdc12f";;
     opam-$TAG-i686-linux)      echo "df1493bb0a692374482b3b59d08e421eac307330c9eb8303c5a0e0118739eea2a4d7f9167bbcb57e2896c366f8923a3d06bd135aafa95fe48117a5e926ad014c";;
     opam-$TAG-x86_64-linux)    echo "df994c53792cad806287f56717fb515524a9e7d074e6f782c8e6d3b364930ac2c891e40b1c0adb81449a2324088f0ce0b66c863124ddacaead88fad282c080a8";;
