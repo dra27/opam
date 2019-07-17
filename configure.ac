@@ -1,4 +1,4 @@
-dnl The line below must be formatted AC_INIT(opam,VERSION) with no extra spaces
+dnl The line below must be formatted AC_INIT(opam,VERSION) with no extra spaces.
 AC_INIT(opam,2.0.5)
 AC_COPYRIGHT(Copyright 2012-2017 OcamlPro SAS)
 
