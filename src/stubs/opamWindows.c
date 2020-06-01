@@ -21,6 +21,14 @@
 #include <caml/osdeps.h>
 #include <caml/signals.h>
 #include <caml/unixsupport.h>
+#include <caml/version.h>
+
+#if OCAML_MAJOR ## OCAML_MINOR < 406
+typedef char char_os
+#define caml_stat_strdup_to_os strdup
+#define caml_copy_string_of_os caml_copy_string
+#define caml_stat_free free
+#endif
 
 /* In a previous incarnation, dummy C stubs were generated for non-Windows
  * builds. Although this is no longer used, the C sources retain the ability to
@@ -726,30 +734,31 @@ CAMLprim value OPAMW_GetParentProcessID(value processId)
   OPAMreturn(caml_copy_int32(entry.th32ParentProcessID));
 }
 
-CAMLprim value OPAMW_GetConsoleAlias(value alias, value exeName)
+CAMLprim value OPAMW_GetConsoleAlias(value valias, value vexeName)
 {
-  CAMLparam2(alias, exeName);
-#ifdef _WIN32
+  CAMLparam2(valias, vexeName);
   CAMLlocal1(result);
 
   DWORD nLength = 8192;
-  LPTSTR buffer = (LPTSTR)malloc(nLength);
+  LPTSTR buffer = (LPTSTR*)malloc(nLength * sizeof(TCHAR));
+  char_os* alias = caml_stat_strdup_to_os(String_val(valias));
+  char_os* exeName = caml_stat_strdup_to_os(String_val(vexeName));
 
   if (!buffer)
     caml_raise_out_of_memory();
 
-  if (GetConsoleAlias((LPTSTR)String_val(alias), buffer, nLength,
-                      (LPTSTR)String_val(exeName)))
+  if (GetConsoleAlias(alias, buffer, nLength, exeName))
   {
-    result = caml_copy_string(buffer);
+    result = caml_copy_string_of_os(buffer);
   }
   else
   {
-    result = caml_copy_string("");
+    result = caml_alloc_string(0);
   }
 
   free(buffer);
-#endif
+  caml_stat_free(alias);
+  caml_stat_free(exeName);
 
   OPAMreturn(result);
 }
