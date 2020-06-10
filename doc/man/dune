@@ -1,7 +1,7 @@
 (rule
   (targets opam.1)
   (deps opam-topics.inc opam-admin-topics.inc)
-  (action (with-stdout-to %{targets} (run %{bin:opam} --help=groff))))
+  (action (with-stdout-to %{targets} (run ../../src/client/opamMain.exe --help=groff))))
 
 (install
   (section man)
@@ -22,13 +22,13 @@
 
 (rule
   (targets opam-topics.inc)
-  (deps %{bin:opam})
+  (deps ../../src/client/opamMain.exe)
   (mode promote)
   (action (with-stdout-to %{targets} (run %{exe:dune_man.exe} opam))))
 
 (rule
   (targets opam-admin-topics.inc)
-  (deps %{bin:opam})
+  (deps ../../src/client/opamMain.exe)
   (mode promote)
   (action (with-stdout-to %{targets} (run %{exe:dune_man.exe} opam admin))))
 

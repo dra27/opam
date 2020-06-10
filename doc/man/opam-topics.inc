@@ -5,7 +5,7 @@
 (rule
   (targets opam-help.1 opam-help.err)
   (action (progn (with-stderr-to opam-help.err
-                   (with-stdout-to opam-help.1 (run %{bin:opam} help --help=groff)))
+                   (with-stdout-to opam-help.1 (run ../../src/client/opamMain.exe help --help=groff)))
                  (diff opam-help.err %{dep:opam-help.0}))))
 
 (rule
@@ -13,7 +13,7 @@
 (rule
   (targets opam-admin.1 opam-admin.err)
   (action (progn (with-stderr-to opam-admin.err
-                   (with-stdout-to opam-admin.1 (run %{bin:opam} admin --help=groff)))
+                   (with-stdout-to opam-admin.1 (run ../../src/client/opamMain.exe admin --help=groff)))
                  (diff opam-admin.err %{dep:opam-admin.0}))))
 
 (rule
@@ -21,7 +21,7 @@
 (rule
   (targets opam-lock.1 opam-lock.err)
   (action (progn (with-stderr-to opam-lock.err
-                   (with-stdout-to opam-lock.1 (run %{bin:opam} lock --help=groff)))
+                   (with-stdout-to opam-lock.1 (run ../../src/client/opamMain.exe lock --help=groff)))
                  (diff opam-lock.err %{dep:opam-lock.0}))))
 
 (rule
@@ -29,7 +29,7 @@
 (rule
   (targets opam-clean.1 opam-clean.err)
   (action (progn (with-stderr-to opam-clean.err
-                   (with-stdout-to opam-clean.1 (run %{bin:opam} clean --help=groff)))
+                   (with-stdout-to opam-clean.1 (run ../../src/client/opamMain.exe clean --help=groff)))
                  (diff opam-clean.err %{dep:opam-clean.0}))))
 
 (rule
@@ -37,7 +37,7 @@
 (rule
   (targets opam-lint.1 opam-lint.err)
   (action (progn (with-stderr-to opam-lint.err
-                   (with-stdout-to opam-lint.1 (run %{bin:opam} lint --help=groff)))
+                   (with-stdout-to opam-lint.1 (run ../../src/client/opamMain.exe lint --help=groff)))
                  (diff opam-lint.err %{dep:opam-lint.0}))))
 
 (rule
@@ -45,7 +45,7 @@
 (rule
   (targets opam-source.1 opam-source.err)
   (action (progn (with-stderr-to opam-source.err
-                   (with-stdout-to opam-source.1 (run %{bin:opam} source --help=groff)))
+                   (with-stdout-to opam-source.1 (run ../../src/client/opamMain.exe source --help=groff)))
                  (diff opam-source.err %{dep:opam-source.0}))))
 
 (rule
@@ -53,7 +53,7 @@
 (rule
   (targets opam-unpin.1 opam-unpin.err)
   (action (progn (with-stderr-to opam-unpin.err
-                   (with-stdout-to opam-unpin.1 (run %{bin:opam} unpin --help=groff)))
+                   (with-stdout-to opam-unpin.1 (run ../../src/client/opamMain.exe unpin --help=groff)))
                  (diff opam-unpin.err %{dep:opam-unpin.0}))))
 
 (rule
@@ -61,7 +61,7 @@
 (rule
   (targets opam-pin.1 opam-pin.err)
   (action (progn (with-stderr-to opam-pin.err
-                   (with-stdout-to opam-pin.1 (run %{bin:opam} pin --help=groff)))
+                   (with-stdout-to opam-pin.1 (run ../../src/client/opamMain.exe pin --help=groff)))
                  (diff opam-pin.err %{dep:opam-pin.0}))))
 
 (rule
@@ -69,7 +69,7 @@
 (rule
   (targets opam-switch.1 opam-switch.err)
   (action (progn (with-stderr-to opam-switch.err
-                   (with-stdout-to opam-switch.1 (run %{bin:opam} switch --help=groff)))
+                   (with-stdout-to opam-switch.1 (run ../../src/client/opamMain.exe switch --help=groff)))
                  (diff opam-switch.err %{dep:opam-switch.0}))))
 
 (rule
@@ -77,7 +77,7 @@
 (rule
   (targets opam-remote.1 opam-remote.err)
   (action (progn (with-stderr-to opam-remote.err
-                   (with-stdout-to opam-remote.1 (run %{bin:opam} remote --help=groff)))
+                   (with-stdout-to opam-remote.1 (run ../../src/client/opamMain.exe remote --help=groff)))
                  (diff opam-remote.err %{dep:opam-remote.0}))))
 
 (rule
@@ -85,7 +85,7 @@
 (rule
   (targets opam-repository.1 opam-repository.err)
   (action (progn (with-stderr-to opam-repository.err
-                   (with-stdout-to opam-repository.1 (run %{bin:opam} repository --help=groff)))
+                   (with-stdout-to opam-repository.1 (run ../../src/client/opamMain.exe repository --help=groff)))
                  (diff opam-repository.err %{dep:opam-repository.0}))))
 
 (rule
@@ -93,7 +93,7 @@
 (rule
   (targets opam-env.1 opam-env.err)
   (action (progn (with-stderr-to opam-env.err
-                   (with-stdout-to opam-env.1 (run %{bin:opam} env --help=groff)))
+                   (with-stdout-to opam-env.1 (run ../../src/client/opamMain.exe env --help=groff)))
                  (diff opam-env.err %{dep:opam-env.0}))))
 
 (rule
@@ -101,7 +101,7 @@
 (rule
   (targets opam-exec.1 opam-exec.err)
   (action (progn (with-stderr-to opam-exec.err
-                   (with-stdout-to opam-exec.1 (run %{bin:opam} exec --help=groff)))
+                   (with-stdout-to opam-exec.1 (run ../../src/client/opamMain.exe exec --help=groff)))
                  (diff opam-exec.err %{dep:opam-exec.0}))))
 
 (rule
@@ -109,7 +109,7 @@
 (rule
   (targets opam-config.1 opam-config.err)
   (action (progn (with-stderr-to opam-config.err
-                   (with-stdout-to opam-config.1 (run %{bin:opam} config --help=groff)))
+                   (with-stdout-to opam-config.1 (run ../../src/client/opamMain.exe config --help=groff)))
                  (diff opam-config.err %{dep:opam-config.0}))))
 
 (rule
@@ -117,7 +117,7 @@
 (rule
   (targets opam-option.1 opam-option.err)
   (action (progn (with-stderr-to opam-option.err
-                   (with-stdout-to opam-option.1 (run %{bin:opam} option --help=groff)))
+                   (with-stdout-to opam-option.1 (run ../../src/client/opamMain.exe option --help=groff)))
                  (diff opam-option.err %{dep:opam-option.0}))))
 
 (rule
@@ -125,7 +125,7 @@
 (rule
   (targets opam-var.1 opam-var.err)
   (action (progn (with-stderr-to opam-var.err
-                   (with-stdout-to opam-var.1 (run %{bin:opam} var --help=groff)))
+                   (with-stdout-to opam-var.1 (run ../../src/client/opamMain.exe var --help=groff)))
                  (diff opam-var.err %{dep:opam-var.0}))))
 
 (rule
@@ -133,7 +133,7 @@
 (rule
   (targets opam-upgrade.1 opam-upgrade.err)
   (action (progn (with-stderr-to opam-upgrade.err
-                   (with-stdout-to opam-upgrade.1 (run %{bin:opam} upgrade --help=groff)))
+                   (with-stdout-to opam-upgrade.1 (run ../../src/client/opamMain.exe upgrade --help=groff)))
                  (diff opam-upgrade.err %{dep:opam-upgrade.0}))))
 
 (rule
@@ -141,7 +141,7 @@
 (rule
   (targets opam-update.1 opam-update.err)
   (action (progn (with-stderr-to opam-update.err
-                   (with-stdout-to opam-update.1 (run %{bin:opam} update --help=groff)))
+                   (with-stdout-to opam-update.1 (run ../../src/client/opamMain.exe update --help=groff)))
                  (diff opam-update.err %{dep:opam-update.0}))))
 
 (rule
@@ -149,7 +149,7 @@
 (rule
   (targets opam-reinstall.1 opam-reinstall.err)
   (action (progn (with-stderr-to opam-reinstall.err
-                   (with-stdout-to opam-reinstall.1 (run %{bin:opam} reinstall --help=groff)))
+                   (with-stdout-to opam-reinstall.1 (run ../../src/client/opamMain.exe reinstall --help=groff)))
                  (diff opam-reinstall.err %{dep:opam-reinstall.0}))))
 
 (rule
@@ -157,7 +157,7 @@
 (rule
   (targets opam-uninstall.1 opam-uninstall.err)
   (action (progn (with-stderr-to opam-uninstall.err
-                   (with-stdout-to opam-uninstall.1 (run %{bin:opam} uninstall --help=groff)))
+                   (with-stdout-to opam-uninstall.1 (run ../../src/client/opamMain.exe uninstall --help=groff)))
                  (diff opam-uninstall.err %{dep:opam-uninstall.0}))))
 
 (rule
@@ -165,7 +165,7 @@
 (rule
   (targets opam-remove.1 opam-remove.err)
   (action (progn (with-stderr-to opam-remove.err
-                   (with-stdout-to opam-remove.1 (run %{bin:opam} remove --help=groff)))
+                   (with-stdout-to opam-remove.1 (run ../../src/client/opamMain.exe remove --help=groff)))
                  (diff opam-remove.err %{dep:opam-remove.0}))))
 
 (rule
@@ -173,7 +173,7 @@
 (rule
   (targets opam-install.1 opam-install.err)
   (action (progn (with-stderr-to opam-install.err
-                   (with-stdout-to opam-install.1 (run %{bin:opam} install --help=groff)))
+                   (with-stdout-to opam-install.1 (run ../../src/client/opamMain.exe install --help=groff)))
                  (diff opam-install.err %{dep:opam-install.0}))))
 
 (rule
@@ -181,7 +181,7 @@
 (rule
   (targets opam-info.1 opam-info.err)
   (action (progn (with-stderr-to opam-info.err
-                   (with-stdout-to opam-info.1 (run %{bin:opam} info --help=groff)))
+                   (with-stdout-to opam-info.1 (run ../../src/client/opamMain.exe info --help=groff)))
                  (diff opam-info.err %{dep:opam-info.0}))))
 
 (rule
@@ -189,7 +189,7 @@
 (rule
   (targets opam-show.1 opam-show.err)
   (action (progn (with-stderr-to opam-show.err
-                   (with-stdout-to opam-show.1 (run %{bin:opam} show --help=groff)))
+                   (with-stdout-to opam-show.1 (run ../../src/client/opamMain.exe show --help=groff)))
                  (diff opam-show.err %{dep:opam-show.0}))))
 
 (rule
@@ -197,7 +197,7 @@
 (rule
   (targets opam-search.1 opam-search.err)
   (action (progn (with-stderr-to opam-search.err
-                   (with-stdout-to opam-search.1 (run %{bin:opam} search --help=groff)))
+                   (with-stdout-to opam-search.1 (run ../../src/client/opamMain.exe search --help=groff)))
                  (diff opam-search.err %{dep:opam-search.0}))))
 
 (rule
@@ -205,7 +205,7 @@
 (rule
   (targets opam-list.1 opam-list.err)
   (action (progn (with-stderr-to opam-list.err
-                   (with-stdout-to opam-list.1 (run %{bin:opam} list --help=groff)))
+                   (with-stdout-to opam-list.1 (run ../../src/client/opamMain.exe list --help=groff)))
                  (diff opam-list.err %{dep:opam-list.0}))))
 
 (rule
@@ -213,7 +213,7 @@
 (rule
   (targets opam-init.1 opam-init.err)
   (action (progn (with-stderr-to opam-init.err
-                   (with-stdout-to opam-init.1 (run %{bin:opam} init --help=groff)))
+                   (with-stdout-to opam-init.1 (run ../../src/client/opamMain.exe init --help=groff)))
                  (diff opam-init.err %{dep:opam-init.0}))))
 
 (install
