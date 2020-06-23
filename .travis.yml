@@ -1,6 +1,6 @@
+os: linux
 dist: xenial
 language: c
-sudo: false
 
 addons:
   apt:
@@ -24,7 +24,7 @@ cache:
 script:
     - bash -exu .travis-ci.sh build
 
-matrix:
+jobs:
   include:
     - os: linux
       env: OCAML_VERSION=4.02.3
