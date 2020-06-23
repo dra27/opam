@@ -53,8 +53,8 @@ MD5_dune-local = 36c5cdffdf4db63022b3b05ee1a0251e
 
 $(call PKG_SAME,dune-local)
 
-URL_PKG_findlib = http://download.camlcity.org/download/findlib-1.8.0.tar.gz
-MD5_PKG_findlib = a710c559667672077a93d34eb6a42e5b
+URL_PKG_findlib = http://download.camlcity.org/download/findlib-1.8.1.tar.gz
+MD5_PKG_findlib = 18ca650982c15536616dea0e422cbd8c
 
 URL_PKG_ocamlbuild = https://github.com/ocaml/ocamlbuild/archive/0.14.0.tar.gz
 MD5_PKG_ocamlbuild = a7bf2fe594cd16907807c756b14d501f
