@@ -389,7 +389,7 @@ fi
     fi
 
     # Test basic actions
-    opam init --bare default git+https://github.com/ocaml/opam-repository#8be4290a
+    opam init --bare
     opam switch create default ocaml-system
     eval $(opam env)
     opam install lwt
