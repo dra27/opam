@@ -201,6 +201,9 @@ ML_REQUIRED=0
 TARGET_ARCH=
 SCAN_ENV=0
 
+# Various PATH messing around means it's sensible to know where tools are now
+WHICH=$(which which)
+
 if [[ $(uname --operating-system 2>/dev/null) = "Msys" ]] ; then
   # Prevent MSYS from translating command line switches to paths
   SWITCH_PREFIX='//'
@@ -535,7 +538,7 @@ FOUND=()
 # Scan the environment for a C compiler, and check that it's valid. Throughout the rest of the
 # script, it is assumed that if ENV_ARCH is set then there is a valid environment compiler.
 if [[ $SCAN_ENV -eq 1 ]] ; then
-  if which cl >/dev/null 2>&1 ; then
+  if "$WHICH" cl >/dev/null 2>&1 ; then
     # Determine its architecture from the Microsoft Logo line.
     ENV_ARCH=$(cl 2>&1 | head -1 | tr -d '\r')
     case "${ENV_ARCH#* for }" in
@@ -567,7 +570,7 @@ if [[ $SCAN_ENV -eq 1 ]] ; then
                              "${!ENV_LIB//;/*}" \
                              "Environment C compiler" \
                              "$ENV_ARCH" ; then
-          ENV_CL=$(which cl)
+          ENV_CL=$("$WHICH" cl)
           ENV_cl=${ENV_CL,,}
           ENV_cl=${ENV_cl/bin\/*_/bin\/}
           debug "Environment appears to include a compiler at $ENV_CL"
@@ -896,6 +899,8 @@ for i in "${TEST[@]}" ; do
     ARCHS=${COMPILER["ARCH"]}
   fi
 
+  # Remove any trailing / from elements of $PATH
+  TRIM_PATH=$(echo "$PATH" | sed -e 's|\([^:]\)/\+\(:\|$\)|\1\2|g')
   for arch in $ARCHS ; do
     # Determine the command line switch for this architecture
     if [[ -n ${ARCHINFO[$arch]+x} ]] ; then
@@ -928,7 +933,7 @@ for i in "${TEST[@]}" ; do
           MSVS_INC=${line%% };;
       esac
       ((num++))
-    done < <(INCLUDE= LIB= PATH="$DIR:$PATH" \
+    done < <(INCLUDE= LIB= PATH="?msvs-detect?:$DIR:$PATH" ORIGINALPATH= \
              EXEC_SCRIPT="$(basename "$SCRIPT") $ARCH_SWITCHES $SCRIPT_SWITCHES" \
              $(cygpath "$COMSPEC") ${SWITCH_PREFIX}v:on ${SWITCH_PREFIX}c $COMMAND 2>/dev/null | fgrep XMARKER -A 3 | tr -d '\015' | tail -3)
     if [[ $DEBUG -gt 3 ]] ; then
@@ -938,8 +943,8 @@ for i in "${TEST[@]}" ; do
     if [[ -n $MSVS_PATH ]] ; then
       # Translate MSVS_PATH back to Cygwin notation (/cygdrive, etc. and colon-separated)
       MSVS_PATH=$(cygpath "$MSVS_PATH" -p)
-      # Remove the actual PATH (and the extra $DIR added to run the script)
-      MSVS_PATH=${MSVS_PATH%:$DIR:$PATH}
+      # Remove any trailing / from elements of MSVS_PATH
+      MSVS_PATH=$(echo "$MSVS_PATH" | sed -e 's|\([^:]\)/\+\(:\|$\)|\1\2|g;s/?msvs-detect?.*//')
       # Guarantee that MSVS_PATH ends with a single :
       MSVS_PATH="${MSVS_PATH%%:}:"
     fi
@@ -970,7 +975,7 @@ for i in "${TEST[@]}" ; do
 
       # Check to see if this is a match for the environment C compiler.
       if [[ -n ${ENV_ARCH+x} ]] ; then
-        TEST_cl=$(PATH="$MSVS_PATH:$PATH" which cl)
+        TEST_cl=$(PATH="$MSVS_PATH:$PATH" "$WHICH" cl)
         TEST_cl=${TEST_cl,,}
         TEST_cl=${TEST_cl/bin\/*_/bin\/}
         if [[ $TEST_cl = $ENV_cl ]] ; then
