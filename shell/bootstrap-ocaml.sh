@@ -34,6 +34,7 @@ if [ ${GEN_CONFIG_ONLY} -eq 0 ] ; then
 else
   mkdir -p ${V}
 fi
+V="ocaml-$V"
 cd ${V}
 PATH_PREPEND=
 LIB_PREPEND=

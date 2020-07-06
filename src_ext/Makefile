@@ -11,8 +11,8 @@ endif
 
 PATCH ?= patch
 
-URL_ocaml = https://caml.inria.fr/pub/distrib/ocaml-4.09/ocaml-4.09.1.tar.gz
-MD5_ocaml = 1a7fc32aebbad6cb821ef26a396f78e7
+URL_ocaml = https://github.com/ocaml/ocaml/archive/d338211144ee9c914c66023bb831826e2b7cdc26.tar.gz
+MD5_ocaml = efbd38a2cd5025e4f5e54dc89e9bbed9
 
 URL_flexdll = https://github.com/alainfrisch/flexdll/archive/0.38.tar.gz
 MD5_flexdll = c0fcfd7554b68547435fb69db8cde260
