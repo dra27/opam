@@ -84,7 +84,7 @@ if exist bootstrap\ocaml\lib\stdlib.cmxa (
 )
 if exist bootstrap\installed-tarball for /f "delims=" %%U in ('type bootstrap\installed-tarball') do set INSTALLED_URL=%%U
 
-if "%INSTALLED_URL%" neq "%OCAML_URL% %FLEXDLL_URL% %DEP_MODE%" if exist bootstrap\nul (
+if "%INSTALLED_URL%" neq "force %OCAML_URL% %FLEXDLL_URL% %DEP_MODE%" if exist bootstrap\nul (
   echo Required: %OCAML_URL% %FLEXDLL_URL% %DEP_MODE%
   echo Compiled: %INSTALLED_URL%
   echo Re-building bootstrap compiler
