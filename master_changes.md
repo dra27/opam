@@ -82,6 +82,7 @@ New option are prefixed with ◈
   * Expose some functionality in the `OpamAction`, `OpamPath` and `OpamSwitchState`
     modules for use without a `switch` value [#4147 @timberston]
     *Path: introduce a functor to permit replicating switch layout in different contexts
+  * Fix regression in command resolution from #4072 [#4265 @dra27]
 
 ## Test
   * Add show cram test [#4206 @rjbou]
