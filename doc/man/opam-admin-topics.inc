@@ -5,7 +5,7 @@
 (rule
   (targets opam-admin-help.1 opam-admin-help.err)
   (action (progn (with-stderr-to opam-admin-help.err
-                   (with-stdout-to opam-admin-help.1 (run %{bin:opam} admin help --help=groff)))
+                   (with-stdout-to opam-admin-help.1 (run ../../src/client/opamMain.exe admin help --help=groff)))
                  (diff opam-admin-help.err %{dep:opam-admin-help.0}))))
 
 (rule
@@ -13,7 +13,7 @@
 (rule
   (targets opam-admin-add-hashes.1 opam-admin-add-hashes.err)
   (action (progn (with-stderr-to opam-admin-add-hashes.err
-                   (with-stdout-to opam-admin-add-hashes.1 (run %{bin:opam} admin add-hashes --help=groff)))
+                   (with-stdout-to opam-admin-add-hashes.1 (run ../../src/client/opamMain.exe admin add-hashes --help=groff)))
                  (diff opam-admin-add-hashes.err %{dep:opam-admin-add-hashes.0}))))
 
 (rule
@@ -21,7 +21,7 @@
 (rule
   (targets opam-admin-add-constraint.1 opam-admin-add-constraint.err)
   (action (progn (with-stderr-to opam-admin-add-constraint.err
-                   (with-stdout-to opam-admin-add-constraint.1 (run %{bin:opam} admin add-constraint --help=groff)))
+                   (with-stdout-to opam-admin-add-constraint.1 (run ../../src/client/opamMain.exe admin add-constraint --help=groff)))
                  (diff opam-admin-add-constraint.err %{dep:opam-admin-add-constraint.0}))))
 
 (rule
@@ -29,7 +29,7 @@
 (rule
   (targets opam-admin-filter.1 opam-admin-filter.err)
   (action (progn (with-stderr-to opam-admin-filter.err
-                   (with-stdout-to opam-admin-filter.1 (run %{bin:opam} admin filter --help=groff)))
+                   (with-stdout-to opam-admin-filter.1 (run ../../src/client/opamMain.exe admin filter --help=groff)))
                  (diff opam-admin-filter.err %{dep:opam-admin-filter.0}))))
 
 (rule
@@ -37,7 +37,7 @@
 (rule
   (targets opam-admin-list.1 opam-admin-list.err)
   (action (progn (with-stderr-to opam-admin-list.err
-                   (with-stdout-to opam-admin-list.1 (run %{bin:opam} admin list --help=groff)))
+                   (with-stdout-to opam-admin-list.1 (run ../../src/client/opamMain.exe admin list --help=groff)))
                  (diff opam-admin-list.err %{dep:opam-admin-list.0}))))
 
 (rule
@@ -45,7 +45,7 @@
 (rule
   (targets opam-admin-check.1 opam-admin-check.err)
   (action (progn (with-stderr-to opam-admin-check.err
-                   (with-stdout-to opam-admin-check.1 (run %{bin:opam} admin check --help=groff)))
+                   (with-stdout-to opam-admin-check.1 (run ../../src/client/opamMain.exe admin check --help=groff)))
                  (diff opam-admin-check.err %{dep:opam-admin-check.0}))))
 
 (rule
@@ -53,7 +53,7 @@
 (rule
   (targets opam-admin-lint.1 opam-admin-lint.err)
   (action (progn (with-stderr-to opam-admin-lint.err
-                   (with-stdout-to opam-admin-lint.1 (run %{bin:opam} admin lint --help=groff)))
+                   (with-stdout-to opam-admin-lint.1 (run ../../src/client/opamMain.exe admin lint --help=groff)))
                  (diff opam-admin-lint.err %{dep:opam-admin-lint.0}))))
 
 (rule
@@ -61,7 +61,7 @@
 (rule
   (targets opam-admin-upgrade.1 opam-admin-upgrade.err)
   (action (progn (with-stderr-to opam-admin-upgrade.err
-                   (with-stdout-to opam-admin-upgrade.1 (run %{bin:opam} admin upgrade --help=groff)))
+                   (with-stdout-to opam-admin-upgrade.1 (run ../../src/client/opamMain.exe admin upgrade --help=groff)))
                  (diff opam-admin-upgrade.err %{dep:opam-admin-upgrade.0}))))
 
 (rule
@@ -69,7 +69,7 @@
 (rule
   (targets opam-admin-cache.1 opam-admin-cache.err)
   (action (progn (with-stderr-to opam-admin-cache.err
-                   (with-stdout-to opam-admin-cache.1 (run %{bin:opam} admin cache --help=groff)))
+                   (with-stdout-to opam-admin-cache.1 (run ../../src/client/opamMain.exe admin cache --help=groff)))
                  (diff opam-admin-cache.err %{dep:opam-admin-cache.0}))))
 
 (rule
@@ -77,7 +77,7 @@
 (rule
   (targets opam-admin-make.1 opam-admin-make.err)
   (action (progn (with-stderr-to opam-admin-make.err
-                   (with-stdout-to opam-admin-make.1 (run %{bin:opam} admin make --help=groff)))
+                   (with-stdout-to opam-admin-make.1 (run ../../src/client/opamMain.exe admin make --help=groff)))
                  (diff opam-admin-make.err %{dep:opam-admin-make.0}))))
 
 (rule
@@ -85,7 +85,7 @@
 (rule
   (targets opam-admin-index.1 opam-admin-index.err)
   (action (progn (with-stderr-to opam-admin-index.err
-                   (with-stdout-to opam-admin-index.1 (run %{bin:opam} admin index --help=groff)))
+                   (with-stdout-to opam-admin-index.1 (run ../../src/client/opamMain.exe admin index --help=groff)))
                  (diff opam-admin-index.err %{dep:opam-admin-index.0}))))
 
 (install
