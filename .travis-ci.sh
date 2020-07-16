@@ -134,8 +134,13 @@ EOF
           echo "Cached compiler is $LOCAL_OCAML_VERSION; requested $OCAML_VERSION"
           echo "Resetting local cache"
           rm -rf ~/local
-        elif [[ -x ~/local/bin/opam-bootstrap ]] ; then
-          LOCAL_OPAMBSVERSION="${LOCAL_OPAMBSVERSION:-$(~/local/bin/opam-bootstrap --version)}"
+        elif [[ -e ~/local/bin/opam-bootstrap ]] ; then
+          if [[ -z ${LOCAL_OPAMBSVERSION:-} ]] ; then
+            ls -l ~/local/bin
+            chmod +x ~/local/bin/opam-bootstrap
+            LOCAL_OPAMBSVERSION="$(~/local/bin/opam-bootstrap --version)}"
+            chmod -x ~/local/bin/opam-bootstrap
+          fi
           if [[ $LOCAL_OPAMBSVERSION != $OPAMBSVERSION ]] ; then
             echo "Cached opam is $LOCAL_OPAMBSVERSION; requested $OPAMBSVERSION"
             echo "Replacement opam will be downloaded"
