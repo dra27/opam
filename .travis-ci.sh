@@ -39,6 +39,11 @@ else
 fi
 set -x
 
+write_versions () {
+  echo "LOCAL_OCAML_VERSION=$OCAML_VERSION" > ~/local/versions
+  echo "LOCAL_OPAMBSVERSION=$OPAMBSVERSION" >> ~/local/versions
+}
+
 init-bootstrap () {
   export OPAMROOT=$OPAMBSROOT
   # The system compiler will be picked up
@@ -129,10 +134,15 @@ EOF
           echo "Cached compiler is $LOCAL_OCAML_VERSION; requested $OCAML_VERSION"
           echo "Resetting local cache"
           rm -rf ~/local
-        elif [[ ${LOCAL_OPAMBSVERSION:-$OPAMBSVERSION} != $OPAMBSVERSION ]] ; then
-          echo "Cached opam is $LOCAL_OPAMBSVERSION; requested $OPAMBSVERSION"
-          echo "Replacement opam will be downloaded"
-          rm -f ~/local/bin/opam-bootstrap
+        elif [[ -x ~/local/bin/opam-bootstrap ]] ; then
+          LOCAL_OPAMBSVERSION="${LOCAL_OPAMBSVERSION:-$(~/local/bin/opam-bootstrap --version)}"
+          if [[ $LOCAL_OPAMBSVERSION != $OPAMBSVERSION ]] ; then
+            echo "Cached opam is $LOCAL_OPAMBSVERSION; requested $OPAMBSVERSION"
+            echo "Replacement opam will be downloaded"
+            rm -f ~/local/bin/opam-bootstrap
+            # The root may well have been written by a newer version of opam
+            rm -rf "$OPAMBSROOT"
+          fi
         fi
       fi
     fi
@@ -174,7 +184,7 @@ EOF
         make install
         cd ..
         rm -rf "ocaml-$OCAML_VERSION.tar.gz"
-        echo "LOCAL_OCAML_VERSION=$OCAML_VERSION" > ~/local/versions
+        write_versions
         (set +x ; echo -en "travis_fold:end:ocaml\r") 2>/dev/null
       fi
 
@@ -183,6 +193,7 @@ EOF
         if [[ ! -e ~/local/bin/opam-bootstrap ]] ; then
           wget -q -O ~/local/bin/opam-bootstrap \
                "https://github.com/ocaml/opam/releases/download/$OPAMBSVERSION/opam-$OPAMBSVERSION-$(uname -m)-$(uname -s)"
+          write_versions
         fi
 
         cp -f ~/local/bin/opam-bootstrap ~/local/bin/opam
