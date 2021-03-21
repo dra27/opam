@@ -84,7 +84,7 @@ export OCAMLRUNPARAM=b
       git reset --hard origin/master
     fi
 
-    test -d _opam || opam switch create . --empty
+    test -d _opam || opam switch create . ocaml-system
     eval $(opam env)
     opam pin --kind=path $GITHUB_WORKSPACE --yes --no-action
     opam pin . -yn
