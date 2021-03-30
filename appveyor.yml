@@ -15,20 +15,20 @@ environment:
     OPAM_REPO_SHA: 75ff83837547183f000e1c18d42260d7d6cc5fbc
     OPAM_TEST_REPO_SHA: 75ff83837547183f000e1c18d42260d7d6cc5fbc
   matrix:
-    - CYG_ROOT: cygwin
-      CYG_ARCH: x86
-    - CYG_ROOT: cygwin64
-      CYG_ARCH: x86_64
-      DEP_MODE: lib-pkg
+#    - CYG_ROOT: cygwin
+#      CYG_ARCH: x86
+#    - CYG_ROOT: cygwin64
+#      CYG_ARCH: x86_64
+#      DEP_MODE: lib-pkg
     - appveyor_build_worker_image: Visual Studio 2017
       OCAML_PORT: msvc
       DEP_MODE: lib-pkg
       GIT_FOR_WINDOWS: 1
-    - OCAML_PORT: msvc64
-    - OCAML_PORT: mingw
-    - OCAML_PORT: mingw64
-      DEP_MODE: lib-pkg
-      GIT_FOR_WINDOWS: 1
+#    - OCAML_PORT: msvc64
+#    - OCAML_PORT: mingw
+#    - OCAML_PORT: mingw64
+#      DEP_MODE: lib-pkg
+#      GIT_FOR_WINDOWS: 1
 
 cache:
   - C:\projects\opam\bootstrap
