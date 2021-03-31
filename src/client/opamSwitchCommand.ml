@@ -258,20 +258,15 @@ let install_compiler
                  (OpamSwitchState.opam t nv))))
       base_comp
   in
-  if OpamPackage.Set.is_empty has_comp_flag then
-    (OpamConsole.warning
+  if invariant <> OpamFormula.Empty &&
+     OpamPackage.Set.is_empty has_comp_flag then
+    (OpamConsole.note
        "Packages %s don't have the 'compiler' flag set (nor any of their \
-        direct dependencies)."
+        direct dependencies).\n\
+        You may want to use `opam switch set-invariant' to keep a stable \
+        compiler version on upgrades."
        (OpamStd.List.concat_map ", " OpamPackage.to_string
-          (OpamPackage.Set.elements base_comp));
-    if OpamClientConfig.(!r.show) || OpamStateConfig.(!r.dryrun) ||
-       OpamConsole.confirm
-         "Are you sure you want to define them as the invariant base for this \
-          switch?"
-    then ()
-    else
-      OpamConsole.error_and_exit `Aborted
-        "Aborted installation of non-compiler packages as switch base.");
+          (OpamPackage.Set.elements base_comp)));
   let t =
     if t.switch_config.OpamFile.Switch_config.synopsis = "" then
       let synopsis =
