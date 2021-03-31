@@ -87,7 +87,7 @@ if "%OCAML_PORT%" equ "" (
 )
 
 set CYGWIN_INSTALL_PACKAGES=
-set CYGWIN_UPGRADE_REQUIRED=1
+set CYGWIN_UPGRADE_REQUIRED=0
 
 rem Check that all packages are installed
 for %%P in (%CYGWIN_PACKAGES%) do call :CheckPackage %%P
