@@ -196,9 +196,9 @@ set OPAMCOLOR=always
 set PATH_SHIM=
 if "%OCAML_PORT%" neq "" if "%GIT_FOR_WINDOWS%" equ "1" (
   set PATH_SHIM=PATH=/cygdrive/c/Program\ Files/Git/cmd:$PATH
-  "C:\Program Files\Git\cmd\git.exe" config --global core.autocrlf
+  for /f "delims=" %%C in ('"C:\Program Files\Git\cmd\git.exe" config --global core.autocrlf') do echo core.autocrlf is currently %%C
   "C:\Program Files\Git\cmd\git.exe" config --global core.autocrlf true
-  "C:\Program Files\Git\cmd\git.exe" config --global core.autocrlf
+  for /f "delims=" %%C in ('"C:\Program Files\Git\cmd\git.exe" config --global core.autocrlf') do echo core.autocrlf is now %%C
 )
 "%CYG_ROOT%\bin\bash.exe" -lc "%PATH_SHIM% make -C $APPVEYOR_BUILD_FOLDER tests" || exit /b 1
 rem Can't yet do an opam init with the native Windows builds
