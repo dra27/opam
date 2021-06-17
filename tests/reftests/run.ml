@@ -127,13 +127,10 @@ let rec waitpid pid =
 
 exception Command_failure of int * string * string
 
-let escape_backslashes = Re.(replace_string (compile @@ char '\\') ~by:"\\\\")
-let unescape_backslashes = Re.(replace_string (compile @@ str "\\\\") ~by:"\\")
-
 let str_replace_path ?(escape=false) whichway filters s =
-  let escape, s =
-    if escape then escape_backslashes, s
-    else (fun s -> s), unescape_backslashes s
+  let escape =
+    if escape then Re.(replace_string (compile @@ char '\\') ~by:"\\\\")
+    else fun s -> s
   in
   List.fold_left (fun s (re, by) ->
       let re_path = Re.(
@@ -398,7 +395,7 @@ let parse_command = Parse.command
 let common_filters dir =
    let tmpdir = Filename.get_temp_dir_name () in
     Re.[
-      alt [str dir; str (OpamSystem.back_to_forward dir); str (escape_backslashes dir)],
+      alt [str dir; str (OpamSystem.back_to_forward dir)],
       Some "${BASEDIR}";
       seq [opt (str "/private");
            alt [str tmpdir;
