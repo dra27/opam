@@ -77,6 +77,7 @@ Prefixes used to help generate release notes, changes, and blog posts:
 ## Build
   * Bump src_exts and fix build compat with Dune 2.9.0 [#4752 @dra27]
   * Change minimum required OCaml to 4.03.0 [#4770 @dra27]
+  * Change minimum required Dune to 2.0 [#4770 @dra27]
 
 ## Infrastructure
   *
