@@ -16,6 +16,8 @@
   (c_library_flags (:standard
                    (:include c-libraries.sexp)))
   (wrapped         false)
+  ; This is a temporary trick to workaround Dune Issue 4821
+  (optional)
   (enabled_if      (= %{os_type} "win32")))
 
 (rule
