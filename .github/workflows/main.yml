@@ -83,29 +83,31 @@ jobs:
 #      run: bash -exu .github/scripts/main/ocaml-cache.sh ocaml
 
   archives-cache:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+      fail-fast: false
     steps:
     - uses: actions/checkout@v2
     - name: src ext archives cache
       id: archives
       uses: actions/cache@v2
       with:
-        path: src_ext/archives
-        key: archives-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
+        path: |
+          src_ext/archives
+          ~/opam-repository
+        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
     - name: Retrieve archives
       if: steps.archives.outputs.cache-hit != 'true'
-      run: |#bash -exu .github/scripts/main/caches.sh archives
-        rm -rf src_ext/archives
-        export PATH=~/.cache/ocaml-local/bin:$PATH
-        which ocaml && export OCAML=`which ocaml` || true
-        make -C src_ext cache-archives
-        ls src_ext/archives -al
+      run: bash -exu .github/scripts/archives-cache.sh
 
 ####
 # Build
 ####
   build:
     runs-on: ${{ matrix.os }}
+    needs: archives-cache
     strategy:
       matrix:
         os: [ ubuntu-latest ]
@@ -122,6 +124,15 @@ jobs:
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: sudo apt install bubblewrap
     - uses: actions/checkout@v2
+    - name: src ext archives cache
+      id: archives
+      uses: actions/cache@v2
+      with:
+        path: src_ext/archives
+        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
+    - name: Retrieve archives
+      if: steps.archives.outputs.cache-hit != 'true'
+      run: bash -exu .github/scripts/archives-cache.sh
     - name: ocaml ${{ matrix.ocamlv }} cache
       id: ocaml-cache
       uses: actions/cache@v2
@@ -190,6 +201,15 @@ jobs:
     - name: install deps
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: sudo apt install bubblewrap
+    - name: src ext archives cache
+      id: archives
+      uses: actions/cache@v2
+      with:
+        path: src_ext/archives
+        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
+    - name: Retrieve archives
+      if: steps.archives.outputs.cache-hit != 'true'
+      run: bash -exu .github/scripts/archives-cache.sh
     - name: ocaml ${{ matrix.ocamlv }} cache - test
       id: ocaml-cache-test
       uses: actions/cache@v2
@@ -241,10 +261,14 @@ jobs:
       run: sudo apt install bubblewrap
     - uses: actions/checkout@v2
     - name: src ext archives cache
+      id: archives
       uses: actions/cache@v2
       with:
         path: src_ext/archives
-        key: archives-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
+        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
+    - name: Retrieve archives
+      if: steps.archives.outputs.cache-hit != 'true'
+      run: bash -exu .github/scripts/archives-cache.sh
     - name: Cold
       env:
         OCAML_VERSION: ${{ matrix.ocamlv }}
@@ -350,10 +374,14 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: src ext archives cache
+      id: archives
       uses: actions/cache@v2
       with:
         path: src_ext/archives
-        key: archives-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
+        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
+    - name: Retrieve archives
+      if: steps.archives.outputs.cache-hit != 'true'
+      run: bash -exu .github/scripts/archives-cache.sh
     - id: files
       uses: jitterbit/get-changed-files@v1
       # see https://github.com/jitterbit/get-changed-files/issues/19
