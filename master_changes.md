@@ -72,7 +72,7 @@ Prefixes used to help generate release notes, changes, and blog posts:
   *
 
 ## VCS
-  *
+  * Use 4.08's unnamed functor arguments to silence warning 67 [#4775 @dra27]
 
 ## Build
   * Bump src_exts and fix build compat with Dune 2.9.0 [#4752 @dra27]
