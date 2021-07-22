@@ -79,6 +79,7 @@ Prefixes used to help generate release notes, changes, and blog posts:
   * Upgrade to dose3 >= 6.1 and vendor dose3 7.0.0 [#4760 @kit-ty-kate]
   * Change minimum required OCaml to 4.03.0 [#4770 @dra27]
   * Change minimum required Dune to 2.0 [#4770 @dra27]
+  * Change minimum required OCaml to 4.08.0 for everything except opam-core, opam-format and opam-installer [#4775 @dra27]
 
 ## Infrastructure
   *
