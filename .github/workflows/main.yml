@@ -97,7 +97,7 @@ jobs:
         path: |
           src_ext/archives
           ~/opam-repository
-        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
+        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}-${{ env.OPAM_REPO_SHA }}
     - name: Retrieve archives
       if: steps.archives.outputs.cache-hit != 'true'
       run: bash -exu .github/scripts/archives-cache.sh
@@ -128,8 +128,10 @@ jobs:
       id: archives
       uses: actions/cache@v2
       with:
-        path: src_ext/archives
-        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
+        path: |
+          src_ext/archives
+          ~/opam-repository
+        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}-${{ env.OPAM_REPO_SHA }}
     - name: Retrieve archives
       if: steps.archives.outputs.cache-hit != 'true'
       run: bash -exu .github/scripts/archives-cache.sh
@@ -205,8 +207,10 @@ jobs:
       id: archives
       uses: actions/cache@v2
       with:
-        path: src_ext/archives
-        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
+        path: |
+          src_ext/archives
+          ~/opam-repository
+        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}-${{ env.OPAM_REPO_SHA }}
     - name: Retrieve archives
       if: steps.archives.outputs.cache-hit != 'true'
       run: bash -exu .github/scripts/archives-cache.sh
@@ -264,8 +268,10 @@ jobs:
       id: archives
       uses: actions/cache@v2
       with:
-        path: src_ext/archives
-        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
+        path: |
+          src_ext/archives
+          ~/opam-repository
+        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}-${{ env.OPAM_REPO_SHA }}
     - name: Retrieve archives
       if: steps.archives.outputs.cache-hit != 'true'
       run: bash -exu .github/scripts/archives-cache.sh
@@ -282,7 +288,7 @@ jobs:
 # Compile solver backends
 ####
   solvers:
-    needs: [ build ]
+    needs: [ build, archives-cache ]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -304,6 +310,17 @@ jobs:
       with:
         path: ${{ env.GH_OCAML_CACHE }}
         key: ${{ runner.os }}-ocaml-${{ matrix.ocamlv }}-${{ matrix.solver }}-${{ hashFiles ('.github/scripts/main/ocaml-cache.sh', '.github/scripts/main/preamble.sh') }}-test
+    - name: src ext archives cache
+      id: archives
+      uses: actions/cache@v2
+      with:
+        path: |
+          src_ext/archives
+          ~/opam-repository
+        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}-${{ env.OPAM_REPO_SHA }}
+    - name: Retrieve archives
+      if: steps.archives.outputs.cache-hit != 'true'
+      run: bash -exu .github/scripts/archives-cache.sh
     - name: Building ocaml ${{ env.OCAML_VERSION }} cache - test
       if: steps.ocaml-cache-test.outputs.cache-hit != 'true'
       env:
@@ -377,8 +394,10 @@ jobs:
       id: archives
       uses: actions/cache@v2
       with:
-        path: src_ext/archives
-        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
+        path: |
+          src_ext/archives
+          ~/opam-repository
+        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}-${{ env.OPAM_REPO_SHA }}
     - name: Retrieve archives
       if: steps.archives.outputs.cache-hit != 'true'
       run: bash -exu .github/scripts/archives-cache.sh

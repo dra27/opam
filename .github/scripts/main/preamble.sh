@@ -12,6 +12,8 @@ OPAM_COLD=${OPAM_COLD:-0}
 OPAM_TEST=${OPAM_TEST:-0}
 OPAM_UPGRADE=${OPAM_UPGRADE:-0}
 
+OPAM_REPO_MAIN=https://github.com/ocaml/opam-repository.git
+
 OPAM12CACHE=`eval echo $OPAM12CACHE`
 OPAMBSROOT=`eval echo $OPAMBSROOT`
 
@@ -29,7 +31,11 @@ init-bootstrap () {
     set -e
     export OPAMROOT=$OPAMBSROOT
     # The system compiler will be picked up
-    opam init --no-setup git+$OPAM_REPO#$OPAM_REPO_SHA
+    if [ "$OPAM_REPO" != "$OPAM_REPO_MAIN" ] && [ "$OPAM_REPO.git" != "$OPAM_REPO_MAIN" ] ; then
+      opam init --no-setup git+$OPAM_REPO_MAIN#$OPAM_REPO_SHA
+    else
+      opam init --no-setup git+file://$HOME/opam-repository#$OPAM_REPO_SHA
+    fi
 
     cat >> $OPAMROOT/config <<EOF
 archive-mirrors: "https://opam.ocaml.org/cache"
