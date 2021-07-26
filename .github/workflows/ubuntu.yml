@@ -1,4 +1,4 @@
-name: Builds, tests & co
+name: Linux
 
 on:
   push:
@@ -59,11 +59,7 @@ jobs:
 # Caches
 ####
   archives-cache:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ ubuntu-latest, macos-latest ]
-      fail-fast: false
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - name: src ext archives cache
@@ -112,22 +108,18 @@ jobs:
 # Build
 ####
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     needs: archives-cache
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ Linux ]
         ocamlv: [ 4.08.1, 4.09.1, 4.10.2, 4.11.2, 4.12.1, 4.13.1 ]
-        include:
-          - os: macos-latest
-            ocamlv: 4.13.1
       # Intentionally fail fast, no need to run all build if there is a
       # problem in a given version; usually it is functions not defined in lower
       # versions of OCaml
       fail-fast: true
     steps:
     - name: install deps
-      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: sudo apt install bubblewrap
     - uses: actions/checkout@v2
     - name: src ext archives cache
@@ -206,10 +198,10 @@ jobs:
 ####
   test:
     needs: [ build, archives-cache ]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ Linux ]
         ocamlv: [ 4.13.1 ]
       fail-fast: false
     env:
@@ -217,7 +209,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: install deps
-      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: sudo apt install bubblewrap
     - name: src ext archives cache
       id: archives
@@ -268,15 +259,14 @@ jobs:
 ####
   cold:
     needs: [ build, archives-cache ]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ Linux ]
         ocamlv: [ 4.13.1 ]
       fail-fast: false
     steps:
     - name: install deps
-      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: sudo apt install bubblewrap
     - uses: actions/checkout@v2
     - name: src ext archives cache
@@ -304,10 +294,10 @@ jobs:
 ####
   solvers:
     needs: [ build, archives-cache ]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ Linux ]
         ocamlv: [ 4.13.1 ]
         solver: [ z3, 0install ]
       fail-fast: false
@@ -317,7 +307,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: install deps
-      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: sudo apt install bubblewrap
     - name: ocaml ${{ matrix.ocamlv }} cache - test
       id: ocaml-cache-test
@@ -364,15 +353,14 @@ jobs:
 ####
   upgrade:
     needs: [ build ]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ Linux ]
         ocamlv: [ 4.13.1 ]
       fail-fast: false
     steps:
     - name: install deps
-      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: sudo apt install bubblewrap
     - uses: actions/checkout@v2
     - name: opam 1.2 root cache
