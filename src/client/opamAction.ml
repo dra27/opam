@@ -548,7 +548,7 @@ let opam_local_env_of_status ret =
          | None -> "0"
          | Some r -> string_of_int r.OpamProcess.r_code)))
 
-let make_command st opam ?dir ?text_command (cmd, args) =
+let make_command st opam ?dir ?text_command ?(jobserver=false) (cmd, args) =
   let nv = OpamFile.OPAM.package opam in
   let name = OpamPackage.name_to_string nv in
   let env = OpamTypesBase.env_array (compilation_env st opam) in
@@ -598,7 +598,7 @@ let make_command st opam ?dir ?text_command (cmd, args) =
           OpamStd.Option.to_string (fun s -> "#"^s) stamp
     ]
   in
-  OpamSystem.make_command ~env ~name ?dir ~text
+  OpamSystem.make_command ~jobserver ~env ~name ?dir ~text
     ~resolve_path:OpamStateConfig.(not !r.dryrun)
     ~metadata:["context", context]
     ~verbose:(OpamConsole.verbose ())
@@ -869,7 +869,7 @@ let build_package t ?(test=false) ?(doc=false) build_dir nv =
     List.map (fun ((cmd,args) as cmd_args) -> function
         | None ->
           let base_cmd = OpamProcess.command cmd args in
-          (mk_cmd ~text_command:cmd_args @@
+          (mk_cmd ~jobserver:(cmd = "make") ~text_command:cmd_args @@
            cmd_wrapper t opam wrappers OpamFile.Wrappers.wrap_build cmd args)
           @@> check_result base_cmd
         | some -> Done some)

@@ -165,7 +165,7 @@ val directories_with_links: string -> string list
     [resolve_path] is set to false (in which case you can end up
     with a process error instead) *)
 val make_command:
-  ?verbose:bool -> ?env:string array -> ?name:string -> ?text:string ->
+  ?jobserver:bool -> ?verbose:bool -> ?env:string array -> ?name:string -> ?text:string ->
   ?metadata:(string * string) list -> ?allow_stdin:bool -> ?stdout:string ->
   ?dir:string -> ?resolve_path:bool ->
   string -> string list -> OpamProcess.command

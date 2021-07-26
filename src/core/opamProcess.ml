@@ -11,6 +11,11 @@
 
 open OpamCompat
 
+let jobserver_flags = ref ""
+
+let jobserver_get = ref Unix.stdin
+let jobserver_return = ref Unix.stderr
+
 let log ?level fmt =
   OpamConsole.log "PROC" ?level fmt
 
@@ -206,6 +211,7 @@ type command = {
   cmd_verbose: bool option;
   cmd_name: string option;
   cmd_metadata: (string * string) list option;
+  cmd_jobserver: bool;
 }
 
 let string_of_command c = String.concat " " (c.cmd::c.args)
@@ -227,11 +233,11 @@ let make_command_text ?(color=`green) str ?(args=[]) cmd =
   in
   Printf.sprintf "[%s: %s]" (OpamConsole.colorise color str) summary
 
-let command ?env ?verbose ?name ?metadata ?dir ?allow_stdin ?stdout ?text
+let command ?(jobserver=false) ?env ?verbose ?name ?metadata ?dir ?allow_stdin ?stdout ?text
     cmd args =
   { cmd; args;
     cmd_env=env; cmd_verbose=verbose; cmd_name=name; cmd_metadata=metadata;
-    cmd_dir=dir; cmd_stdin=allow_stdin; cmd_stdout=stdout; cmd_text=text; }
+    cmd_dir=dir; cmd_stdin=allow_stdin; cmd_stdout=stdout; cmd_text=text; cmd_jobserver=jobserver}
 
 
 (** Running processes *)
@@ -249,6 +255,7 @@ type t = {
   p_metadata: (string * string) list;
   p_verbose: bool;
   p_tmp_files: string list;
+  p_token  : char;
 }
 
 let open_flags =  [Unix.O_WRONLY; Unix.O_CREAT; Unix.O_APPEND]
@@ -458,6 +465,11 @@ let create ?info_file ?env_file ?(allow_stdin=true) ?stdout_file ?stderr_file ?e
   close_stdout ();
   close_stderr ();
   Unix.chdir oldcwd;
+  let token =
+    let buf = Bytes.create 1 in
+    ignore (Unix.read !jobserver_get buf 0 1);
+    Bytes.get buf 0
+  in
   {
     p_name   = cmd;
     p_args   = args;
@@ -471,6 +483,7 @@ let create ?info_file ?env_file ?(allow_stdin=true) ?stdout_file ?stderr_file ?e
     p_metadata = metadata;
     p_verbose = verbose;
     p_tmp_files = tmp_files;
+    p_token = token;
   }
 
 type result = {
@@ -519,12 +532,13 @@ let run_background command =
   let { cmd; args;
         cmd_env=env; cmd_verbose=_; cmd_name=name; cmd_text=_;
         cmd_metadata=metadata; cmd_dir=dir;
-        cmd_stdin=allow_stdin; cmd_stdout } =
+        cmd_stdin=allow_stdin; cmd_stdout; cmd_jobserver=jobserver } =
     command
   in
   let verbose = is_verbose_command command in
   let allow_stdin = OpamStd.Option.default false allow_stdin in
   let env = match env with Some e -> e | None -> Unix.environment () in
+  let env = if not jobserver then env else Array.append env [| !jobserver_flags |] in
   let file ext = match name with
     | None -> None
     | Some n ->
@@ -570,6 +584,7 @@ let dry_run_background c = {
   p_metadata = OpamStd.Option.default [] c.cmd_metadata;
   p_verbose = is_verbose_command c;
   p_tmp_files = [];
+  p_token = '\000'
 }
 
 let verbose_print_cmd p =
@@ -649,6 +664,7 @@ let exit_status p return =
     make_info ?code ?signal
       ~cmd:p.p_name ~args:p.p_args ~cwd:p.p_cwd ~metadata:p.p_metadata
       ~env_file:p.p_env ~stdout_file:p.p_stdout ~stderr_file:p.p_stderr () in
+  ignore (Unix.write_substring !jobserver_return (String.make 1 p.p_token) 0 1);
   {
     r_code     = OpamStd.Option.default 256 code;
     r_signal   = signal;
@@ -963,3 +979,38 @@ module Job = struct
 end
 
 type 'a job = 'a Job.Op.job
+
+(* XXX Yet again... *)
+external unix_int_of_fd : Unix.file_descr -> int = "%identity"
+
+let jobserver (available, returned) =
+  let buf = Bytes.create 1024 in
+  try
+    while true do
+      ignore (Unix.select [returned] [] [] (-1.0));
+      let l = Unix.read returned buf 0 1024 in
+      (* XXX Token check *)
+      ignore (Unix.write available buf 0 l);
+      (*Printf.eprintf "opam %d: jobserver returned %d tokens\n%!" (Thread.id (Thread.self ())) l*)
+    done
+  with Unix.Unix_error _ ->
+    Printf.eprintf "opam %d: jobserver terminating\n%!" (Thread.id (Thread.self ()))
+
+let init_jobserver jobs =
+  (* XXX If jobs < 1 then we disable the jobserver *)
+  let tokens = jobs in
+  let (child_read, available) = Unix.pipe ~cloexec:false () in
+  let (returned, child_write) = Unix.pipe ~cloexec:false () in
+  Unix.set_close_on_exec available;
+  Unix.set_close_on_exec returned;
+  jobserver_get := child_read;
+  jobserver_return := child_write;
+  let child_read_fd = unix_int_of_fd child_read in
+  let child_write_fd = unix_int_of_fd child_write in
+  (* XXX We'll do something cleverer here to detect multiple token return *)
+  ignore (Unix.write_substring available (String.make tokens 'x') 0 tokens);
+  (* XXX THese need to _update_ any MAKEFLAGS *)
+  jobserver_flags := Printf.sprintf "MAKEFLAGS= -j %d --jobserver-auth=%d,%d" jobs child_read_fd child_write_fd;
+  Printf.eprintf "Starting up jobserver with %d tokens\n%!" tokens;
+  let t = Thread.create jobserver (available, returned) in
+  at_exit (fun () -> Unix.close available; ignore (Unix.write_substring child_write "x" 0 1); Thread.join t)

@@ -26,6 +26,7 @@ type command
     @param command      The command itself
     @param args         Command-line arguments *)
 val command:
+  ?jobserver:bool ->
   ?env:string array ->
   ?verbose:bool ->
   ?name:string ->
@@ -65,6 +66,7 @@ type t = {
                                 displayed *)
   p_tmp_files: string list; (** temporary files that should be cleaned up upon
                                 completion *)
+  p_token  : char; (** Jobserver token to be returned... this should not be here XXX *)
 }
 
 (** Process results *)
@@ -221,3 +223,5 @@ val create_process_env :
   string -> string array -> string array ->
   Unix.file_descr -> Unix.file_descr -> Unix.file_descr ->
   int
+
+val init_jobserver : int -> unit

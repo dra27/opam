@@ -626,6 +626,7 @@ let apply_build_options b =
     ?locked:(if b.locked then Some (Some b.lock_suffix) else None)
     ?no_depexts:(flag b.no_depexts)
     ();
+  OpamProcess.init_jobserver (Lazy.force !OpamStateConfig.r.jobs);
   OpamClientConfig.update
     ?keep_build_dir:(flag b.keep_build_dir)
     ?reuse_build_dir:(flag b.reuse_build_dir)

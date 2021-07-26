@@ -497,7 +497,7 @@ let print_stats () =
 let log_file ?dir name = temp_file ?dir (OpamStd.Option.default "log" name)
 
 let make_command
-    ?verbose ?(env=default_env) ?name ?text ?metadata ?allow_stdin ?stdout
+    ?jobserver ?verbose ?(env=default_env) ?name ?text ?metadata ?allow_stdin ?stdout
     ?dir ?(resolve_path=true)
     cmd args =
   let name = log_file name in
@@ -514,7 +514,7 @@ let make_command
   match full_cmd with
   | `Cmd cmd ->
     OpamProcess.command
-      ~env ~name ?text ~verbose ?metadata ?allow_stdin ?stdout ?dir
+      ?jobserver ~env ~name ?text ~verbose ?metadata ?allow_stdin ?stdout ?dir
       cmd args
   | `Not_found -> command_not_found cmd
   | `Denied -> permission_denied cmd

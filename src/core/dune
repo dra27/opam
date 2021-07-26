@@ -2,7 +2,7 @@
   (name        opam_core)
   (public_name opam-core)
   (synopsis    "OCaml Package Manager core internal stdlib")
-  (libraries   re ocamlgraph unix bigarray
+  (libraries   re ocamlgraph unix bigarray threads.posix
                (select opamACL.ml from
                        (opam-core.libacl -> opamACL.ml.libacl)
                        (                 -> opamACL.ml.dummy))
