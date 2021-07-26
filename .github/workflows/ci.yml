@@ -69,6 +69,36 @@ jobs:
       if: steps.archives.outputs.cache-hit != 'true'
       run: bash -exu .github/scripts/archives-cache.sh
 
+  legacy-cache:
+    runs-on: ubuntu-latest
+    steps:
+    - name: legacy cache
+      id: legacy
+      uses: actions/cache@v2
+      with:
+        path: ~/.opam
+        key: legacy-${{ runner.os }}-${{ env.OPAM_REPO_SHA }}
+    - name: install deps
+      if: steps.legacy.outputs.cache-hit != 'true'
+      run: sudo apt install opam
+    - uses: actions/checkout@v2
+      if: steps.legacy.outputs.cache-hit != 'true'
+    - name: ocaml 4.03 cache
+      if: steps.legacy.outputs.cache-hit != 'true'
+      id: ocaml-cache
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.GH_OCAML_CACHE }}
+        key: ${{ runner.os }}-ocaml-4.03.0-${{ hashFiles ('.github/scripts/ocaml-cache.sh', '.github/scripts/preamble.sh') }}
+    - name: Building ocaml ${{ matrix.ocamlv }} cache
+      if: steps.legacy.outputs.cache-hit != 'true' && steps.ocaml-cache.outputs.cache-hit != 'true'
+      env:
+        OCAML_VERSION: 4.03.0
+      run: bash -exu .github/scripts/ocaml-cache.sh ocaml
+    - name: Build ocaml-secondary-compiler
+      if: steps.legacy.outputs.cache-hit != 'true'
+      run: bash -exu .github/scripts/legacy-cache.sh
+
 ####
 # Build
 ####
@@ -123,6 +153,7 @@ jobs:
 ####
   legacy:
     runs-on: ubuntu-latest
+    needs: legacy-cache
     strategy:
       matrix:
         os: [ Linux ]
@@ -135,6 +166,15 @@ jobs:
     - name: install deps
       run: sudo apt install opam
     - uses: actions/checkout@v2
+    - name: legacy cache
+      id: legacy
+      uses: actions/cache@v2
+      with:
+        path: ~/.opam
+        key: legacy-${{ runner.os }}-${{ env.OPAM_REPO_SHA }}
+    - name: Build ocaml-secondary-compiler
+      if: steps.legacy.outputs.cache-hit != 'true'
+      run: bash -exu .github/scripts/legacy-cache.sh
     - name: ocaml ${{ matrix.ocamlv }} cache
       id: ocaml-cache
       uses: actions/cache@v2
