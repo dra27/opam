@@ -5,7 +5,6 @@
 export OPAMYES=1
 export OCAMLRUNPARAM=b
 
-opam init default git+file://$HOME/opam-repository#$OPAM_REPO_SHA
 eval $(opam env)
 OPAMCLI=2.0 opam reinstall ocaml-system --unlock-base
 opam upgrade
