@@ -1,4 +1,4 @@
-name: Builds, tests & co
+name: macOS
 
 on: [ push, pull_request ]
 
@@ -25,36 +25,8 @@ jobs:
 ####
 # Caches
 ####
-#  ocaml-cache:
-#    runs-on: ${{ matrix.os }}
-#    strategy:
-#      matrix:
-#        os: [ ubuntu-latest ]
-#        ocamlv: [ 4.02.3, 4.03.0, 4.04.2, 4.05.0, 4.06.1, 4.07.1, 4.08.1, 4.09.1, 4.10.2, 4.11.2 ]
-#        include:
-#          - os: macos-latest
-#            ocamlv: 4.11.2
-#      fail-fast: false
-#    steps:
-#    - uses: actions/checkout@v2
-#    - name: ocaml ${{ matrix.ocamlv }} cache
-#      id: ocaml-cache
-#      uses: actions/cache@v2
-#      with:
-#        path: ${{ env.GH_OCAML_CACHE }}
-#        key: ${{ runner.os }}-ocaml-${{ matrix.ocamlv }}-${{ hashFiles ('.github/scripts/ocaml-cache.sh', '.github/scripts/preamble.sh') }}
-#    - name: Building ocaml ${{ matrix.ocamlv }} cache
-#      if: steps.ocaml-cache.outputs.cache-hit != 'true'
-#      env:
-#        OCAML_VERSION: ${{ matrix.ocamlv }}
-#      run: bash -exu .github/scripts/ocaml-cache.sh ocaml
-
   archives-cache:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ ubuntu-latest, macos-latest ]
-      fail-fast: false
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
     - name: src ext archives cache
@@ -73,23 +45,17 @@ jobs:
 # Build
 ####
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     needs: archives-cache
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
-        ocamlv: [ 4.08.1, 4.09.1, 4.10.2, 4.11.2, 4.12.0 ]
-        include:
-          - os: macos-latest
-            ocamlv: 4.12.0
+        os: [ macOS ]
+        ocamlv: [ 4.12.0 ]
       # Intentionally fail fast, no need to run all build if there is a
       # problem in a given version; usually it is functions not defined in lower
       # versions of OCaml
-      fail-fast: true
+      fail-fast: false
     steps:
-    - name: install deps
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: sudo apt install bubblewrap
     - uses: actions/checkout@v2
     - name: src ext archives cache
       id: archives
@@ -119,56 +85,20 @@ jobs:
       run: bash -exu .github/scripts/main.sh
 
 ####
-# Legacy
-####
-  legacy:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        os: [ Linux ]
-        ocamlv: [ 4.03.0, 4.04.2, 4.05.0, 4.06.1, 4.07.1 ]
-      # Intentionally fail fast, no need to run all build if there is a
-      # problem in a given version; usually it is functions not defined in lower
-      # versions of OCaml
-      fail-fast: true
-    steps:
-    - name: install deps
-      run: sudo apt install opam
-    - uses: actions/checkout@v2
-    - name: ocaml ${{ matrix.ocamlv }} cache
-      id: ocaml-cache
-      uses: actions/cache@v2
-      with:
-        path: ${{ env.GH_OCAML_CACHE }}
-        key: ${{ runner.os }}-ocaml-${{ matrix.ocamlv }}-${{ hashFiles ('.github/scripts/ocaml-cache.sh', '.github/scripts/preamble.sh') }}
-    - name: Building ocaml ${{ matrix.ocamlv }} cache
-      if: steps.ocaml-cache.outputs.cache-hit != 'true'
-      env:
-        OCAML_VERSION: ${{ matrix.ocamlv }}
-      run: bash -exu .github/scripts/ocaml-cache.sh ocaml
-    - name: Build
-      env:
-        OCAML_VERSION: ${{ matrix.ocamlv }}
-      run: bash -exu .github/scripts/legacy.sh
-
-####
 # Opam tests
 ####
   test:
     needs: [ build, archives-cache ]
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ macOS ]
         ocamlv: [ 4.11.2 ]
       fail-fast: false
     env:
       OPAM_TEST: 1
     steps:
     - uses: actions/checkout@v2
-    - name: install deps
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: sudo apt install bubblewrap
     - name: src ext archives cache
       id: archives
       uses: actions/cache@v2
@@ -214,51 +144,14 @@ jobs:
       run: bash -exu .github/scripts/main.sh
 
 ####
-# Opam cold
-####
-  cold:
-    needs: [ build, archives-cache ]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-#        os: [ ubuntu-latest, macos-latest ]
-        os: [ ubuntu-latest ]
-        ocamlv: [ 4.11.2 ]
-      fail-fast: false
-    steps:
-    - name: install deps
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: sudo apt install bubblewrap
-    - uses: actions/checkout@v2
-    - name: src ext archives cache
-      id: archives
-      uses: actions/cache@v2
-      with:
-        path: |
-          src_ext/archives
-          ~/opam-repository
-        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}-${{ env.OPAM_REPO_SHA }}
-    - name: Retrieve archives
-      if: steps.archives.outputs.cache-hit != 'true'
-      run: bash -exu .github/scripts/archives-cache.sh
-    - name: Cold
-      env:
-        OCAML_VERSION: ${{ matrix.ocamlv }}
-        OPAM_COLD: 1
-      run: |
-        make compiler
-        make lib-pkg
-        bash -exu .github/scripts/main.sh
-
-####
 # Compile solver backends
 ####
   solvers:
     needs: [ build, archives-cache ]
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ macOS ]
         ocamlv: [ 4.11.2 ]
         solver: [ z3, 0install ]
       fail-fast: false
@@ -267,9 +160,6 @@ jobs:
       OPAMBSROOT: ~/.cache/opam.${{ matrix.solver }}.cached
     steps:
     - uses: actions/checkout@v2
-    - name: install deps
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: sudo apt install bubblewrap
     - name: ocaml ${{ matrix.ocamlv }} cache - test
       id: ocaml-cache-test
       uses: actions/cache@v2
@@ -315,16 +205,13 @@ jobs:
 ####
   upgrade:
     needs: [ build ]
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ macOS ]
         ocamlv: [ 4.11.2 ]
       fail-fast: false
     steps:
-    - name: install deps
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: sudo apt install bubblewrap
     - uses: actions/checkout@v2
     - name: opam 1.2 root cache
       uses: actions/cache@v2
@@ -347,29 +234,3 @@ jobs:
         OCAML_VERSION: ${{ matrix.ocamlv }}
         OPAM_UPGRADE: 1
       run: bash -exu .github/scripts/main.sh
-
-####
-# Around opam tests
-###
-  hygiene:
-    needs: [ archives-cache ]
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: src ext archives cache
-      id: archives
-      uses: actions/cache@v2
-      with:
-        path: |
-          src_ext/archives
-          ~/opam-repository
-        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}-${{ env.OPAM_REPO_SHA }}
-    - name: Retrieve archives
-      if: steps.archives.outputs.cache-hit != 'true'
-      run: bash -exu .github/scripts/archives-cache.sh
-    - name: Hygiene
-      env:
-        # Defined only on pull request jobs
-        BASE_REF_SHA: ${{ github.event.pull_request.base.sha }}
-        PR_REF_SHA: ${{ github.event.pull_request.head.sha }}
-      run: bash -exu .github/scripts/hygiene.sh
