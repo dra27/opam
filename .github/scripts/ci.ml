@@ -202,6 +202,12 @@ let install_sys_sandbox ?cache_name () ~oc ~platform ~job f =
   end;
   f ~sandbox:() ~oc ~platform ~job
 
+let install_sys_ocaml ?cache_name () ~oc ~platform ~job f =
+  output_string oc "    - name: install deps\n";
+  on_cache_miss ~oc cache_name;
+  fprintf oc "      run: %s\n" (install_platform_package platform "ocaml");
+  f ~ocaml:() ~oc ~platform ~job
+
 let install_sys_opam ?cache_name () ~oc ~platform ~job f =
   output_string oc "    - name: install deps\n";
   on_cache_miss ~oc cache_name;
@@ -415,8 +421,9 @@ let upgrade_job ~build_job_name ~version ~oc ~platform =
 let hygiene_job ~archives_job_name ~oc ~platform =
   job ~section:"Around opam tests" ~oc ~platform ~needs:[archives_job_name] "hygiene"
     ++ checkout () (fun ~checkout ->
-         archives_cache ~checkout (fun ~archives ->
-           steps
+         install_sys_ocaml () (fun ~ocaml ->
+           archives_cache ~checkout (fun ~archives ->
+             steps
 {|    - name: Hygiene
       env:
         # Defined only on pull request jobs
@@ -424,6 +431,7 @@ let hygiene_job ~archives_job_name ~oc ~platform =
         PR_REF_SHA: ${{ github.event.pull_request.head.sha }}
       run: bash -exu .github/scripts/hygiene.sh
 |}
+           )
          )
        )
     ++ end_job
