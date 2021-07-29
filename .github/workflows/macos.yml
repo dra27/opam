@@ -6,13 +6,10 @@ env:
   OPAMBSVERSION: 2.1.0
   OPAMBSROOT: ~/.cache/.opam.cached
   OPAM12CACHE: ~/.cache/opam1.2/cache
-  # These should be identical to the values in appveyor.yml and the other workflows
-  OPAM_REPO: https://github.com/ocaml/opam-repository.git
+  OPAM_REPO: https://github.com/dra27/opam-repository.git
   OPAM_TEST_REPO_SHA: 02ead5a557d118a8d7de05edeae25d2301325a7a
-  OPAM_REPO_SHA: 02ead5a557d118a8d7de05edeae25d2301325a7a
-  # Default ocaml version for some jobs
+  OPAM_REPO_SHA: 03356a3912d5717064abf00fe0004f6f1e314305
   OCAML_VERSION: 4.11.2
-  ## variables for cache paths
   GH_OCAML_CACHE: ~/.cache/ocaml-local/**
   SOLVER:
 
@@ -51,10 +48,7 @@ jobs:
       matrix:
         os: [ macOS ]
         ocamlv: [ 4.12.0 ]
-      # Intentionally fail fast, no need to run all build if there is a
-      # problem in a given version; usually it is functions not defined in lower
-      # versions of OCaml
-      fail-fast: false
+      fail-fast: true
     steps:
     - uses: actions/checkout@v2
     - name: src ext archives cache
@@ -88,8 +82,8 @@ jobs:
 # Opam tests
 ####
   test:
-    needs: [ build, archives-cache ]
     runs-on: macos-latest
+    needs: [ build, archives-cache ]
     strategy:
       matrix:
         os: [ macOS ]
@@ -110,14 +104,14 @@ jobs:
     - name: Retrieve archives
       if: steps.archives.outputs.cache-hit != 'true'
       run: bash -exu .github/scripts/archives-cache.sh
-    - name: ocaml ${{ matrix.ocamlv }} cache - test
-      id: ocaml-cache-test
+    - name: ocaml ${{ matrix.ocamlv }} cache
+      id: ocaml-cache
       uses: actions/cache@v2
       with:
         path: ${{ env.GH_OCAML_CACHE }}
         key: ${{ runner.os }}-ocaml-${{ matrix.ocamlv }}-${{ hashFiles ('.github/scripts/ocaml-cache.sh', '.github/scripts/preamble.sh') }}-test
-    - name: Building ocaml ${{ env.OCAML_VERSION }} cache - test
-      if: steps.ocaml-cache-test.outputs.cache-hit != 'true'
+    - name: Building ocaml ${{ matrix.ocamlv }} cache
+      if: steps.ocaml-cache.outputs.cache-hit != 'true'
       env:
         OCAML_VERSION: ${{ matrix.ocamlv }}
       run: bash -exu .github/scripts/ocaml-cache.sh ocaml
@@ -133,7 +127,6 @@ jobs:
       if: steps.opam-bootstrap.outputs.cache-hit != 'true'
       run: bash -exu .github/scripts/opam-bs-cache.sh
     - name: opam-rt cache
-      id: opam-rt
       uses: actions/cache@v2
       with:
         path: ~/.cache/opam-rt/**
@@ -147,8 +140,8 @@ jobs:
 # Compile solver backends
 ####
   solvers:
-    needs: [ build, archives-cache ]
     runs-on: macos-latest
+    needs: [ build, archives-cache ]
     strategy:
       matrix:
         os: [ macOS ]
@@ -160,12 +153,17 @@ jobs:
       OPAMBSROOT: ~/.cache/opam.${{ matrix.solver }}.cached
     steps:
     - uses: actions/checkout@v2
-    - name: ocaml ${{ matrix.ocamlv }} cache - test
-      id: ocaml-cache-test
+    - name: ocaml ${{ matrix.ocamlv }} cache
+      id: ocaml-cache
       uses: actions/cache@v2
       with:
         path: ${{ env.GH_OCAML_CACHE }}
-        key: ${{ runner.os }}-ocaml-${{ matrix.ocamlv }}-${{ matrix.solver }}-${{ hashFiles ('.github/scripts/ocaml-cache.sh', '.github/scripts/preamble.sh') }}-test
+        key: ${{ runner.os }}-ocaml-${{ matrix.ocamlv }}-${{ hashFiles ('.github/scripts/ocaml-cache.sh', '.github/scripts/preamble.sh') }}-test
+    - name: Building ocaml ${{ matrix.ocamlv }} cache
+      if: steps.ocaml-cache.outputs.cache-hit != 'true'
+      env:
+        OCAML_VERSION: ${{ matrix.ocamlv }}
+      run: bash -exu .github/scripts/ocaml-cache.sh ocaml
     - name: src ext archives cache
       id: archives
       uses: actions/cache@v2
@@ -177,22 +175,15 @@ jobs:
     - name: Retrieve archives
       if: steps.archives.outputs.cache-hit != 'true'
       run: bash -exu .github/scripts/archives-cache.sh
-    - name: Building ocaml ${{ env.OCAML_VERSION }} cache - test
-      if: steps.ocaml-cache-test.outputs.cache-hit != 'true'
-      env:
-        OCAML_VERSION: ${{ matrix.ocamlv }}
-      run: bash -exu .github/scripts/ocaml-cache.sh ocaml
     - name: opam bootstrap cache
       id: opam-bootstrap
       uses: actions/cache@v2
       with:
         path: |
-          ~/.cache/opam.${{ matrix.solver }}.cached
+          ${{ env.OPAMBSROOT }}/**
           ~/.cache/opam-local/bin/**
-        key: opam-${{ matrix.solver }}-${{ runner.os }}-${{ env.OPAMBSVERSION }}-${{ matrix.ocamlv }}-${{ hashFiles ('.github/scripts/opam-bs-cache.sh', '.github/scripts/preamble.sh') }}
+        key: opam-${{ matrix.solver }}-${{ runner.os }}-${{ env.OPAMBSVERSION }}-${{ matrix.ocamlv }}-${{ env.OPAM_REPO_SHA }}-${{ hashFiles ('.github/scripts/opam-bs-cache.sh', '.github/scripts/preamble.sh') }}
     - name: opam root cache
-      env:
-        OPAMBSROOT: ~/.cache/opam.${{ matrix.solver }}.cached
       if: steps.opam-bootstrap.outputs.cache-hit != 'true'
       run: bash -exu .github/scripts/opam-bs-cache.sh
     - name: Compile
@@ -204,8 +195,8 @@ jobs:
 # Upgrade from 1.2 to current
 ####
   upgrade:
-    needs: [ build ]
     runs-on: macos-latest
+    needs: build
     strategy:
       matrix:
         os: [ macOS ]
@@ -213,11 +204,6 @@ jobs:
       fail-fast: false
     steps:
     - uses: actions/checkout@v2
-    - name: opam 1.2 root cache
-      uses: actions/cache@v2
-      with:
-        path: ${{ env.OPAM12CACHE }}
-        key: ${{ runner.os }}-opam1.2-root
     - name: ocaml ${{ matrix.ocamlv }} cache
       id: ocaml-cache
       uses: actions/cache@v2
@@ -229,6 +215,11 @@ jobs:
       env:
         OCAML_VERSION: ${{ matrix.ocamlv }}
       run: bash -exu .github/scripts/ocaml-cache.sh ocaml
+    - name: opam 1.2 root cache
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.OPAM12CACHE }}
+        key: ${{ runner.os }}-opam1.2-root
     - name: Upgrade
       env:
         OCAML_VERSION: ${{ matrix.ocamlv }}
