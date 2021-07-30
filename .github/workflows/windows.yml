@@ -1,0 +1,54 @@
+name: Windows
+
+on: [ push, pull_request ]
+
+env:
+  OPAMBSVERSION: 2.1.0
+  OPAMBSROOT: ~/.cache/.opam.cached
+  OPAM12CACHE: ~/.cache/opam1.2/cache
+  OPAM_REPO: https://github.com/dra27/opam-repository.git
+  OPAM_TEST_REPO_SHA: 02ead5a557d118a8d7de05edeae25d2301325a7a
+  OPAM_REPO_SHA: 03356a3912d5717064abf00fe0004f6f1e314305
+  OCAML_VERSION: 4.11.2
+  GH_OCAML_CACHE: ~/.cache/ocaml-local/**
+  SOLVER:
+  CYGWIN_MIRROR: http://mirrors.kernel.org/sourceware/cygwin/
+  CYGWIN_ROOT: D:\cygwin
+  CYGWIN32_CACHE_DIR: D:\cache\cygwin32
+  CYGWIN64_CACHE_DIR: D:\cache\cygwin64
+  # COMBAK ... date based or summat
+  CYGWIN_EPOCH: 4
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+####
+# Caches
+####
+  cygwin:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Cygwin32 Cache
+      id: cygwin32
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.CYGWIN32_CACHE_DIR }}
+        key: cygwin32-${{ env.CYGWIN_EPOCH }}
+    - name: Cygwin64 Cache
+      id: cygwin64
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.CYGWIN64_CACHE_DIR }}
+        key: cygwin64-${{ env.CYGWIN_EPOCH }}
+    - name: Install Cygwin32
+      if: steps.cygwin32.outputs.cache-hit != 'true'
+      shell: cmd
+      run: .github\scripts\cygwin.cmd cygwin32
+    - name: Install Cygwin64
+      if: steps.cygwin64.outputs.cache-hit != 'true'
+      shell: cmd
+      run: .github\scripts\cygwin.cmd cygwin64
