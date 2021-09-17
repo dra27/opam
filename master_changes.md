@@ -25,7 +25,7 @@ New option/command/subcommand are prefixed with ◈.
   *
 
 ## Switch
-  *
+  * Ensure setenv can use package variables defined during the build [#4841 @dra27]
 
 ## Pin
   *
