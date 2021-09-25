@@ -38,6 +38,36 @@ let unzip_to elt =
   in
   aux []
 
+(* XXX Completely remove function above *)
+
+let rec take_rest l r =
+  match l, r with
+  | (l::ls, r::rs) ->
+    if l = r then
+      take_rest ls rs
+    else
+      None
+  | ([], rs) -> Some rs
+  | (_, []) -> None
+
+let unzip_to_all elt rest =
+  let rec aux acc = function
+  | [] -> None
+  | x::r ->
+    if x = elt then
+      match take_rest rest r with
+      | Some r -> Some (acc, r)
+      | None -> aux (x::acc) r
+    else aux (x::acc) r
+  in
+  aux []
+
+let unzip_to elt current =
+  match split_var elt with
+  | [elt] -> unzip_to elt current
+  | elt::rest -> unzip_to_all elt rest current
+  | [] -> assert false
+
 let rezip ?insert (l1, l2) =
   List.rev_append l1 (match insert with None -> l2 | Some i -> i::l2)
 
