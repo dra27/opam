@@ -420,9 +420,15 @@ let env_hook_script_base = function
   | SH_fish -> Some OpamScript.env_hook_fish
   | SH_cmd -> None
 
+let rem = function
+| SH_cmd ->
+    "rem"
+| _ ->
+    "#"
+
 let export_in_shell shell =
   let make_comment comment_opt =
-    OpamStd.Option.to_string (Printf.sprintf "# %s\n") comment_opt
+    OpamStd.Option.to_string (Printf.sprintf "%s %s\n" (rem shell)) comment_opt
   in
   let sh _   (k,v,comment) =
     Printf.sprintf "%s%s=%s; export %s;\n"
@@ -463,7 +469,7 @@ let export_in_shell shell =
 
 let env_hook_script shell =
   OpamStd.Option.map (fun script ->
-      export_in_shell shell ("OPAMNOENVNOTICE", "true", None)
+      export_in_shell shell "" ("OPAMNOENVNOTICE", "true", None)
       ^ script)
     (env_hook_script_base shell)
 
@@ -477,6 +483,8 @@ let source root shell f =
   | SH_sh | SH_bash | SH_zsh ->
     Printf.sprintf "test -r %s && . %s > /dev/null 2> /dev/null || true\n"
       (file f) (file f)
+  | SH_cmd ->
+    "<cmd>"
 
 let if_interactive_script shell t e =
   let ielse else_opt = match else_opt with
@@ -490,6 +498,8 @@ let if_interactive_script shell t e =
     Printf.sprintf "if ( $?prompt ) then\n  %s%sendif\n" t @@ ielse e
   | SH_fish ->
     Printf.sprintf "if isatty\n  %s%send\n" t @@ ielse e
+  | SH_cmd ->
+    assert false
 
 let init_script root shell =
   let interactive =
@@ -517,7 +527,7 @@ let string_of_update st shell updates =
     let key, value =
       let separator = match ident with
       | "PATH" | "CAML_LD_LIBRARY_PATH" | "PERL5LIB" ->
-          OpamStd.Sys.path_sep ()
+          OpamStd.Sys.path_sep
       | _ ->
           ':' in
       let retrieve =
@@ -541,12 +551,6 @@ let string_of_update st shell updates =
     in
     export_in_shell shell prefix (key, value, comment) in
   OpamStd.List.concat_map "" aux updates
-
-let rem = function
-| SH_cmd ->
-    "rem"
-| _ ->
-    "#"
 
 let write_script dir (name, body) =
   let file = dir // name in
@@ -598,7 +602,7 @@ let write_dynamic_init_scripts st =
       (fun shell ->
          write_script (OpamPath.init st.switch_global.root)
            (variables_file shell, string_of_update st shell updates))
-      [SH_sh; SH_csh; SH_fish] @ (if Sys.win32 then [SH_cmd] else [])
+      ([SH_sh; SH_csh; SH_fish] @ (if Sys.win32 then [SH_cmd] else []))
   with OpamSystem.Locked ->
     OpamConsole.warning
       "Global shell init scripts not installed (could not acquire lock)"
@@ -697,7 +701,7 @@ let setup
       OpamConsole.header_msg "Required setup - please read";
 
       let msg =
-        if Sys.win32 then
+        if shell = SH_cmd then
           fun dir_sep _ _ _ eval_string ->
             OpamConsole.msg
               "\n\
@@ -736,34 +740,40 @@ let setup
         OpamConsole.warning "Shell not updated in non-interactive mode: use --shell-setup";
         None
       end else
-        match
-          OpamConsole.read
-            "Do you want opam to modify %s? [N/y/f]\n\
-             (default is 'no', use 'f' to choose a different file)"
-            (OpamFilename.prettify dot_profile)
-        with
-        | Some ("y" | "Y" | "yes"  | "YES" ) -> Some dot_profile
-        | Some ("f" | "F" | "file" | "FILE") ->
-          begin
-            match OpamConsole.read "  Enter the name of the file to update:"
-            with
-            | None   ->
-              OpamConsole.msg "Alright, assuming you changed your mind, not \
-                               performing any changes.\n";
-              None
-            | Some f -> Some (OpamFilename.of_string f)
-          end
-        | _ -> None
+        if shell = SH_cmd then
+          None
+        else
+          match
+            OpamConsole.read
+              "Do you want opam to modify %s? [N/y/f]\n\
+               (default is 'no', use 'f' to choose a different file)"
+              (OpamFilename.prettify dot_profile)
+          with
+          | Some ("y" | "Y" | "yes"  | "YES" ) -> Some dot_profile
+          | Some ("f" | "F" | "file" | "FILE") ->
+            begin
+              match OpamConsole.read "  Enter the name of the file to update:"
+              with
+              | None   ->
+                OpamConsole.msg "Alright, assuming you changed your mind, not \
+                                 performing any changes.\n";
+                None
+              | Some f -> Some (OpamFilename.of_string f)
+            end
+          | _ -> None
   in
   let env_hook = match env_hook, interactive with
     | Some b, _ -> Some b
     | None, false -> None
     | None, true ->
-      Some
-        (OpamConsole.confirm ~default:false
-           "A hook can be added to opam's init scripts to ensure that the \
-            shell remains in sync with the opam environment when they are \
-            loaded. Set that up?")
+      if shell = SH_cmd then
+        None
+      else
+        Some
+          (OpamConsole.confirm ~default:false
+             "A hook can be added to opam's init scripts to ensure that the \
+              shell remains in sync with the opam environment when they are \
+              loaded. Set that up?")
   in
   update_user_setup root ?dot_profile:update_dot_profile shell;
   write_static_init_scripts root ?completion ?env_hook ()

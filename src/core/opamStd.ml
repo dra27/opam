@@ -832,9 +832,9 @@ module OpamSys = struct
     | "sh"   -> Some SH_sh
     | _      ->
         if Sys.win32 then
-          SH_cmd
+          Some SH_cmd
         else
-          SH_sh
+          None
 
   let executable_name =
     if Sys.win32 then
@@ -919,6 +919,7 @@ module OpamSys = struct
       let tcshrc = home ".tcshrc" in
       if Sys.file_exists cshrc then cshrc else tcshrc
     | SH_sh -> home ".profile"
+    | SH_cmd -> "<cmd>"
 
 
   let registered_at_exit = ref []

@@ -399,7 +399,7 @@ module Sys : sig
   val executable_name : string -> string
 
   (** The different families of shells we know about *)
-  type shell = SH_sh | SH_bash | SH_zsh | SH_csh | SH_fish
+  type shell = SH_sh | SH_bash | SH_zsh | SH_csh | SH_fish | SH_cmd
 
   (** Guess the shell compat-mode *)
   val guess_shell_compat: unit -> shell
