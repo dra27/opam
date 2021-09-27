@@ -162,7 +162,7 @@ let print_eval_env ~cmd ~csh ~sexp ~fish env =
 
 let ensure_env_aux ?(set_opamroot=false) ?(set_opamswitch=false) ?(force_path=true) gt switch =
   let env_file = OpamPath.Switch.environment gt.root switch in
-  if not (OpamFile.exists env_file) then
+  if (*not (OpamFile.exists env_file)*) true then
     Some (OpamSwitchState.with_ `Lock_none gt @@ fun st ->
           let upd =
             OpamEnv.updates ~set_opamroot ~set_opamswitch ~force_path st
