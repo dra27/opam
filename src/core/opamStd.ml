@@ -1129,8 +1129,12 @@ module Win32 = struct
     | _                     -> failwith "RegistryHive.of_string"
   end
 
-  let (set_parent_pid, parent_putenv) =
+  let (set_parent_pid, parent_putenv, parent_of_parent) =
     let ppid = ref (lazy (OpamStubs.(getCurrentProcessID () |> getParentProcessID))) in
+    let parent_of_parent () =
+      let current = Lazy.force !ppid in
+      ppid := lazy (OpamStubs.getParentProcessID current)
+    in
     let parent_putenv = lazy (
       let ppid = Lazy.force !ppid in
       if OpamStubs.isWoW64 () <> OpamStubs.isWoW64Process ppid then
@@ -1179,7 +1183,7 @@ module Win32 = struct
           if Lazy.is_val parent_putenv then
             failwith "Target parent already known";
           ppid := Lazy.from_val pid),
-       (fun key -> (Lazy.force parent_putenv) key))
+       (fun key -> (Lazy.force parent_putenv) key), parent_of_parent)
 
   let persistHomeDirectory dir =
     (* Update our environment *)

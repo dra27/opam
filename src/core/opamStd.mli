@@ -513,6 +513,12 @@ module Win32 : sig
   (** Change which the pid written to by {!parent_putenv}. This function cannot
       be called after [parent_putenv]. *)
 
+  val parent_of_parent : unit -> unit
+  (** Alters parent_putenv to manipulate the parent of the parent process. Required for Clink
+   * automatic execution of opam config env (because Lua's os.execute calls cmd). This function
+   * has no effect if called after the first call to {!parent_putenv}.
+   *)
+
   val parent_putenv : string -> string -> bool
   (** Update an environment variable in the parent (i.e. shell) process's
       environment. *)
