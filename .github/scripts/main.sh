@@ -21,6 +21,7 @@ export OCAMLRUNPARAM=b
   dune --version
   dune build --help=plain | grep promote-install
   dune build --help=plain 2>/dev/null | sed -ne 's/^[[:space:]]*\(--promote-install-files\)\(\[.*\|[[:space:]]*\)$/ --promote-install-files/p'
+  sed --version
   if [[ $OPAM_TEST$OPAM_COLD -eq 0 ]] ; then
     make lib-ext
   fi
