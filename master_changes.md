@@ -7,7 +7,7 @@ New option/command/subcommand are prefixed with ◈.
   *
 
 ## Global CLI
-  *
+  * --assume-depext is the default in CLI 2.0 mode [#4??? @dra27]
 
 ## Plugins
   *
