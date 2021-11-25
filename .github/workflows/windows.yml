@@ -1,0 +1,285 @@
+name: Windows
+
+on: [ push, pull_request ]
+
+env:
+  OPAMBSVERSION: 2.1.0
+  OPAMBSROOT: ~/.cache/.opam.cached
+  OPAM12CACHE: ~/.cache/opam1.2/cache
+  OPAM_REPO: https://github.com/dra27/opam-repository.git
+  OPAM_TEST_REPO_SHA: 02ead5a557d118a8d7de05edeae25d2301325a7a
+  OPAM_REPO_SHA: 03356a3912d5717064abf00fe0004f6f1e314305
+  OCAML_VERSION: 4.11.2
+  GH_OCAML_CACHE: ~/.cache/ocaml-local/**
+  SOLVER:
+  CYGWIN_MIRROR: http://mirrors.kernel.org/sourceware/cygwin/
+  CYGWIN_ROOT: D:\cygwin
+  CYGWIN32_CACHE_DIR: D:\caches\cygwin32
+  CYGWIN64_CACHE_DIR: D:\caches\cygwin64
+  # COMBAK ... date based or summat
+  CYGWIN_EPOCH: 13
+  HOST:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+####
+# Caches
+####
+  analyse:
+    runs-on: windows-latest
+    outputs:
+      cygwin: ${{ steps.keys.outputs.cygwin }}
+      archives: ${{ steps.keys.outputs.archives }}
+    steps:
+    - uses: actions/checkout@v2
+    - id: keys
+      name: Determine workflow cache keys
+      shell: cmd
+      run: |
+        where tar
+        where zstd
+        echo cygwin=${{ hashFiles('.github/scripts/cygwin.cmd') }}
+        echo ::set-output name=cygwin::${{ hashFiles('.github/scripts/cygwin.cmd') }}
+        echo archives=${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
+        echo ::set-output name=archives::${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}
+
+  cygwin32:
+    runs-on: windows-latest
+    needs: analyse
+    steps:
+    - name: Cygwin32 Cache
+      id: cygwin32
+      uses: dra27/cache@cache-probe
+      with:
+        path: ${{ env.CYGWIN32_CACHE_DIR }}
+        key: cygwin32-${{ runner.os }}-${{ needs.analyse.outputs.cygwin }}-${{ env.CYGWIN_EPOCH }}
+    - uses: actions/checkout@v2
+      if: ${{ steps.cygwin32.outputs.cache-hit != 'true' || steps.cygwin64.outputs.cache-hit != 'true' }}
+    - name: Install Cygwin32
+      if: steps.cygwin32.outputs.cache-hit != 'true'
+      shell: cmd
+      run: .github\scripts\cygwin.cmd cygwin32
+
+  cygwin64:
+    runs-on: windows-latest
+    needs: analyse
+    steps:
+    - name: Cygwin64 Cache
+      id: cygwin64
+      uses: dra27/cache@cache-probe
+      with:
+        path: ${{ env.CYGWIN64_CACHE_DIR }}
+        key: cygwin64-${{ runner.os }}-${{ needs.analyse.outputs.cygwin }}-${{ env.CYGWIN_EPOCH }}
+    - uses: actions/checkout@v2
+      if: ${{ steps.cygwin32.outputs.cache-hit != 'true' || steps.cygwin64.outputs.cache-hit != 'true' }}
+    - name: Install Cygwin64
+      if: steps.cygwin64.outputs.cache-hit != 'true'
+      shell: cmd
+      run: .github\scripts\cygwin.cmd cygwin64
+
+  archives-cache:
+    runs-on: windows-latest
+    needs: [analyse, cygwin64]
+    steps:
+    - name: Check PATH before
+      shell: cmd
+      run: echo %PATH%
+    - name: src ext archives cache
+      id: archives
+      uses: dra27/cache@cache-probe
+      with:
+        path: |
+          src_ext/archives
+          ~/opam-repository
+          # Use of cygwin below is tmeporary!
+        key: archives-${{ runner.os }}-${{ needs.analyse.outputs.archives }}-${{ env.OPAM_REPO_SHA }}-XXXX-${{ needs.analyse.outputs.cygwin }}
+    - uses: actions/checkout@v2
+      if: steps.archives.outputs.cache-hit != 'true'
+    - name: Cygwin Cache
+      uses: actions/cache@v2
+      id: cygwin
+      if: steps.archives.outputs.cache-hit != 'true'
+      with:
+        path: ${{ env.CYGWIN64_CACHE_DIR }}
+        key: cygwin64-${{ runner.os }}-${{ needs.analyse.outputs.cygwin }}-${{ env.CYGWIN_EPOCH }}
+    - name: Install Cygwin64
+      if: ${{ steps.archives.outputs.cache-hit != 'true' && steps.cygwin.outputs.cache-hit != 'true' }}
+      shell: cmd
+      run: .github\scripts\cygwin.cmd cygwin64
+    - name: Configure Cygwin
+      if: ${{ steps.cygwin.outputs.cache-hit == 'true' && steps.archives.outputs.cache-hit != 'true' }}
+      shell: cmd
+      run: .github\scripts\cygwin.cmd
+    - name: Check PATH after Cygwin
+      shell: cmd
+      run: echo %PATH%
+    - name: Retrieve archives
+      if: steps.archives.outputs.cache-hit != 'true'
+      run: bash -exu .github/scripts/archives-cache.sh
+    - name: Check PATH after caching
+      shell: cmd
+      run: echo %PATH%
+
+####
+# Build
+####
+  # Remove this when done - it's just to prime the compiler cache
+  debug-compiler:
+    runs-on: windows-latest
+    needs: [cygwin32, cygwin64, archives-cache]
+    strategy:
+      matrix:
+        os: [ Windows ]
+        host: [ i686-w64-mingw32, "" ]
+        ocamlv: [ 4.13.1 ]
+      fail-fast: false
+    steps:
+    - uses: actions/checkout@v2
+    - name: Cygwin Cache
+      id: cygwin
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.CYGWIN64_CACHE_DIR }}
+        key: cygwin64-${{ runner.os }}-${{ hashFiles('.github/scripts/cygwin.cmd') }}-${{ env.CYGWIN_EPOCH }}
+    - name: Install Cygwin
+      shell: cmd
+      run: .github\scripts\cygwin.cmd
+    - name: src ext archives cache
+      id: archives
+      uses: actions/cache@v2
+      with:
+        path: |
+          src_ext/archives
+          ~/opam-repository
+        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}-${{ env.OPAM_REPO_SHA }}
+    - name: Retrieve archives
+      if: steps.archives.outputs.cache-hit != 'true'
+      run: bash -exu .github/scripts/archives-cache.sh
+    - name: ocaml ${{ matrix.ocamlv }} cache
+      id: ocaml-cache
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.GH_OCAML_CACHE }}
+        key: ${{ runner.os }}-ocaml-${{ matrix.host }}-${{ matrix.ocamlv }}-${{ hashFiles ('.github/scripts/ocaml-cache.sh', '.github/scripts/preamble.sh') }}
+    - name: Building ocaml ${{ matrix.ocamlv }} cache
+      if: steps.ocaml-cache.outputs.cache-hit != 'true'
+      env:
+        OCAML_VERSION: ${{ matrix.ocamlv }}
+        HOST: ${{ matrix.host }}
+      run: bash -exu .github/scripts/ocaml-cache.sh ocaml
+
+  build:
+    runs-on: windows-latest
+    needs: [cygwin32, cygwin64, archives-cache, debug-compiler]
+    strategy:
+      matrix:
+        os: [ Windows ]
+        #host: [ x86_64-pc-windows, i686-w64-mingw32, "" ]
+        host: [ i686-w64-mingw32, "" ]
+        ocamlv: [ 4.13.1 ]
+      fail-fast: false
+    steps:
+    - uses: actions/checkout@v2
+    - name: Cygwin Cache
+      id: cygwin
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.CYGWIN64_CACHE_DIR }}
+        key: cygwin64-${{ runner.os }}-${{ hashFiles('.github/scripts/cygwin.cmd') }}-${{ env.CYGWIN_EPOCH }}
+    - name: Install Cygwin
+      shell: cmd
+      run: .github\scripts\cygwin.cmd
+    - name: src ext archives cache
+      id: archives
+      uses: actions/cache@v2
+      with:
+        path: |
+          src_ext/archives
+          ~/opam-repository
+        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}-${{ env.OPAM_REPO_SHA }}
+    - name: Retrieve archives
+      if: steps.archives.outputs.cache-hit != 'true'
+      run: bash -exu .github/scripts/archives-cache.sh
+    - name: ocaml ${{ matrix.ocamlv }} cache
+      id: ocaml-cache
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.GH_OCAML_CACHE }}
+        key: ${{ runner.os }}-ocaml-${{ matrix.host }}-${{ matrix.ocamlv }}-${{ hashFiles ('.github/scripts/ocaml-cache.sh', '.github/scripts/preamble.sh') }}
+    - name: Building ocaml ${{ matrix.ocamlv }} cache
+      if: steps.ocaml-cache.outputs.cache-hit != 'true'
+      env:
+        OCAML_VERSION: ${{ matrix.ocamlv }}
+        HOST: ${{ matrix.host }}
+      run: bash -exu .github/scripts/ocaml-cache.sh ocaml
+    - name: Build
+      env:
+        OCAML_VERSION: ${{ matrix.ocamlv }}
+      run: bash -exu .github/scripts/main.sh
+
+####
+# Compile solver backends
+####
+  solvers:
+    runs-on: windows-latest
+    needs: [ cygwin32, cygwin64, build, archives-cache ]
+    strategy:
+      matrix:
+        os: [ Windows ]
+        ocamlv: [ 4.11.2 ]
+        solver: [ z3, 0install ]
+      fail-fast: false
+    env:
+      SOLVER: ${{ matrix.solver }}
+      OPAMBSROOT: ~/.cache/opam.${{ matrix.solver }}.cached
+    steps:
+    - uses: actions/checkout@v2
+    - name: Cygwin Cache
+      id: cygwin
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.CYGWIN64_CACHE_DIR }}
+        key: cygwin64-${{ runner.os }}-${{ hashFiles('.github/scripts/cygwin.cmd') }}-${{ env.CYGWIN_EPOCH }}
+    - name: Install Cygwin
+      run: .github\scripts\cygwin.cmd
+    - name: ocaml ${{ matrix.ocamlv }} cache
+      id: ocaml-cache
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.GH_OCAML_CACHE }}
+        key: ${{ runner.os }}-ocaml-${{ matrix.ocamlv }}-${{ hashFiles ('.github/scripts/ocaml-cache.sh', '.github/scripts/preamble.sh') }}-test
+    - name: Building ocaml ${{ matrix.ocamlv }} cache
+      if: steps.ocaml-cache.outputs.cache-hit != 'true'
+      env:
+        OCAML_VERSION: ${{ matrix.ocamlv }}
+      run: bash -exu .github/scripts/ocaml-cache.sh ocaml
+    - name: src ext archives cache
+      id: archives
+      uses: actions/cache@v2
+      with:
+        path: |
+          src_ext/archives
+          ~/opam-repository
+        key: archives-${{ runner.os }}-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile') }}-${{ env.OPAM_REPO_SHA }}
+    - name: Retrieve archives
+      if: steps.archives.outputs.cache-hit != 'true'
+      run: bash -exu .github/scripts/archives-cache.sh
+    - name: opam bootstrap cache
+      id: opam-bootstrap
+      uses: actions/cache@v2
+      with:
+        path: |
+          ${{ env.OPAMBSROOT }}/**
+          ~/.cache/opam-local/bin/**
+        key: opam-${{ matrix.solver }}-${{ runner.os }}-${{ env.OPAMBSVERSION }}-${{ matrix.ocamlv }}-${{ env.OPAM_REPO_SHA }}-${{ hashFiles ('.github/scripts/opam-bs-cache.sh', '.github/scripts/preamble.sh') }}
+    - name: opam root cache
+      if: steps.opam-bootstrap.outputs.cache-hit != 'true'
+      run: bash -exu .github/scripts/opam-bs-cache.sh
+    - name: Compile
+      env:
+        OCAML_VERSION: ${{ matrix.ocamlv }}
+      run: bash -exu .github/scripts/solvers.sh

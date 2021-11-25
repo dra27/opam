@@ -9,6 +9,8 @@ unset-dev-version () {
 
 export OCAMLRUNPARAM=b
 
+env
+
 ( # Run subshell in bootstrap root env to build
   (set +x ; echo -en "::group::build opam\r") 2>/dev/null
   if [[ $OPAM_TEST -eq 1 ]] ; then

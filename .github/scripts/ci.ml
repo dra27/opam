@@ -124,6 +124,12 @@ let only_on plat job ~oc ~platform =
   else
     skip_job ~oc ~platform
 
+let not_on plat job ~oc ~platform =
+  if platform <> plat then
+    job ~oc ~platform
+  else
+    skip_job ~oc ~platform
+
 (* Left-associative version of (@@) which allows combining jobs and steps
    without parentheses. *)
 let (++) = (@@)
@@ -468,14 +474,15 @@ let main oc platform =
     ++ tests_job ~archives_job_name ~build_job_name ~version
     ++ only_on Linux (cold_job ~archives_job_name ~build_job_name ~version)
     ++ solvers_job ~archives_job_name ~build_job_name ~version
-    ++ upgrade_job ~build_job_name ~version
+    ++ not_on Windows (upgrade_job ~build_job_name ~version)
     ++ only_on Linux (hygiene_job ~archives_job_name)
     ++ end_workflow
 
 let () =
   let pipelines =
     [(main, "ubuntu", Linux);
-     (main, "macos", MacOS)]
+     (main, "macos", MacOS);
+     (main, "windows", Windows)]
   in
   let generate (pipeline, yaml, platform) =
     let oc = open_out (yaml ^ ".yml") in
