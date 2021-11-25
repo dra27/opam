@@ -6,6 +6,8 @@ CACHE=`eval echo $CACHE`
 echo "Cache -> $CACHE"
 OCAML_LOCAL=$CACHE/ocaml-local
 OPAM_LOCAL=$CACHE/opam-local
+# Obviously Windows-only. Perhaps can be done with a filter instead?
+#PATH='/usr/bin:/cygdrive/c/Windows/system32:/cygdrive/c/Windows:/cygdrive/c/Windows/System32/Wbem:/cygdrive/c/Windows/System32/WindowsPowerShell/v1.0:/cygdrive/c/Windows/System32/OpenSSH'
 PATH=$OPAM_LOCAL/bin:$OCAML_LOCAL/bin:$PATH; export PATH
 
 OPAM_COLD=${OPAM_COLD:-0}
