@@ -143,6 +143,9 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
     cp $BOOTSTRAP_ROOT/src_ext/archives/${FLEXDLL} . 2>/dev/null || ${CURL} ${FV_URL}
   fi
   cd ${V}
+  if [ "$1" = 'msvc64' ] ; then
+    sed -i -e '/OC_CFLAGS=/s|-MD|-MD /d2VolatileMetadata-|' Makefile.config
+  fi
   if [ ${GEN_CONFIG_ONLY} -eq 0 ] ; then
     tar -xzf $BOOTSTRAP_ROOT/${FLEXDLL}
     rm -rf flexdll
