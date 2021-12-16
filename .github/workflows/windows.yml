@@ -4,13 +4,14 @@ on: [ push, pull_request ]
 
 env:
   OPAMBSVERSION: 2.1.0
+  HOME: D:\cygwin\home\runneradmin
   OPAMBSROOT: ~/.cache/.opam.cached
   OPAM12CACHE: ~/.cache/opam1.2/cache
   OPAM_REPO: https://github.com/dra27/opam-repository.git
   OPAM_TEST_REPO_SHA: 02ead5a557d118a8d7de05edeae25d2301325a7a
   OPAM_REPO_SHA: 03356a3912d5717064abf00fe0004f6f1e314305
   OCAML_VERSION: 4.11.2
-  GH_OCAML_CACHE: ~/.cache/ocaml-local/**
+  GH_OCAML_CACHE: D:/cygwin/home/runneradmin/.cache/ocaml-local/**
   SOLVER:
   CYGWIN_MIRROR: http://mirrors.kernel.org/sourceware/cygwin/
   CYGWIN_ROOT: D:\cygwin
