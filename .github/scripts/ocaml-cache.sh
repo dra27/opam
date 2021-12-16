@@ -25,7 +25,7 @@ mv "flexdll-$FLEXDLL_VERSION" flexdll
 
 if [[ $OPAM_TEST -ne 1 ]] ; then
   if [[ -e configure.ac ]]; then
-    CONFIGURE_SWITCHES="--disable-debugger --disable-debug-runtime"
+    CONFIGURE_SWITCHES="--disable-debugger --disable-debug-runtime --disable-installing-bytecode-programs"
     if [ "$SOLVER" != "z3" ]; then
       CONFIGURE_SWITCHES="$CONFIGURE_SWITCHES --disable-ocamldoc"
     fi

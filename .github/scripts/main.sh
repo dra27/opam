@@ -9,6 +9,16 @@ unset-dev-version () {
 
 export OCAMLRUNPARAM=b
 
+case "$HOST" in
+  i686-w64-mingw32) export PATH=$PATH:/usr/i686-w64-mingw32/sys-root/mingw/bin;;
+  x86_64-w64-mingw32) export PATH=$PATH:/usr/x86_64-w64-mingw32/sys-root/mingw/bin;;
+esac
+
+case "$HOST" in
+  *-w64-mingw32|*-pc-windows) prefix="$(cygpath -m ~/local)";;
+  *) prefix=~/local;;
+esac
+
 env
 
 ( # Run subshell in bootstrap root env to build
@@ -20,7 +30,7 @@ env
     eval $(opam env)
   fi
 
-  ./configure --prefix ~/local --with-mccs
+  ./configure --prefix $prefix --with-mccs
   if [ "$OPAM_TEST" != "1" ]; then
     echo 'DUNE_PROFILE=dev' >> Makefile.config
   fi
@@ -38,6 +48,8 @@ env
   (set +x ; echo -en "::endgroup::build opam\r") 2>/dev/null
 
   export PATH=~/local/bin:$PATH
+  env
+  ls -l ~/local/bin
   opam config report
 
   if [ "$OPAM_TEST" = "1" ]; then

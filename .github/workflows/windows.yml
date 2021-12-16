@@ -4,7 +4,6 @@ on: [ push, pull_request ]
 
 env:
   OPAMBSVERSION: 2.1.0
-  HOME: D:\cygwin\home\runneradmin
   OPAMBSROOT: ~/.cache/.opam.cached
   OPAM12CACHE: ~/.cache/opam1.2/cache
   OPAM_REPO: https://github.com/dra27/opam-repository.git
@@ -17,6 +16,7 @@ env:
   CYGWIN_ROOT: D:\cygwin
   CYGWIN32_CACHE_DIR: D:\caches\cygwin32
   CYGWIN64_CACHE_DIR: D:\caches\cygwin64
+  CYGWIN: winsymlinks:native
   # COMBAK ... date based or summat
   CYGWIN_EPOCH: 13
   HOST:
@@ -220,6 +220,8 @@ jobs:
     - name: Build
       env:
         OCAML_VERSION: ${{ matrix.ocamlv }}
+          # XXX Can this be promoted to all the steps?!
+        HOST: ${{ matrix.host }}
       run: bash -exu .github/scripts/main.sh
 
 ####
