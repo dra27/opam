@@ -16,21 +16,21 @@ environment:
     OPAM_REPO_SHA: ec07d6d5f363d1c5b9ed3b927d0df1d58dad333c
     OPAM_TEST_REPO_SHA: ec07d6d5f363d1c5b9ed3b927d0df1d58dad333c
   matrix:
-    - CYG_ROOT: cygwin
-      CYG_ARCH: x86
+#    - CYG_ROOT: cygwin
+#      CYG_ARCH: x86
     - CYG_ROOT: cygwin64
       CYG_ARCH: x86_64
       DEP_MODE: lib-pkg
-    - appveyor_build_worker_image: Visual Studio 2017
-      OCAML_PORT: msvc
-      DEP_MODE: lib-pkg
-      GIT_FOR_WINDOWS: 1
-    - appveyor_build_worker_image: Visual Studio 2017
-      OCAML_PORT: msvc64
-    - OCAML_PORT: mingw
-    - OCAML_PORT: mingw64
-      DEP_MODE: lib-pkg
-      GIT_FOR_WINDOWS: 1
+#    - appveyor_build_worker_image: Visual Studio 2017
+#      OCAML_PORT: msvc
+#      DEP_MODE: lib-pkg
+#      GIT_FOR_WINDOWS: 1
+#    - appveyor_build_worker_image: Visual Studio 2017
+#      OCAML_PORT: msvc64
+#    - OCAML_PORT: mingw
+#    - OCAML_PORT: mingw64
+#      DEP_MODE: lib-pkg
+#      GIT_FOR_WINDOWS: 1
 
 cache:
   - C:\projects\opam\bootstrap
@@ -47,5 +47,5 @@ test_script:
 
 # Uncomment this to enable Remote Desktop on the build worker at the end of the
 # build. The worker is available for the remainder of the allocated hour.
-#on_finish:
-#    - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+on_finish:
+    - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
