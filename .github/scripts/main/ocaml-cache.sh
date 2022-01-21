@@ -39,6 +39,13 @@ else
 fi
 
 make install
+echo > "$OCAML_LOCAL/bin/ocamldoc" <<"EOF"
+#!/bin/sh
+
+echo 'ocamldoc is not supposed to be called'>&2
+exit 1
+EOF
+chmod +x "$OCAML_LOCAL/bin/ocamldoc"
 
 cd ..
 rm -rf "ocaml-$OCAML_VERSION"
