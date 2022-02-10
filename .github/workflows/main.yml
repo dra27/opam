@@ -24,7 +24,6 @@ on:
     - 'configure*'
     - '.github/**'
     - 'tests/**'
-#    paths-ignore:
 #    - 'release/**'
 #    - 'shell/**'
 #    - 'admin-scripts/**'
