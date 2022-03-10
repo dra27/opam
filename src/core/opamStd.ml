@@ -131,7 +131,7 @@ module OpamList = struct
         | Some x -> loop (x::accu) t in
     loop [] l
 
-  let filter_some l = filter_map (fun x -> x) l
+  let filter_sme l = filter_map (fun x -> x) l
 
   let rec find_map f = function
     | [] -> raise Not_found
