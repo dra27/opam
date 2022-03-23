@@ -912,7 +912,7 @@ module OpamSys = struct
   type shell = SH_sh | SH_bash | SH_zsh | SH_csh | SH_fish | SH_pwsh
     | SH_win_cmd | SH_win_powershell
 
-  let windows_default_shell = SH_win_powershell
+  let windows_default_shell = SH_win_cmd
   let unix_default_shell = SH_sh
 
   let shell_of_string = function
