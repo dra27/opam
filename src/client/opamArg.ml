@@ -1032,7 +1032,7 @@ let shell_opt cli validity =
     "zsh",SH_zsh;
     "fish",SH_fish;
     "pwsh",SH_pwsh;
-    "cmd",SH_win_cmd;
+    "cmd",SH_cmd;
     "powershell",SH_win_powershell
   ] |> List.map (fun (s,v) -> cli_original, s, v)
   in

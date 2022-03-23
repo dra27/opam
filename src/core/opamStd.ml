@@ -904,9 +904,9 @@ module OpamSys = struct
     fun () -> Lazy.force os
 
   type shell = SH_sh | SH_bash | SH_zsh | SH_csh | SH_fish | SH_pwsh
-    | SH_win_cmd | SH_win_powershell
+    | SH_cmd | SH_win_powershell
 
-  let windows_default_shell = SH_win_cmd
+  let windows_default_shell = SH_cmd
   let unix_default_shell = SH_sh
 
   let shell_of_string = function
@@ -963,7 +963,7 @@ module OpamSys = struct
     let categorize_process = function
       | "powershell.exe" | "powershell_ise.exe" -> Some (Accept SH_win_powershell)
       | "pwsh.exe" -> Some (Accept SH_pwsh)
-      | "cmd.exe" -> Some (Accept SH_win_cmd)
+      | "cmd.exe" -> Some (Accept SH_cmd)
       | "env.exe" ->
         (* If the nearest ancestor is env.exe it may be `env bash` or
            even `env cmd.exe`. On Windows we can't see whether bash,
@@ -1076,7 +1076,7 @@ module OpamSys = struct
       if Sys.win32 then win_my_powershell "Microsoft.Powershell_profile.ps1" else
       List.fold_left Filename.concat (home ".config") ["powershell"; "Microsoft.Powershell_profile.ps1"]
     | SH_sh -> home ".profile"
-    | SH_win_cmd ->
+    | SH_cmd ->
       (* cmd.exe does not have a concept of profiles *)
       home ".profile"
 
