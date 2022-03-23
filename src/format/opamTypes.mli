@@ -316,9 +316,10 @@ type universe = {
 type pin_kind = [ `version | OpamUrl.backend ]
 
 (** Shell compatibility modes *)
+type powershell = OpamStd.Sys.powershell = Powershell_pwsh | Powershell
 type shell = OpamStd.Sys.shell =
-    SH_sh | SH_bash | SH_zsh | SH_csh | SH_fish | SH_pwsh
-    | SH_cmd | SH_win_powershell
+  | SH_sh | SH_bash | SH_zsh | SH_csh | SH_fish | SH_pwsh of powershell option
+  | SH_cmd
 
 (** {2 Generic command-line definitions with filters} *)
 

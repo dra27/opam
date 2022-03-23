@@ -43,14 +43,13 @@ let all_std_paths =
   [ Prefix; Lib; Bin; Sbin; Share; Doc; Etc; Man; Toplevel; Stublibs ]
 
 let string_of_shell = function
-  | SH_fish -> "fish"
-  | SH_csh  -> "csh"
-  | SH_zsh  -> "zsh"
-  | SH_sh   -> "sh"
-  | SH_bash -> "bash"
-  | SH_pwsh -> "pwsh"
-  | SH_cmd -> "cmd"
-  | SH_win_powershell -> "powershell"
+  | SH_fish   -> "fish"
+  | SH_csh    -> "csh"
+  | SH_zsh    -> "zsh"
+  | SH_sh     -> "sh"
+  | SH_bash   -> "bash"
+  | SH_pwsh _ -> "pwsh"
+  | SH_cmd    -> "cmd"
 
 let file_null = ""
 let pos_file filename =
