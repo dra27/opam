@@ -149,6 +149,10 @@ if [[ $OCAML_BRANCH -gt 407 ]]; then
   mv "$OCAML_LOCAL/_build/default/src_ext" "$OCAML_LOCAL/_build/"
   rm -rf "$OCAML_LOCAL/_build/default"/* "$OCAML_LOCAL/_build/install"
   mv "$OCAML_LOCAL/_build/src_ext" "$OCAML_LOCAL/_build/default/" 
+  whoami
+  pwd
+  stat -c '%U' .
+  stat -c '%U' $(pwd)
   git clean -dfX
   if [[ -n $GITHUB_BASE_REF ]]; then
     git checkout combak
