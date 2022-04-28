@@ -61,9 +61,6 @@ jsonm.pkgbuild: findlib.pkgbuild ocamlbuild.pkgbuild topkg.pkgbuild  uutf.pkgbui
 
 sha.pkgbuild: dune-local.pkgbuild stdlib-shims.pkgbuild
 
-stublibs:
-	grep -q "$(SITELIB)/stublibs" $(LDCONF) || echo $(SITELIB)/stublibs >> $(LDCONF)
-
 opam-file-format-pkg-build:
 	dune build @install -p opam-file-format
 	dune install -p opam-file-format opam-file-format
@@ -71,6 +68,7 @@ opam-file-format-pkg-build:
 findlib-pkg-build:
 	./configure
 	make all opt install
+	echo "$(SITELIB)/stublibs" >> $(LDCONF)
 
 cppo-pkg-build:
 	dune build @install -p cppo
@@ -120,7 +118,7 @@ dune-local-pkg-build:
 	ocaml bootstrap.ml
 	cp dune.exe $(OCAMLBIN)/dune$(EXT_EXE)
 
-mccs-pkg-build: stublibs
+mccs-pkg-build:
 	dune build @install -p mccs
 	ocamlfind install mccs $(addprefix _build/install/default/lib/,$(addprefix mccs/,META libmccs_stubs.$(EXT_LIB) mccs.*) stublibs/*.$(EXT_DLL))
 	cp -RL _build/install/default/lib/mccs/glpk $(SITELIB)/mccs/
@@ -157,7 +155,6 @@ jsonm-pkg-build:
 	ocaml pkg/pkg.ml build --pkg-name jsonm --pinned false
 	ocamlfind install jsonm _build/pkg/META $(addprefix _build/src/jsonm.,$(EXTS1)) $(addprefix _build/src/jsonm.cm,$(EXTS2)) _build/src/jsonm*.cmx
 
-sha-pkg-build: stublibs
+sha-pkg-build:
 	dune build @install -p sha
 	dune install -p sha sha
-	cp _build/install/default/lib/stublibs/dllsha_stubs.so $(SITELIB)/stublibs
