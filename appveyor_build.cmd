@@ -46,6 +46,8 @@ goto :EOF
 :install
 set CYG_ROOT=C:\%CYG_ROOT%
 
+exit /b 1
+
 cd "%APPVEYOR_BUILD_FOLDER%"
 
 rem CYGWIN_PACKAGES is the list of required Cygwin packages (cygwin is included
