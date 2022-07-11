@@ -34,24 +34,25 @@ let load_switch_config ?lock_kind gt switch =
        (OpamSwitch.to_string switch);
      OpamFile.Switch_config.empty)
 
-let compute_available_packages gt switch switch_config ~pinned ~opams =
+let get_available_packages gt switch switch_config ~opams =
+  OpamPackage.Map.filter (fun package opam ->
+      OpamFilter.eval_to_bool ~default:false
+        (OpamPackageVar.resolve_switch_raw ~package gt switch switch_config)
+        (OpamFile.OPAM.available opam))
+    opams
+
+let filter_pinned_packages ~pinned ~opams =
   (* remove all versions of pinned packages, but the pinned-to version *)
   let pinned_names = OpamPackage.names_of_packages pinned in
-  let opams =
-    OpamPackage.Map.filter
-      (fun nv _ ->
-         not (OpamPackage.Name.Set.mem nv.name pinned_names) ||
-         OpamPackage.Set.mem nv pinned)
-      opams
-  in
-  let avail_map =
-    OpamPackage.Map.filter (fun package opam ->
-        OpamFilter.eval_to_bool ~default:false
-          (OpamPackageVar.resolve_switch_raw ~package gt switch switch_config)
-          (OpamFile.OPAM.available opam))
-      opams
-  in
-  OpamPackage.keys avail_map
+  OpamPackage.Map.filter
+    (fun nv _ ->
+       not (OpamPackage.Name.Set.mem nv.name pinned_names) ||
+       OpamPackage.Set.mem nv pinned)
+    opams
+
+let compute_available_packages gt switch switch_config ~pinned ~opams =
+  let opams = filter_pinned_packages ~pinned ~opams in
+  OpamPackage.keys @@ get_available_packages gt switch switch_config ~opams
 
 let repos_list_raw rt switch_config =
   let global, repos =
@@ -330,8 +331,7 @@ let load lock_kind gt rt switch =
     OpamPackage.Map.union (fun _ x -> x) repos_package_index pinned_opams
   in
   let available_packages =
-    lazy (compute_available_packages gt switch switch_config
-            ~pinned ~opams)
+    lazy (get_available_packages gt switch switch_config ~opams)
   in
   let opams =
     (* Keep definitions of installed packages, but lowest priority, and after
@@ -402,6 +402,9 @@ let load lock_kind gt rt switch =
     match switch_config.invariant with
     | Some invariant -> switch_config, invariant
     | None ->
+      let available_packages = lazy (
+        OpamPackage.keys (Lazy.force available_packages))
+      in
       let invariant =
         infer_switch_invariant_raw
           gt switch switch_config opams
@@ -426,6 +429,12 @@ let load lock_kind gt rt switch =
           (OpamPath.Switch.switch_config gt.root switch)
           switch_config;
       switch_config, invariant
+  in
+  let available_packages = lazy (
+    let available_without_pinned_alternates =
+      filter_pinned_packages ~pinned ~opams:(Lazy.force available_packages)
+    in
+    OpamPackage.keys available_without_pinned_alternates)
   in
   let conf_files =
     let conf_files =
