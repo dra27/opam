@@ -756,10 +756,9 @@ let setup
   let update_dot_profile =
     match update_config, dot_profile, interactive with
     | Some false, _, _ -> None
-    | _, None, _ -> invalid_arg "OpamEnv.setup"
-    | Some true, Some dot_profile, _ -> Some dot_profile
+    | Some true, dot_profile, _ -> dot_profile
     | None, _, false -> None
-    | None, Some dot_profile, true ->
+    | None, dot_profile, true ->
       OpamConsole.header_msg "Required setup - please read";
 
       OpamConsole.msg
@@ -767,44 +766,54 @@ let setup
         \  In normal operation, opam only alters files within ~%s.opam.\n\
          \n\
         \  However, to best integrate with your system, some environment variables\n\
-        \  should be set. If you allow it to, this initialisation step will update\n\
-        \  your %s configuration by adding the following line to %s:\n\
-         \n\
-        \    %s\
-         \n\
-        \  Otherwise, every time you want to access your opam installation, you will\n\
+        \  should be set."
+        Filename.dir_sep;
+      begin match dot_profile with
+      | Some dot_profile ->
+        OpamConsole.msg
+          "If you allow it to, this initialisation step will update\n\
+          \  your %s configuration by adding the following line to %s:\n\
+           \n\
+          \    %s\
+           \n\
+          \  Otherwise, every time"
+          (OpamConsole.colorise `bold @@ string_of_shell shell)
+          (OpamConsole.colorise `cyan @@ OpamFilename.prettify dot_profile)
+          (OpamConsole.colorise `bold @@ source root shell (init_file shell))
+      | None ->
+        OpamConsole.msg "When"
+      end;
+      OpamConsole.msg
+        " you want to access your opam installation, you will\n\
         \  need to run:\n\
          \n\
         \    %s\n\
          \n\
         \  You can always re-run this setup with 'opam init' later.\n\n"
-        Filename.dir_sep
-        (OpamConsole.colorise `bold @@ string_of_shell shell)
-        (OpamConsole.colorise `cyan @@ OpamFilename.prettify dot_profile)
-        (OpamConsole.colorise `bold @@ source root shell (init_file shell))
         (OpamConsole.colorise `bold @@ shell_eval_invocation shell (opam_env_invocation ()));
-      if OpamCoreConfig.answer_is_yes () then begin
-        OpamConsole.warning "Shell not updated in non-interactive mode: use --shell-setup";
-        None
-      end else
-        match
-          OpamConsole.read
-            "Do you want opam to modify %s? [N/y/f]\n\
-             (default is 'no', use 'f' to choose a different file)"
-            (OpamFilename.prettify dot_profile)
-        with
-        | Some ("y" | "Y" | "yes"  | "YES" ) -> Some dot_profile
-        | Some ("f" | "F" | "file" | "FILE") ->
-          begin
-            match OpamConsole.read "  Enter the name of the file to update:"
-            with
-            | None   ->
-              OpamConsole.msg "Alright, assuming you changed your mind, not \
-                               performing any changes.\n";
-              None
-            | Some f -> Some (OpamFilename.of_string f)
-          end
-        | _ -> None
+      OpamStd.Option.replace (fun dot_profile ->
+        if OpamCoreConfig.answer_is_yes () then begin
+          OpamConsole.warning "Shell not updated in non-interactive mode: use --shell-setup";
+          None
+        end else
+          match
+            OpamConsole.read
+              "Do you want opam to modify %s? [N/y/f]\n\
+               (default is 'no', use 'f' to choose a different file)"
+              (OpamFilename.prettify dot_profile)
+          with
+          | Some ("y" | "Y" | "yes"  | "YES" ) -> Some dot_profile
+          | Some ("f" | "F" | "file" | "FILE") ->
+            begin
+              match OpamConsole.read "  Enter the name of the file to update:"
+              with
+              | None   ->
+                OpamConsole.msg "Alright, assuming you changed your mind, not \
+                                 performing any changes.\n";
+                None
+              | Some f -> Some (OpamFilename.of_string f)
+            end
+          | _ -> None) dot_profile
   in
   let env_hook = match env_hook, interactive with
     | Some b, _ -> Some b
