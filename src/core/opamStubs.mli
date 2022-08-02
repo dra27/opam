@@ -135,3 +135,7 @@ val win_create_process : string -> string -> string option -> Unix.file_descr ->
 val uptime : unit -> float
 (** Returns the number of seconds the system has been running on, or [0.0] if
     this cannot be determined. *)
+
+val getConsoleWindowClass : unit -> string option
+(** Windows only. Returns the name of the class for the Console window or [None]
+    if there is no console. *)
