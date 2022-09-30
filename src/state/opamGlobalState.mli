@@ -75,3 +75,10 @@ val fix_switch_list: 'a global_state -> 'a global_state
 
 (** Description used for system inferred variables *)
 val inferred_from_system: string
+
+(** [as_necessary_repo_switch_upgrade lock statekind gt] perform the format
+    upgrade if [lock] is a write lock and [statekind] is marked as the one needing
+    upgrade in [gt.global_state_to_upgrade]. May require a global lock.
+    See also [OpamFormatUpgrade.repo_switch_hard_upgrade] *)
+val as_necessary_repo_switch_upgrade:
+  'a lock -> [ `Repo | `Switch ] -> 'b global_state -> unit

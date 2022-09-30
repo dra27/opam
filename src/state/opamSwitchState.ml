@@ -196,7 +196,7 @@ let depexts_status_of_packages_raw
   in
   let syspkg_set = syspkg_set -- bypass in
   let ret =
-    match OpamSysInteract.packages_status ?env syspkg_set with
+    match OpamSysInteract.packages_status ?env global_config syspkg_set with
     | avail, not_found ->
       let avail, not_found =
         if OpamStateConfig.(!r.no_depexts) then
@@ -229,6 +229,7 @@ let depexts_unavailable_raw sys_packages nv =
   | _ -> None
 
 let load lock_kind gt rt switch =
+  OpamGlobalState.as_necessary_repo_switch_upgrade lock_kind `Switch gt;
   let chrono = OpamConsole.timer () in
   log "LOAD-SWITCH-STATE %@ %a" (slog OpamSwitch.to_string) switch;
   if not (OpamGlobalState.switch_exists gt switch) then

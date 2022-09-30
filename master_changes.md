@@ -11,7 +11,7 @@ moved, etc.), please update the _API updates_ part (it helps opam library
 users)
 
 ## Version
-  *
+  * Upgrade root version to 2.2~alpha [#4926 @rjbou]
 
 ## Global CLI
   * Fix typo in error message for opam var [#4786 @kit-ty-kate - fix #4785]
@@ -92,6 +92,8 @@ users)
   * Regenerate the environment file when a local switch is moved [#5417 @dra27 - fix #3411]
   * Regenerate the environment file in `opam exec` [#5417 @dra27]
   * Store the exact environment in `OPAM_LAST_ENV` [#5417 @dra27 - fix #3411]
+    * update note [#5305 @rjbou]
+  * Add `sys-pkg-manager-cmd` field to store specific system package manager command paths [#5433 @rjbou]
 
 ## Pin
   * Switch the default version when undefined from ~dev to dev [#4949 @kit-ty-kate]
@@ -175,7 +177,7 @@ users)
   * [BUG] Variables are now expanded in build-env (as for setenv) [#5352 @dra27]
 
 ## External dependencies
-  * Support MSYS2 on Windows for depexts [#5348 @jonahbeckford]
+  * Support MSYS2 on Windows for depexts [#5348 @jonahbeckford #5433 @rjbou]
   * Set `DEBIAN_FRONTEND=noninteractive` for unsafe-yes confirmation level [#4735 @dra27 - partially fix #4731] [2.1.0~rc2 #4739]
   * Fix depext alpine tagged repositories handling [#4763 @rjbou] [2.1.0~rc2 #4758]
   * Homebrew: Add support for casks and full-names [#4801 @kit-ty-kate]
@@ -200,6 +202,8 @@ users)
   * Set opam root version to 2.1 [#4763 @rjbou] [2.1.0~rc2 #4715]
   * Fix 2.1~alpha2 to 2.1 format upgrade with reinit [#4763 @rjbou - fix #4748] [2.1.0~rc2 #4750]
   * Fix bypass-check handling on reinit [#4750 @rjbou] [#4763 @rjbou] [2.1.0~rc2 #4750 #4756]
+  * Fix root format upgrade when only an inner file format is upgraded : new mechanism does the usual on-the-fly upgrade and keeps the information of needed inner upgrade or no, to perform them when a write lock is required [#5305 @rjbou]
+  * Reorganise intermediate roots that need an uipgrade handling (for 2.1, prone to generalisation) [#4926 @rjbou]
 
 ## Sandbox
   * Sync the behaviour of the macOS sandbox script with Linux's: /tmp is now ready-only [#4719 @kit-ty-kate]
@@ -384,7 +388,7 @@ users)
   * Add deps-only, install formula [#4975 @AltGr]
   * Update opam root version test:
     * to escape `OPAMROOTVERSION` sed, it matches generated hexa temporary directory names [#5007 @AltGr #5301 @rjbou]
-    * several improvments: add repo config check, update generator [#5303 @rjbou]
+    * several improvments: add repo config check, update generator [#5304 @rjbou]
   * Add json output test [#5143 @rjbou]
     * Add tree json output [#5303 @cannorin @rjbou]
   * Add test for opam file write with format preserved bug in #4936, fixed in #4941 [#4159 @rjbou]
@@ -556,6 +560,11 @@ users)
   * `OpamEnv`: add `env_expansion` [#5352 @dra27]
   * `OpamEnv`: fix invalid argument raised when trying to unzip empty string [#5350 @dra27]
   * `OpamEnv`: skip environment updates and revert with empty strings [#5350 @dra27]
+  * `OpamFormatUpgrade`: add `repo_switch_hard_upgrade` to perform inner layers hard upgrade when needed if write lock is required [#5305 @rjbou]
+  * `OpamGlobalState`: add `as_necessary_repo_switch_upgrade` that checks conditions and call `OpamFormatUpgrade.repo_switch_hard_upgrade` [#5305 @rjbou]
+  * `OpamSwitchState`, `OpamRepositoryState`: at the beginning of `load` function, check if an upgrade is needed with `OpamGlobalState.as_necessary_repo_switch_upgrade` [#5305 @rjbou]
+  * `OpamStataTypes.global_state`: add `global_state_to_upgrade` field to keep incomplete upgrade information [#5305 @rjbou]
+  * `OpamSysInteract`: add global config argument to function, in order to be able to retrieve system package manager path for MSYS2, and in the future Cygwin, etc. [#5433 @rjbou]
 
 ## opam-solver
   * `OpamCudf`: Change type of `conflict_case.Conflict_cycle` (`string list list` to `Cudf.package action list list`) and `cycle_conflict`, `string_of_explanations`, `conflict_explanations_raw` types accordingly [#4039 @gasche]

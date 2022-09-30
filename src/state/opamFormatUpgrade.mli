@@ -32,10 +32,21 @@ val latest_version: OpamVersion.t
     write lock required ([requested_lock]). If upgrade need to be written (hard
     upgrade), a write lock on the global state ([global_lock]) is taken and
     when it's done raises [Upgrade_done updated_config]. Otherwise, it returns
-    the upgraded or unchanged config file.*)
+    the upgraded or unchanged config file and a status of remaining upgrades.*)
 val as_necessary:
   ?reinit:(OpamFile.Config.t -> unit) -> 'a lock -> OpamSystem.lock -> dirname ->
-  OpamFile.Config.t -> OpamFile.Config.t
+  OpamFile.Config.t ->
+  OpamFile.Config.t * ([ `Repo | `Switch ] * OpamVersion.t) option
+
+(* [repo_switch_hard_upgrade oldv lock root config] finished opam root upgrade
+   of repository and switch layers. It is called when an on-the-fly upgrade of
+   global state was performed but with remaining upgrade on repository or
+   switch layers, and there is a write lock required. It applies upgrades on
+   switch/repo files and writes the global config file. [oldv] is the root
+   version before on-the-fly upgrade, [lock] the current global lock, and
+   [config] the current config file (with upgrade applied). *)
+val repo_switch_hard_upgrade:
+  OpamVersion.t -> OpamSystem.lock -> dirname -> OpamFile.Config.t -> unit
 
 (* Try to launch a hard upgrade from 2;1 alpha's & beta's root
    to 2.1~rc one. Raises [Upgrade_done] (catched by main
