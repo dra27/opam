@@ -1,3 +1,5 @@
+
+Dummy change entry
 Working version changelog, used as a base for the changelog and the release
 note.
 Prefixes used to help generate release notes, changes, and blog posts:
