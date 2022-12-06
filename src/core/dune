@@ -4,6 +4,7 @@
   (synopsis    "OCaml Package Manager core internal stdlib")
   ; TODO: Remove (re_export ...) when CI uses the OCaml version that includes https://github.com/ocaml/ocaml/pull/11989
   (libraries   re (re_export ocamlgraph) unix sha jsonm swhid_core uutf
+               opam-core.common-stubs
                (select opamStubs.ml from
                        (opam-core.stubs -> opamStubs.win32.ml)
                        (                -> opamStubs.dummy.ml)))

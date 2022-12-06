@@ -1,0 +1,22 @@
+(library
+ (name opam_common_stubs)
+ (public_name opam-core.common-stubs)
+ (flags (:standard
+         (:include ../../ocaml-flags-standard.sexp)
+         (:include ../../ocaml-flags-configure.sexp)
+         (:include ../../ocaml-context-flags.sexp)))
+ (modules opamCommonStubs)
+ (foreign_stubs
+   (language c)
+   (names opamCommonStubs)
+   (flags :standard
+          -DUNICODE -D_UNICODE -DCAML_NAME_SPACE
+          (:include ../c-flags.sexp)))
+ (c_library_flags (:standard
+                   (:include c-libraries.sexp)))
+ (wrapped false))
+
+(rule (copy opamCommonStubs.mli opamCommonStubs.ml))
+
+(rule
+  (with-stdout-to c-libraries.sexp (run ocaml %{dep:../../../shell/context_flags.ml} clibs)))
