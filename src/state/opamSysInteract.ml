@@ -160,7 +160,7 @@ let family ~env () =
             to 'msys2'.")
     | family ->
       Printf.ksprintf failwith
-        "External dependency handling not supported for OS family '%s'."
+        "External dependency handling not supported for OS family '%s'  '%s'."
         family
 
 let yum_cmd = lazy begin
@@ -418,9 +418,8 @@ let packages_status ?(env=OpamVariable.Map.empty) packages =
        >git             2.35.1-1
        >binutils        2.37-2
     *)
-    let str_pkgs = to_string_list packages in
     let sys_installed =
-      run_query_command "cygcheck" ([ "-c"; "-d" ] @ str_pkgs)
+      run_query_command "cygcheck" ([ "-c"; "-d" ] @ to_string_list packages)
       |> (function | _::_::l -> l | _ -> [])
       |> OpamStd.List.filter_map (fun l ->
           match OpamStd.String.split l ' ' with
@@ -429,7 +428,15 @@ let packages_status ?(env=OpamVariable.Map.empty) packages =
       |> List.map OpamSysPkg.of_string
       |> OpamSysPkg.Set.of_list
     in
+    (* Output format:
+       >Found 20 matches for gawk
+       >gawk-debuginfo-5.1.0-1 - xxx
+       >gawk-debuginfo-5.1.1-1 - xxx
+       >gawk-5.1.0-1-src - xxx
+       >gawk-5.1.1-1-src - xxx
+    *)
     let sys_available =
+      let str_pkgs = to_string_list (packages -- sys_installed) in
       let pkgs =
         let need_escape = Re.(compile (group (set "+."))) in
         OpamStd.List.concat_map "\\|"
@@ -442,9 +449,14 @@ let packages_status ?(env=OpamVariable.Map.empty) packages =
                 group @@ alt @@ List.map str str_pkgs;
                 char '-';
                 digit;
+(*
+                diff any @@ alt [ space ; str "-src" ];
+                space;
+*)
               ])
       in
       run_query_command "cygcheck" [ "-p" ; pkgs ]
+      |> (function | _::l -> l | _ -> [])
       |> with_regexp_sgl re_pkg
     in
     compute_sets sys_installed ~sys_available
@@ -469,8 +481,8 @@ let packages_status ?(env=OpamVariable.Map.empty) packages =
          >
          The `Provides' field contains provided virtual package(s) by current
          `Package:'.
-         * manpages.debian.org/buster/apt/apt-cache.8.en.html
-         * www.debian.org/doc/debian-policy/ch-relationships.html#s-virtual
+        * manpages.debian.org/buster/apt/apt-cache.8.en.html
+        * www.debian.org/doc/debian-policy/ch-relationships.html#s-virtual
       *)
       run_query_command "apt-cache"
         ["search"; names_re (); "--names-only"; "--full"]
