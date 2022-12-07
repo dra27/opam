@@ -87,6 +87,7 @@ type families =
   | Alpine
   | Arch
   | Centos
+  | Cygwin
   | Debian
   | DummySuccess
   | DummyFailure
@@ -151,6 +152,7 @@ let family ~env () =
     | "windows" ->
       (match OpamSysPoll.os_distribution env with
        | Some "msys2" -> Msys2
+       | Some "cygwin" -> Cygwin
        | _ ->
          failwith
            "External dependency handling not supported for Windows unless \
@@ -409,6 +411,43 @@ let packages_status ?(env=OpamVariable.Map.empty) packages =
       |> OpamSysPkg.Set.of_list
     in
     compute_sets sys_installed
+  | Cygwin ->
+    (* Output format:
+       >Cygwin Package Information
+       >Package         Version
+       >git             2.35.1-1
+       >binutils        2.37-2
+    *)
+    let str_pkgs = to_string_list packages in
+    let sys_installed =
+      run_query_command "cygcheck" ([ "-c"; "-d" ] @ str_pkgs)
+      |> (function | _::_::l -> l | _ -> [])
+      |> OpamStd.List.filter_map (fun l ->
+          match OpamStd.String.split l ' ' with
+          | pkg::_ -> Some pkg
+          | _ -> None)
+      |> List.map OpamSysPkg.of_string
+      |> OpamSysPkg.Set.of_list
+    in
+    let sys_available =
+      let pkgs =
+        let need_escape = Re.(compile (group (set "+."))) in
+        OpamStd.List.concat_map "\\|"
+          (Re.replace ~all:true need_escape ~f:(fun g -> "\\"^Re.Group.get g 1))
+          str_pkgs
+      in
+      let re_pkg =
+        Re.(compile @@ seq
+              [ bol;
+                group @@ alt @@ List.map str str_pkgs;
+                char '-';
+                digit;
+              ])
+      in
+      run_query_command "cygcheck" [ "-p" ; pkgs ]
+      |> with_regexp_sgl re_pkg
+    in
+    compute_sets sys_installed ~sys_available
   | Debian ->
     let get_avail_w_virtuals () =
       let provides_sep = Re.(compile @@ str ", ") in
@@ -692,6 +731,7 @@ let install_packages_commands_t ?(env=OpamVariable.Map.empty) sys_packages =
                  |> OpamStd.String.Set.remove epel_release
                  |> OpamStd.String.Set.elements);
        `AsUser "rpm", "-q"::"--whatprovides"::packages], None
+  | Cygwin -> assert false
   | Debian -> [`AsAdmin "apt-get", "install"::yes ["-qq"; "-yy"] packages],
       (if unsafe_yes then Some ["DEBIAN_FRONTEND", "noninteractive"] else None)
   | DummySuccess -> [`AsUser "echo", packages], None
@@ -765,6 +805,7 @@ let update ?(env=OpamVariable.Map.empty) () =
     | Alpine -> Some (`AsAdmin "apk", ["update"])
     | Arch -> Some (`AsAdmin "pacman", ["-Sy"])
     | Centos -> Some (`AsAdmin (Lazy.force yum_cmd), ["makecache"])
+    | Cygwin -> assert false
     | Debian -> Some (`AsAdmin "apt-get", ["update"])
     | DummySuccess -> None
     | DummyFailure -> Some (`AsUser "false", [])
