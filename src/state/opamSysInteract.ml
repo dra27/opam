@@ -744,7 +744,7 @@ let install_packages_commands_t ?(env=OpamVariable.Map.empty) sys_packages =
                  |> OpamStd.String.Set.remove epel_release
                  |> OpamStd.String.Set.elements);
        `AsUser "rpm", "-q"::"--whatprovides"::packages], None
-  | Cygwin -> [ `AsUser "setup-x86_64.exe", "-P"::yes ["-q"] packages], None
+  | Cygwin -> [ `AsUser "setup-x86_64.exe", yes ["-q"] ("-P"::packages)], None
   | Debian -> [`AsAdmin "apt-get", "install"::yes ["-qq"; "-yy"] packages],
       (if unsafe_yes then Some ["DEBIAN_FRONTEND", "noninteractive"] else None)
   | DummySuccess -> [`AsUser "echo", packages], None
