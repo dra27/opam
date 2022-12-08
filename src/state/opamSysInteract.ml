@@ -437,6 +437,7 @@ let packages_status ?(env=OpamVariable.Map.empty) packages =
     *)
     let sys_available =
       let str_pkgs = to_string_list (packages -- sys_installed) in
+      if str_pkgs = [] then OpamSysPkg.Set.empty else
       let pkgs =
         let need_escape = Re.(compile (group (set "+."))) in
         OpamStd.List.concat_map "\\|"
