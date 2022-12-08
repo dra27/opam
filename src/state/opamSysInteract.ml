@@ -743,7 +743,7 @@ let install_packages_commands_t ?(env=OpamVariable.Map.empty) sys_packages =
                  |> OpamStd.String.Set.remove epel_release
                  |> OpamStd.String.Set.elements);
        `AsUser "rpm", "-q"::"--whatprovides"::packages], None
-  | Cygwin -> assert false
+  | Cygwin -> [ `AsUser "cyg", "dummy-install"::packages], None
   | Debian -> [`AsAdmin "apt-get", "install"::yes ["-qq"; "-yy"] packages],
       (if unsafe_yes then Some ["DEBIAN_FRONTEND", "noninteractive"] else None)
   | DummySuccess -> [`AsUser "echo", packages], None
@@ -817,7 +817,7 @@ let update ?(env=OpamVariable.Map.empty) () =
     | Alpine -> Some (`AsAdmin "apk", ["update"])
     | Arch -> Some (`AsAdmin "pacman", ["-Sy"])
     | Centos -> Some (`AsAdmin (Lazy.force yum_cmd), ["makecache"])
-    | Cygwin -> assert false
+    | Cygwin -> Some (`AsUser "failwith", [])
     | Debian -> Some (`AsAdmin "apt-get", ["update"])
     | DummySuccess -> None
     | DummyFailure -> Some (`AsUser "false", [])
