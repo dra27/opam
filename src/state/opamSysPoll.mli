@@ -40,3 +40,6 @@ val cores: unit -> int
     unknown if they are not available.
     [env] is used to determine host specification. *)
 val to_string: gt_variables -> string
+
+(* {2} Cygwin polling *)
+val cygpath: gt_variables -> OpamFilename.Dir.t option
