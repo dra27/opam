@@ -635,6 +635,49 @@ let init_checks ?(hard_fail_exn=true) init_config =
   if hard_fail && hard_fail_exn then OpamStd.Sys.exit_because `Configuration_error
   else not (soft_fail || hard_fail)
 
+let windows_checks config =
+  let vspm_path = OpamVariable.of_string "sys-pkg-manager-path" in
+  let env = OpamVariable.Map.empty in
+  match OpamSysPoll.os env with
+  | Some "windows" ->
+    (match OpamSysPoll.os_distribution env with
+     | Some ("cygwii"|"msys2") ->
+       let var = OpamFile.Config.global_variables config in
+       let path_is_present =
+         match List.find_opt (fun (v,_,_) -> OpamVariable.(equal v vspm_path)) var with
+         | Some (_var, S content, _str) ->
+           OpamFilename.exists (OpamFilename.of_string content)
+         | _ -> false
+       in
+       if path_is_present then config else
+         (
+           if OpamConsole.confirm "install?" then
+             (match OpamProcess.Job.run @@ OpamSysInteract.Cygwin.install () with
+              | Some path ->
+                OpamFile.Config.with_global_variables
+                  ((vspm_path, S path, "added at init!!")::var)
+                  config
+              | None ->
+                let path = OpamConsole.read "please give system package manager full path: " in
+                match path with
+                | Some path when OpamFilename.exists (OpamFilename.of_string path) ->
+                  OpamFile.Config.with_global_variables
+                    ((vspm_path, S path, "added at init!!")::var)
+                    config
+                | _ -> assert (String.equal "XXX" "xxx"); config)
+           else
+             (let path = OpamConsole.read "please give system package manager full path: " in
+              match path with
+              | Some path when OpamFilename.exists (OpamFilename.of_string path) ->
+                OpamFile.Config.with_global_variables
+                  ((vspm_path, S path, "added at init!!")::var)
+                  config
+              | _ -> assert (String.equal "XXX" "xxx"); config
+             )
+         )
+     | _ -> config)
+  | _ -> config
+
 let update_with_init_config ?(overwrite=false) config init_config =
   let module I = OpamFile.InitConfig in
   let module C = OpamFile.Config in
@@ -693,6 +736,7 @@ let reinit ?(init_config=OpamInitDefaults.init_config()) ~interactive
       OpamAuxCommands.check_and_revert_sandboxing root config
     else config
   in
+  let config = windows_checks config in
   OpamFile.Config.write (OpamPath.config root) config;
   OpamEnv.setup root ~interactive
     ?dot_profile ?update_config ?env_hook ?completion ?inplace shell;
@@ -773,6 +817,7 @@ let init
             OpamAuxCommands.check_and_revert_sandboxing root config
           else config
         in
+        let config = windows_checks config in
         OpamFile.Config.write config_f config;
         let repos_config =
           OpamRepositoryName.Map.of_list repos |>

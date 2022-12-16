@@ -187,3 +187,9 @@ let to_string env =
     (os env +! "unknown")
     (os_distribution env +! "unknown")
     (os_version env +! "unknown")
+
+let poll_cygpath () = command_output [ "cygpath" ; "-m"; "/" ]
+let cygpath = Lazy.from_fun poll_cygpath
+let cygpath env =
+  OpamStd.Option.map OpamFilename.Dir.of_string
+  @@ resolve_or_poll "cygpath" cygpath env
