@@ -38,3 +38,9 @@ val package_manager_name: ?env:gt_variables -> unit -> string
    Presently used to check for epel-release on CentOS and RHEL.
    [env] is used to determine host specification. *)
 val repo_enablers: ?env:gt_variables -> unit -> string option
+
+
+module Cygwin : sig
+val install: unit -> string option OpamProcess.job
+val update:  gt_variables -> unit
+end

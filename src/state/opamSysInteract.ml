@@ -164,32 +164,37 @@ let family ~env () =
         family
 
 module Cygwin = struct
-  let cache () = OpamPath.cygwin_setup_ini (OpamFilename.Dir.of_string "toto" )
+  let setupexe = OpamUrl.of_string "https://cygwin.com/setup-x86_64.exe"
+  let setupexesig = OpamUrl.of_string "https://cygwin.com/setup-x86_64.exe.sig"
+  let cache () = OpamPath.cygwin_setup_ini (OpamStateConfig.(!r.root_dir))
+  let cache = Lazy.from_fun cache
+  let default_mirror = "https://ftp.lip6.fr/pub/cygwin"
 
   let update env =
-    let cache = cache () in
+    let cache = Lazy.force cache  in
     let mirror =
       match OpamSysPoll.cygpath env with
-      | None -> "default"
+      | None -> default_mirror
       | Some cygpath ->
         let setup =
           OpamProcess.read_lines
             OpamFilename.(to_string Op.( cygpath / "etc" / "setup" // "setup.rc"))
         in
         let rec aux = function
-          | [] -> "default"
+          | [] -> default_mirror
           | "last-mirror"::mirror::_ -> mirror
           | l -> aux l
         in
         aux setup ^ "/x86_64/setup.ini"
     in
     let mirror = OpamUrl.of_string mirror in
-    OpamFilename.with_tmp_dir @@ fun dir ->
-    let filename =
+    let lines =
+      let open OpamProcess.Job.Op in
       OpamProcess.Job.run @@
-      OpamDownload.download ~overwrite:true mirror dir
+      OpamFilename.with_tmp_dir_job @@ fun dir ->
+      OpamDownload.download ~overwrite:true mirror dir @@| fun filename ->
+      OpamProcess.read_lines (OpamFilename.to_string filename)
     in
-    let lines = OpamProcess.read_lines (OpamFilename.to_string filename) in
     if lines = [] then assert false else
     let timestamp, packages =
       let rec aux = function
@@ -223,10 +228,11 @@ module Cygwin = struct
         Buffer.add_char buff '\n')
       packages;
     OpamStd.Option.iter (Buffer.add_string buff) last;
+    OpamFilename.remove cache;
     OpamFilename.write cache (Buffer.contents buff)
 
   let available_packages () =
-    let cache = cache () in
+    let cache = Lazy.force cache  in
     if OpamFilename.exists cache then
       let content = OpamProcess.read_lines (OpamFilename.to_string cache) in
       match content with
@@ -249,6 +255,30 @@ module Cygwin = struct
          "Inexistant internal cywgin setup.ini, please run opam update --depexts";
        OpamSysPkg.Set.empty)
 
+  let install () =
+    let root = OpamStateConfig.(!r.root_dir) in
+    let open OpamProcess.Job.Op in
+    OpamProcess.Job.run @@
+    let cygwin_path = OpamFilename.Op.(root / "cygwin_local_install") in
+    let local_cygwin_setupexe = OpamFilename.Op.(root // "setup.exe") in
+    (* download setup.exe *)
+    OpamFilename.with_tmp_dir_job @@ fun dir ->
+    OpamDownload.download ~overwrite:true setupexe dir @@| fun filename ->
+    OpamFilename.move ~src:filename ~dst:local_cygwin_setupexe;
+    OpamFilename.chmod local_cygwin_setupexe 0o777;
+    (* launch install *)
+    let args = [
+      "root"; OpamFilename.Dir.to_string cygwin_path;
+      "no admin";
+      "etc.";
+    ] in
+    OpamSystem.make_command
+      (OpamFilename.to_string local_cygwin_setupexe)
+      args @@> fun r ->
+    if OpamProcess.check_success_and_cleanup r then
+      Done (Some (OpamFilename.to_string local_cygwin_setupexe))
+    else
+      (assert ("XXX" = "xxx"); Done (None))
 
 end
 
@@ -803,8 +833,17 @@ let install_packages_commands_t ?(env=OpamVariable.Map.empty) sys_packages =
                  |> OpamStd.String.Set.elements);
        `AsUser "rpm", "-q"::"--whatprovides"::packages], None
   | Cygwin ->
-  [ `AsUser "setup-x86_64.exe", yes ["-q"] ("-P"::packages)],
-  None
+    [ `AsUser (get_sys_pkg_manager_path env), 
+      [ "--quiet-mode";
+        "--no-shortcuts";
+        "--no-startmenu";
+        "--no-desktop";
+        "--only-site";
+        "--no-admin";
+        "--packages";
+        (* "--upgrade-also";  if internal cygwin install *)
+      ] @ packages],
+    None
   | Debian -> [`AsAdmin "apt-get", "install"::yes ["-qq"; "-yy"] packages],
       (if unsafe_yes then Some ["DEBIAN_FRONTEND", "noninteractive"] else None)
   | DummySuccess -> [`AsUser "echo", packages], None
