@@ -311,11 +311,6 @@ let get_opam_raw ~set_opamroot ~set_opamswitch ?(base=[])
     List.filter remove_OPAM_SWITCH_PREFIX upd
   in
   let upd =
-    ("OPAM_SWITCH_PREFIX", Eq,
-     OpamFilename.Dir.to_string (OpamPath.Switch.root root switch),
-     Some "Prefix of the current opam switch") :: upd
-  in
-  let upd =
     let from_op, to_op =
       if force_path then
         EqPlusEq, PlusEq
