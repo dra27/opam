@@ -189,8 +189,8 @@ let print_eval_env ~csh ~sexp ~fish ~pwsh ~cmd env =
   else
     print_env env
 
-let regenerate_env ~set_opamroot ~set_opamswitch ~force_path gt env_file =
-  OpamSwitchState.with_ `Lock_none gt @@ fun st ->
+let regenerate_env ?(base=[]) ~set_opamroot ~set_opamswitch ~force_path gt switch env_file =
+  OpamSwitchState.with_ `Lock_none ~switch gt @@ fun st ->
   let upd =
     OpamEnv.updates ~set_opamroot ~set_opamswitch ~force_path st
   in
@@ -199,7 +199,7 @@ let regenerate_env ~set_opamroot ~set_opamswitch ~force_path gt env_file =
        OpamSwitchState.with_write_lock st @@ fun st ->
        (OpamFile.Environment.write env_file upd), st
      in OpamSwitchState.drop st);
-  OpamEnv.add [] upd
+  OpamEnv.add base upd
 
 let load_and_verify_env ?base ~set_opamroot ~set_opamswitch ~force_path gt switch env_file =
   let upd =
@@ -215,17 +215,17 @@ let load_and_verify_env ?base ~set_opamroot ~set_opamswitch ~force_path gt switc
   if environment_opam_switch_prefix <> actual_opam_switch_prefix then begin
     log "Switch has moved from %s to %s" environment_opam_switch_prefix actual_opam_switch_prefix;
     log "Regenerating environment file";
-    regenerate_env ~set_opamroot ~set_opamswitch ~force_path gt env_file
+    regenerate_env ~set_opamroot ~set_opamswitch ~force_path gt switch env_file
   end else
     upd
 
-let ensure_env_aux ?(set_opamroot=false) ?(set_opamswitch=false) ?(force_path=true) gt switch =
+let ensure_env_aux ?base ?(set_opamroot=false) ?(set_opamswitch=false) ?(force_path=true) gt switch =
   let env_file = OpamPath.Switch.environment gt.root switch in
   if OpamFile.exists env_file then
-    load_and_verify_env ~set_opamroot ~set_opamswitch ~force_path gt switch env_file
+    load_and_verify_env ?base ~set_opamroot ~set_opamswitch ~force_path gt switch env_file
   else begin
     log "Missing environment file, regenerate it";
-    regenerate_env ~set_opamroot ~set_opamswitch ~force_path gt env_file
+    regenerate_env ?base ~set_opamroot ~set_opamswitch ~force_path gt switch env_file
   end
 
 let ensure_env gt switch =
@@ -296,7 +296,6 @@ let exec gt ~set_opamroot ~set_opamswitch ~inplace_path ~no_switch command =
     let rt = OpamRepositoryState.load `Lock_none gt in
     OpamSwitchState.load `Lock_none gt rt switch
   ) in
-  let env_file = OpamPath.Switch.environment gt.root switch in
   let env =
     let base = List.map (fun (v,va) -> v,va,None) (OpamStd.Env.list ()) in
     if no_switch then
@@ -305,14 +304,9 @@ let exec gt ~set_opamroot ~set_opamswitch ~inplace_path ~no_switch command =
           match List.find_opt (fun (v,_,_) -> OpamStd.Env.Name.equal v var) revert with
           | Some reverted -> reverted
           | None -> base) base
-    else if OpamFile.exists env_file then
-      load_and_verify_env
-        ~base ~set_opamroot ~set_opamswitch ~force_path:(not inplace_path)
-        gt switch env_file
     else
-      OpamEnv.get_full ~set_opamroot ~set_opamswitch
-        ~force_path:(not inplace_path)
-        (Lazy.force st_lazy)
+      ensure_env_aux ~base ~set_opamroot ~set_opamswitch
+                     ~force_path:(not inplace_path) gt switch
   in
   let env = OpamTypesBase.env_array env in
   let resolve var =
