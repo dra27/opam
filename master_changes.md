@@ -91,6 +91,7 @@ users)
   * Introduce OpamStd.Env.Envname to abstract environment variable names [#5356 @dra27]
   * Regenerate the environment file when a local switch is moved [#5417 @dra27 - fix #3411]
   * Regenerate the environment file in `opam exec` [#5417 @dra27]
+  * Store the exact environment in `OPAM_LAST_ENV` [#5417 @dra27 - fix #3411]
 
 ## Pin
   * Switch the default version when undefined from ~dev to dev [#4949 @kit-ty-kate]
