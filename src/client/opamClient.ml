@@ -639,9 +639,9 @@ let windows_checks config =
   let vspm_path = OpamVariable.of_string "sys-pkg-manager-path" in
   let env = OpamVariable.Map.empty in
   match OpamSysPoll.os env with
-  | Some "windows" ->
+  | Some "win32" ->
     (match OpamSysPoll.os_distribution env with
-     | Some ("cygwii"|"msys2") ->
+     | Some ("cygwin"|"msys2") ->
        let var = OpamFile.Config.global_variables config in
        let path_is_present =
          match List.find_opt (fun (v,_,_) -> OpamVariable.(equal v vspm_path)) var with
@@ -713,6 +713,7 @@ let reinit ?(init_config=OpamInitDefaults.init_config()) ~interactive
     config shell =
   let root = OpamStateConfig.(!r.root_dir) in
   let config = update_with_init_config config init_config in
+  let config = windows_checks config in
   let _all_ok =
     if bypass_checks then false else
       init_checks ~hard_fail_exn:false init_config
@@ -736,7 +737,6 @@ let reinit ?(init_config=OpamInitDefaults.init_config()) ~interactive
       OpamAuxCommands.check_and_revert_sandboxing root config
     else config
   in
-  let config = windows_checks config in
   OpamFile.Config.write (OpamPath.config root) config;
   OpamEnv.setup root ~interactive
     ?dot_profile ?update_config ?env_hook ?completion ?inplace shell;
@@ -789,6 +789,7 @@ let init
             init_config |>
           OpamFile.Config.with_repositories (List.map fst repos)
         in
+        let config = windows_checks config in
 
         let dontswitch =
           if bypass_checks then false else
@@ -817,7 +818,6 @@ let init
             OpamAuxCommands.check_and_revert_sandboxing root config
           else config
         in
-        let config = windows_checks config in
         OpamFile.Config.write config_f config;
         let repos_config =
           OpamRepositoryName.Map.of_list repos |>

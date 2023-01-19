@@ -110,6 +110,26 @@ let poll_os_distribution () =
                                   "/etc/issue"] |>
        fun s -> Scanf.sscanf s " %s " norm
      with Not_found -> linux)
+  | Some "win32" ->
+    (* If the user provides a Cygwin installation in PATH, by default we'll use
+       it. Note that this is _not_ done for MSYS2. *)
+    let is_cygwin_cygcheck cygcheck =
+      let cygpath = Filename.(concat (dirname cygcheck) "cygpath.exe") in
+      if Sys.file_exists cygpath then
+        if OpamStd.Sys.get_windows_executable_variant ~cygcheck cygpath = `Cygwin then
+          Some "cygwin"
+        else
+          None
+      else
+        None
+    in
+    let distribution =
+      OpamStd.Option.replace is_cygwin_cygcheck (OpamSystem.resolve_command "cygcheck")
+    in
+    if distribution = None then
+      os
+    else
+      distribution
   | os -> os
 let os_distribution = Lazy.from_fun poll_os_distribution
 

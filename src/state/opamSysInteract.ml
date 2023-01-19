@@ -258,7 +258,7 @@ module Cygwin = struct
         OpamSysPkg.Set.empty
     else
       (OpamConsole.error
-         "Inexistant internal cywgin setup.ini, please run opam update --depexts";
+         "Inexistant internal cygwin setup.ini, please run opam update --depexts";
        OpamSysPkg.Set.empty)
 
   let install () =
@@ -266,17 +266,25 @@ module Cygwin = struct
     let open OpamProcess.Job.Op in
     OpamProcess.Job.run @@
     let cygwin_path = OpamFilename.Op.(root / "cygwin_local_install") in
-    let local_cygwin_setupexe = OpamFilename.Op.(root // "setup.exe") in
+    let local_cygwin_setupexe = OpamFilename.Op.(cygwin_path // "setup-x86_64.exe") in
     (* download setup.exe *)
     OpamFilename.with_tmp_dir_job @@ fun dir ->
+    OpamFilename.mkdir root;
     OpamDownload.download ~overwrite:true setupexe dir @@| fun filename ->
+    OpamFilename.mkdir cygwin_path;
     OpamFilename.move ~src:filename ~dst:local_cygwin_setupexe;
-    OpamFilename.chmod local_cygwin_setupexe 0o777;
     (* launch install *)
     let args = [
-      "root"; OpamFilename.Dir.to_string cygwin_path;
-      "no admin";
-      "etc.";
+      "--root"; OpamFilename.Dir.to_string cygwin_path;
+      "--arch"; "x86_64";
+      "--no-admin";
+      "--no-desktop";
+      "--no-replaceonreboot";
+      "--no-shortcuts";
+      "--no-startmenu";
+      "--no-write-registry";
+      "--packages"; "make,mingw64-x86_64-gcc-core,rsync";
+      "--quiet-mode"
     ] in
     OpamSystem.make_command
       (OpamFilename.to_string local_cygwin_setupexe)
@@ -839,7 +847,7 @@ let install_packages_commands_t ?(env=OpamVariable.Map.empty) config sys_package
                  |> OpamStd.String.Set.elements);
        `AsUser "rpm", "-q"::"--whatprovides"::packages], None
   | Cygwin ->
-    [ `AsUser (get_sys_pkg_manager_path env), 
+    [ `AsUser (Commands.get_cmd config "cygwin"),  (* XXX COMBAK! *)
       [ "--quiet-mode";
         "--no-shortcuts";
         "--no-startmenu";

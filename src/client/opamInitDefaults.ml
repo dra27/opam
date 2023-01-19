@@ -126,19 +126,19 @@ let dl_tool () =
 let recommended_tools () =
   let make = OpamStateConfig.(Lazy.force !r.makecmd) in
   [
-    [make], None, None;
+    [make], None, Some not_win32_filter;
     ["cc"], None, Some not_win32_filter;
   ]
 
 let required_tools ~sandboxing () =
   req_dl_tools () @
   [
-    ["diff"], None, None;
-    ["patch"], None, Some patch_filter;
+    ["diff"], None, Some not_win32_filter;
+    ["patch"], None, Some (FAnd (not_win32_filter, patch_filter));
     ["gpatch"], None, Some gpatch_filter;
     ["tar"], None, Some tar_filter;
     ["gtar"], None, Some gtar_filter;
-    ["unzip"], None, None;
+    ["unzip"], None, Some not_win32_filter;
     ["getconf"], None, Some getconf_filter;
   ] @
   if sandboxing then [
