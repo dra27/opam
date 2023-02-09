@@ -1174,8 +1174,8 @@ module OpamSys = struct
   let get_windows_executable_variant =
     if Sys.win32 then
       let results = Hashtbl.create 17 in
-      let requires_cygwin name =
-        let cmd = Printf.sprintf "cygcheck \"%s\"" name in
+      let requires_cygwin cygcheck name =
+        let cmd = Filename.quote_command cygcheck [name] in
         let ((c, _, _) as process) = Unix.open_process_full cmd (Unix.environment ()) in
         let rec f a =
           match input_line c with
@@ -1204,19 +1204,19 @@ module OpamSys = struct
         in
         f `Native
       in
-      fun name ->
+      fun ?(cygcheck="cygcheck") name ->
         if Filename.is_relative name then
-          requires_cygwin name
+          requires_cygwin cygcheck name
         else
           try
-            Hashtbl.find results name
+            Hashtbl.find results (cygcheck, name)
           with Not_found ->
-            let result = requires_cygwin name
+            let result = requires_cygwin cygcheck name
             in
-              Hashtbl.add results name result;
+              Hashtbl.add results (cygcheck, name) result;
               result
     else
-      fun _ -> `Native
+      fun ?(cygcheck="") _ -> `Native
 
   let is_cygwin_variant cmd =
     (* Treat MSYS2's variant of `cygwin1.dll` called `msys-2.0.dll` equivalently.

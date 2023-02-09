@@ -529,9 +529,9 @@ module Sys : sig
 
       Note that this returns [`Native] on a Cygwin-build of opam!
 
-      Both cygcheck and an unqualified command will be resolved using the
-      current PATH. *)
-  val get_windows_executable_variant:
+      Both cygcheck and an unqualified command will be resolved if necessary
+      using the current PATH. *)
+  val get_windows_executable_variant: ?cygcheck:string ->
     string -> [ `Native | `Cygwin | `Tainted of [ `Msys2 | `Cygwin] | `Msys2 ]
 
   (** For native Windows builds, returns [`Cygwin] if the command is a Cygwin-
