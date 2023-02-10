@@ -450,6 +450,8 @@ let create ?info_file ?env_file ?(allow_stdin=not Sys.win32) ?stdout_file ?stder
       close_stdin  ();
       close_stdout ();
       close_stderr ();
+      begin try Unix.chdir oldcwd
+      with Unix.Unix_error _ -> () end;
       raise e in
   close_stdin  ();
   close_stdout ();
