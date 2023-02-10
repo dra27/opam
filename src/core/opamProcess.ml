@@ -12,6 +12,18 @@
 let log ?level fmt =
   OpamConsole.log "PROC" ?level fmt
 
+let default_env = lazy (
+  (OpamStd.Env.list () :> (string * string) list)
+    |> List.map (fun ((var, v) as b) ->
+         (* XXX Gratuitous code duplication with the already bad code in OpamStd.Sys.get_windows_executable_variant *)
+         if String.lowercase_ascii var = "path" then
+           (* Much more magic needed here to work out if this should be taking place on global state load *)
+           (var, {|C:\Devel\Roots\windows-testing\cygwin_local_install\bin;|} ^ v)
+         else
+           b)
+    |> List.map (fun (var, v) -> var^"="^v)
+    |> Array.of_list)
+
 let cygwin_create_process_env prog args env fd1 fd2 fd3 =
   (*
    * Unix.create_process_env correctly converts arguments to a command line for
@@ -173,7 +185,7 @@ let cygwin_create_process_env prog args env fd1 fd2 fd3 =
               end else
                 f prefix (dir::suffix) dirs
         | [] ->
-            assert false
+            []
         in
         Some (key ^ "=" ^ String.concat ";" (f [] [] path_dirs))
     | _ ->
@@ -351,7 +363,7 @@ let create ?info_file ?env_file ?(allow_stdin=not Sys.win32) ?stdout_file ?stder
       else tee f
   in
   let env = match env with
-    | None   -> Unix.environment ()
+    | None   -> Lazy.force default_env (*Unix.environment ()*)
     | Some e -> e in
   let time = Unix.gettimeofday () in
 
@@ -391,7 +403,7 @@ let create ?info_file ?env_file ?(allow_stdin=not Sys.win32) ?stdout_file ?stder
             else if Sys.file_exists (cmd ^ ".exe") then
               cmd ^ ".exe"
             else
-              raise Exit in
+              raise Exit in (* <--- this isn't right; what about PATH resolution?? *)
           let actual_image, args =
             let c = open_in actual_command in
             set_binary_mode_in c true;
@@ -523,7 +535,7 @@ let run_background command =
   in
   let verbose = is_verbose_command command in
   let allow_stdin = OpamStd.Option.default false allow_stdin in
-  let env = match env with Some e -> e | None -> Unix.environment () in
+  let env = match env with Some e -> e | None -> Lazy.force default_env (*Unix.environment ()*) in
   let file ext = match name with
     | None -> None
     | Some n ->

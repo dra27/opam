@@ -1176,7 +1176,20 @@ module OpamSys = struct
       let results = Hashtbl.create 17 in
       let requires_cygwin cygcheck name =
         let cmd = Filename.quote_command cygcheck [name] in
-        let ((c, _, _) as process) = Unix.open_process_full cmd (Unix.environment ()) in
+        (* XXX Do the environment manipulation properly. Could alternatively see if there's anything on stderr, *)
+        let env =
+          if Filename.is_relative cygcheck then
+            Unix.environment ()
+          else
+            let f v =
+              if String.length v >= 5 && String.lowercase_ascii (String.sub v 0 5) = "path=" then
+                String.sub v 0 5 ^ Filename.dirname cygcheck ^ ";" ^ String.sub v 5 (String.length v - 5)
+              else
+                v
+            in
+            Array.map f (Unix.environment ())
+        in
+        let ((c, _, _) as process) = Unix.open_process_full cmd env in
         let rec f a =
           match input_line c with
           | x ->
@@ -1204,7 +1217,8 @@ module OpamSys = struct
         in
         f `Native
       in
-      fun ?(cygcheck="cygcheck") name ->
+      (* XXX Again - mount this with a global state change *)
+      fun ?(cygcheck={|C:\Devel\Roots\windows-testing\cygwin_local_install\bin\cygcheck.exe|}) name ->
         if Filename.is_relative name then
           requires_cygwin cygcheck name
         else
@@ -1216,7 +1230,12 @@ module OpamSys = struct
               Hashtbl.add results (cygcheck, name) result;
               result
     else
-      fun ?(cygcheck="") _ -> `Native
+      fun ?cygcheck:_ _ -> `Native
+
+  let is_cygwin_cygcheck cygcheck =
+    let cygpath = Filename.(concat (dirname cygcheck) "cygpath.exe") in
+    Sys.file_exists cygpath
+      && (get_windows_executable_variant ~cygcheck cygpath = `Cygwin)
 
   let is_cygwin_variant cmd =
     (* Treat MSYS2's variant of `cygwin1.dll` called `msys-2.0.dll` equivalently.

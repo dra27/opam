@@ -636,47 +636,108 @@ let init_checks ?(hard_fail_exn=true) init_config =
   else not (soft_fail || hard_fail)
 
 let windows_checks config =
-  let vspm_path = OpamVariable.of_string "sys-pkg-manager-path" in
+  (* XXX Check behaviour of reinit - should _not_ reinstall cygwin *)
   let env = OpamVariable.Map.empty in
-  match OpamSysPoll.os env with
-  | Some "win32" ->
-    (match OpamSysPoll.os_distribution env with
-     | Some ("cygwin"|"msys2") ->
-       let var = OpamFile.Config.global_variables config in
-       let path_is_present =
-         match List.find_opt (fun (v,_,_) -> OpamVariable.(equal v vspm_path)) var with
-         | Some (_var, S content, _str) ->
-           OpamFilename.exists (OpamFilename.of_string content)
-         | _ -> false
-       in
-       if path_is_present then config else
-         (
-           if OpamConsole.confirm "install?" then
-             (match OpamProcess.Job.run @@ OpamSysInteract.Cygwin.install () with
-              | Some path ->
-                OpamFile.Config.with_global_variables
-                  ((vspm_path, S path, "added at init!!")::var)
-                  config
-              | None ->
-                let path = OpamConsole.read "please give system package manager full path: " in
-                match path with
-                | Some path when OpamFilename.exists (OpamFilename.of_string path) ->
-                  OpamFile.Config.with_global_variables
-                    ((vspm_path, S path, "added at init!!")::var)
-                    config
-                | _ -> assert (String.equal "XXX" "xxx"); config)
-           else
-             (let path = OpamConsole.read "please give system package manager full path: " in
-              match path with
-              | Some path when OpamFilename.exists (OpamFilename.of_string path) ->
-                OpamFile.Config.with_global_variables
-                  ((vspm_path, S path, "added at init!!")::var)
-                  config
-              | _ -> assert (String.equal "XXX" "xxx"); config
-             )
-         )
-     | _ -> config)
-  | _ -> config
+  let success cygpath =
+    let config =
+      let vars = OpamFile.Config.global_variables config in
+      let os_distribution = OpamVariable.of_string "os-distribution" in
+      OpamFile.Config.with_global_variables ((os_distribution, S "cygwin", "Set by opam init")::vars) config
+    in
+    let sys_pkg_manager_cmd =
+      OpamStd.String.Map.add "cygwin" (OpamFilename.of_string cygpath) (OpamFile.Config.sys_pkg_manager_cmd config)
+    in
+    OpamFile.Config.with_sys_pkg_manager_cmd sys_pkg_manager_cmd config
+  in
+  let get_cygwin = function
+  | Some cygpath when
+      Sys.file_exists cygpath && OpamStd.Sys.get_windows_executable_variant cygpath = `Cygwin ->
+    (* XXX Should display the name using the converted path of /, not the bin dir *)
+    OpamConsole.note "Using Cygwin installation at %s for depexts" (Filename.dirname cygpath);
+    success cygpath
+  | Some _
+  | None ->
+    let rec menu () =
+      let prompt () =
+        let options = [
+          `Internal, "Install and maintain an internal Cygwin installation";
+          (* XXX Not sure this option properly works - what's the impact for opam env?? *)
+          `Specify, "Enter the location of a Cygwin installation"
+          (* `Abort ?? XXX *)
+        ] in
+        OpamConsole.menu "How should opam acquire Cygwin?" ~no:`Internal ~options
+      in
+      match prompt () with
+      | `Internal ->
+        let cygpath =
+          (* XXX Fix dup with OpamSysInteract.Cygwin.install *)
+          let root = OpamStateConfig.(!r.root_dir) in
+          OpamFilename.Op.(root / "cygwin_local_install" / "bin" // "cygcheck.exe")
+        in
+        success (OpamFilename.to_string cygpath)
+      | `Specify ->
+         match OpamConsole.read "Enter the path to the Cygwin installation:" with
+         | None -> menu ()
+         | Some entry ->
+           let cygpath =
+             if entry = "" then
+               Error "No path entered!"
+             else if not (Sys.file_exists entry) then
+               Error (Printf.sprintf "%s not found!" entry)
+             else if Filename.basename entry = "cygcheck.exe" then
+               if OpamStd.Sys.is_cygwin_cygcheck entry then
+                 Ok entry
+               else
+                 Error (Printf.sprintf "%s found, but it is not from a Cygwin installation" entry)
+             else if not (Sys.is_directory entry) then
+               Error (Printf.sprintf "%s is not a directory" entry)
+             else
+               let cygcheck = Filename.concat (Filename.concat entry "bin") "cygcheck.exe" in
+               if Sys.file_exists cygcheck then
+                 if OpamStd.Sys.is_cygwin_cygcheck cygcheck then
+                   Ok cygcheck
+                 else
+                   Error (Printf.sprintf "%s found, but it does not appear to be a Cygwin installation" entry)
+               else
+                 Error (Printf.sprintf "bin\\cygcheck.exe not found in %s" entry)
+           in
+           match cygpath with
+           | Ok cygpath -> success cygpath
+           | Error msg -> OpamConsole.msg "%s\n" msg; menu ()
+    in
+      OpamConsole.header_msg "Unix support infrastructure";
+      OpamConsole.msg
+        "\n\
+         opam and the OCaml ecosystem in general require various Unix tools in order to\n\
+         operate correctly. At present, this requires the installation of Cygwin to\n\
+         provide these tools.\n\n";
+      menu ()
+  in
+  if OpamSysPoll.os env = Some "win32" then
+    match OpamSysPoll.os_distribution env with
+    | Some "win32" ->
+      (* If there's a "cygwin" entry in sys-pkg-manager-cmd, but os-distribution
+         hasn't (yet) been set to "cygwin", then that'll be done here.
+         Otherwise, the user must either allow opam to install Cygwin or must
+         provide the path to it.
+
+         Note that a depext solution is _mandatory_ on Windows for now, because
+         there are commands opam requires which are only provided using it
+         (patch, etc.). MSYS2 avoids this by requiring os-distribution to be
+         set. *)
+      let sys_pkg_manager_cmd =
+        OpamStd.String.Map.find_opt "cygwin" (OpamFile.Config.sys_pkg_manager_cmd config)
+        |> OpamStd.Option.map OpamFilename.to_string
+      in
+      get_cygwin sys_pkg_manager_cmd
+    | Some "cygwin" ->
+      (* XXX os-distribution should be persisted as a variable *)
+      (* XXX Check the location of cygcheck in PATH to warn/error about bash conflicts *)
+      (* XXX Persist sys-pkg-manager-cmd *)
+      config
+    | _ -> config
+  else
+    config
 
 let update_with_init_config ?(overwrite=false) config init_config =
   let module I = OpamFile.InitConfig in
@@ -713,6 +774,7 @@ let reinit ?(init_config=OpamInitDefaults.init_config()) ~interactive
     config shell =
   let root = OpamStateConfig.(!r.root_dir) in
   let config = update_with_init_config config init_config in
+  (* XXX Should this definitely be done on reinit ?? *)
   let config = windows_checks config in
   let _all_ok =
     if bypass_checks then false else
@@ -748,6 +810,44 @@ let reinit ?(init_config=OpamInitDefaults.init_config()) ~interactive
       (OpamRepositoryName.Map.keys rt.repos_definitions)
   in
   OpamRepositoryState.drop rt
+
+(*
+let _installation_stuff config =
+ (*     let path = OpamSysInteract.Commands*)
+      let var = OpamFile.Config.global_variables config in
+      let path_is_present =
+        match List.find_opt (fun (v,_,_) -> OpamVariable.(equal v vspm_path)) var with
+        | Some (_var, S content, _str) ->
+          OpamFilename.exists (OpamFilename.of_string content)
+        | _ -> false
+      in
+      if path_is_present then config else
+        (
+          if OpamConsole.confirm "install?" then
+            (match OpamProcess.Job.run @@ OpamSysInteract.Cygwin.install () with
+             | Some path ->
+               OpamFile.Config.with_global_variables
+                 ((vspm_path, S path, "added at init!!")::var)
+                 config
+             | None ->
+               let path = OpamConsole.read "please give system package manager full path: " in
+               match path with
+               | Some path when OpamFilename.exists (OpamFilename.of_string path) ->
+                 OpamFile.Config.with_global_variables
+                   ((vspm_path, S path, "added at init!!")::var)
+                   config
+               | _ -> assert (String.equal "XXX" "xxx"); config)
+          else
+            (let path = OpamConsole.read "please give system package manager full path: " in
+             match path with
+             | Some path when OpamFilename.exists (OpamFilename.of_string path) ->
+               OpamFile.Config.with_global_variables
+                 ((vspm_path, S path, "added at init!!")::var)
+                 config
+             | _ -> assert (String.equal "XXX" "xxx"); config
+            )
+        )
+*)
 
 let init
     ~init_config ~interactive
@@ -791,6 +891,8 @@ let init
         in
         let config = windows_checks config in
 
+        (* XXX Certainly on Windows, initialising a local doesn't require rsync, so
+               we can definitely display its availability at init_checks *)
         let dontswitch =
           if bypass_checks then false else
           let all_ok = init_checks init_config in

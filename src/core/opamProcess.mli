@@ -221,3 +221,5 @@ val create_process_env :
   string -> string array -> string array ->
   Unix.file_descr -> Unix.file_descr -> Unix.file_descr ->
   int
+
+val default_env : string array lazy_t

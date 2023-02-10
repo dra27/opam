@@ -114,12 +114,8 @@ let poll_os_distribution () =
     (* If the user provides a Cygwin installation in PATH, by default we'll use
        it. Note that this is _not_ done for MSYS2. *)
     let is_cygwin_cygcheck cygcheck =
-      let cygpath = Filename.(concat (dirname cygcheck) "cygpath.exe") in
-      if Sys.file_exists cygpath then
-        if OpamStd.Sys.get_windows_executable_variant ~cygcheck cygpath = `Cygwin then
-          Some "cygwin"
-        else
-          None
+      if OpamStd.Sys.is_cygwin_cygcheck cygcheck then
+        Some "cygwin"
       else
         None
     in

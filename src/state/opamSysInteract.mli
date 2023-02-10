@@ -42,6 +42,6 @@ val repo_enablers: ?env:gt_variables -> OpamFile.Config.t -> string option
 
 
 module Cygwin : sig
-val install: unit -> string option OpamProcess.job
-val update:  gt_variables -> unit
+val install: unit -> (*string option*)unit OpamProcess.job
+val update: OpamFile.Config.t -> gt_variables -> unit
 end

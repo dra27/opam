@@ -287,6 +287,12 @@ let compute_updates ?(force_path=false) st =
     OpamFilename.Dir.to_string bindir,
     Some ("Binary dir for opam switch "^OpamSwitch.to_string st.switch)
   in
+  let cygwin_path =
+    "PATH",
+    (if force_path then PlusEq else EqPlusEq),
+    {|C:\Devel\Roots\windows-testing\cygwin_local_install\bin|},
+    Some "opam-managed Cygwin installation"
+  in
   let man_path =
     let open OpamStd.Sys in
     match os () with
@@ -313,7 +319,7 @@ let compute_updates ?(force_path=false) st =
         | None -> acc)
       st.installed []
   in
-  switch_env @ pkg_env @ man_path @ [path]
+  switch_env @ pkg_env @ man_path @ [path; cygwin_path]
 
 let updates_common ~set_opamroot ~set_opamswitch root switch =
   let root =

@@ -416,6 +416,9 @@ let init cli =
     in
     OpamStd.Exn.finally (fun () -> OpamRepositoryState.drop rt)
     @@ fun () ->
+    (* XXX Installation of Cygwin temporarily and unconditionally done here *)
+    OpamProcess.Job.run @@ OpamSysInteract.Cygwin.install ();
+    OpamSysInteract.Cygwin.update gt.config gt.global_variables;
     if no_compiler then () else
     let invariant, default_compiler, name =
       match compiler with
