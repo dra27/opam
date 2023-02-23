@@ -210,6 +210,15 @@ let opam_init ?root_dir ?strict ?solver =
 
   (* (i) get root dir *)
   let root = OpamStateConfig.opamroot ?root_dir () in
+  if Sys.win32
+     (* if default, redirection will be handled by opam init, or should have
+        been handled *)
+     && (root_dir <> None || OpamStateConfig.E.root () <> None)
+     && OpamStd.String.contains_char (OpamFilename.Dir.to_string root) ' ' then
+    OpamConsole.error "You opam root directory contains a space, this may lead \
+                       to several malfunction... bzzz.... nooo%s"
+      (* NOTE: UTF-8 Collision emoji *)
+      (if OpamConsole.color () then "\xF0\x9F\x92\xA5" else "");
 
   (* (ii) load conf file and set defaults *)
   (* the init for OpamFormat is done in advance since (a) it has an effect on
