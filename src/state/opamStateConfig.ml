@@ -70,23 +70,30 @@ type t = {
   no_depexts: bool;
 }
 
+let win_space_redirection root =
+  let redirected = OpamPath.redirected root in
+  if OpamFilename.exists redirected then
+    OpamFilename.Dir.of_string (OpamFilename.read redirected)
+  else root
+
+let default_root () =
+  (* On Windows, if a .opam directory is found in %HOME% or %USERPROFILE% then
+     then we'll use it. Otherwise, we use %LOCALAPPDATA%. *)
+  let home_location =
+    let open OpamFilename in
+    concat_and_resolve (Dir.of_string (OpamStd.Sys.home ())) ".opam"
+  in
+  if not Sys.win32 || OpamFilename.exists_dir home_location then
+    home_location
+  else
+  let open OpamFilename in
+  let local_appdata =
+    Dir.of_string (OpamStubs.getPathToLocalAppData ())
+  in
+  concat_and_resolve local_appdata "opam"
+
 let default = {
-  root_dir = (
-    (* On Windows, if a .opam directory is found in %HOME% or %USERPROFILE% then
-       then we'll use it. Otherwise, we use %LOCALAPPDATA%. *)
-    let home_location =
-      let open OpamFilename in
-      concat_and_resolve (Dir.of_string (OpamStd.Sys.home ())) ".opam"
-    in
-    if not Sys.win32 || OpamFilename.exists_dir home_location then
-      home_location
-    else
-      let open OpamFilename in
-      let local_appdata =
-        Dir.of_string (OpamStubs.getPathToLocalAppData ())
-      in
-      concat_and_resolve local_appdata "opam"
-    );
+  root_dir = default_root () |> win_space_redirection;
   original_root_dir = default_root ();
   current_switch = None;
   switch_from = `Default;
@@ -180,7 +187,9 @@ let initk k =
     | Some s -> Some (OpamSwitch.of_string s), Some `Env
   in
   setk (setk (fun c -> r := c; k)) !r
-    ?root_dir:(E.root () >>| OpamFilename.Dir.of_string)
+    ?root_dir:(E.root ()
+               >>| OpamFilename.Dir.of_string
+               >>| win_space_redirection)
     ?original_root_dir:(E.root () >>| OpamFilename.Dir.of_string)
     ?current_switch
     ?switch_from
@@ -208,6 +217,7 @@ let opamroot ?root_dir () =
   (root_dir >>+ fun () ->
    OpamStd.Env.getopt "OPAMROOT" >>| OpamFilename.Dir.of_string)
   +! default.root_dir
+  |> win_space_redirection
 
 let is_newer_raw = function
   | Some v ->

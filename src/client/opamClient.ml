@@ -1654,7 +1654,42 @@ let init
     shell =
   log "INIT %a"
     (slog @@ OpamStd.Option.to_string OpamRepositoryBackend.to_string) repo;
-  let root = OpamStateConfig.(!r.root_dir) in
+  let root =
+    let root = OpamStateConfig.(!r.root_dir) in
+    let has_space s = OpamStd.String.contains_char s ' ' in
+    if Sys.win32 &&
+       has_space (OpamFilename.Dir.to_string root) then
+      (let default = "C:\\opamroot" in
+       let rec ask () =
+         match OpamConsole.read "Opam root: " with
+         | Some r ->
+           if has_space r then
+             (OpamConsole.msg
+                "Given path '%s' contains space, please choose another one.\n"
+                (OpamConsole.colorise `bold r);
+              ask ())
+           else r
+         | None -> default
+       in
+       let new_root_f =
+         if OpamConsole.confirm ~default:false
+             "Your opam root path '%s' contains a space, we'll redirect to \
+              '%s'.\nDo you want to choose and enter another spaceless folder?"
+             (OpamFilename.Dir.to_string root) default then
+           ask ()
+         else default
+       in
+       let new_root = OpamFilename.Dir.of_string new_root_f in
+       OpamFilename.write (OpamPath.redirected root) new_root_f;
+       (* Add the readme file in C:\opamroot as redirected *)
+       OpamFilename.write
+         OpamFilename.Op.(root // "readme.txt")
+         (Printf.sprintf "Opam root redirected from %s"
+            (OpamFilename.Dir.to_string OpamStateConfig.(!r.root_dir)));
+       OpamStateConfig.update ~root_dir:new_root ();
+       new_root)
+    else root
+  in
   let config_f = OpamPath.config root in
   let root_empty =
     not (OpamFilename.exists_dir root) || OpamFilename.dir_is_empty root in
