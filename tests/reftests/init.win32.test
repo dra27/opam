@@ -1,0 +1,25 @@
+N0REP0
+### : Redirection :
+### rm -rf $OPAMROOT
+### OPAMROOT="roots/with path"
+### opam init --no-setup --bare --bypass-checks default REPO/ | grep -v Cygwin
+No configuration file found, using built-in defaults.
+
+<><> Fetching repository information ><><><><><><><><><><><><><><><><><><><><><>
+[default] Initialised
+### opam var root --debug --debug-level=-1
+CLI                             Parsing CLI version 2.2
+GSTATE                          LOAD-GLOBAL-STATE @ ${BASEDIR}/roots/with path
+${BASEDIR}/roots/with path
+### cat 'roots/with path/redirected-opamroot'
+/usr/bin/cat: 'roots/with path/redirected-opamroot': No such file or directory
+# Return code 1 #
+### opam switch create --empty test
+### opam switch --debug --debug-level=-1
+CLI                             Parsing CLI version 2.2
+GSTATE                          LOAD-GLOBAL-STATE @ ${BASEDIR}/roots/with path
+SWITCH                          list
+#   switch  compiler  description
+->  test              test
+### echo $OPAMROOT
+roots/with path
