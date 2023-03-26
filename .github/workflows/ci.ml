@@ -389,7 +389,7 @@ let cold_job ~analyse_job ~build_linux_job ~build_windows_job ~build_macOS_job ?
     ++ only_on Linux (run "Install bubblewrap" ["sudo apt install bubblewrap"])
     ++ checkout ()
     ++ cache Archives
-    ++ run "Cold" [
+    ++ run "Cold" ~env:[("CONFIGURE_ARS", "--without-vendored-deps")] [
          "make compiler";
          "make lib-pkg";
          "bash -exu .github/scripts/main/main.sh " ^ host]
@@ -475,6 +475,7 @@ let main oc : unit =
     ("CYGWIN_ROOT", "D:\\cygwin");
     ("CYGWIN", "winsymlinks:native");
     ("CYGWIN_EPOCH", "3");
+    ("CONFIGURE_ARGS", "");
   ] in
   let keys = [
     ("archives", "archives-1-${{ hashFiles('src_ext/Makefile.sources', 'src_ext/Makefile', '.github/scripts/common/preamble.sh', '.github/scripts/main/preamble.sh', '.github/scripts/main/archives-cache.sh') }}-${{ env.OPAM_REPO_SHA }}");

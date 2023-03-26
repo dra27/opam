@@ -32,7 +32,7 @@ if [ -e "$OCAML_LOCAL/_build" ]; then
   cp -a "$OCAML_LOCAL/_build" .
 fi
 
-./configure --prefix $CONFIGURE_PREFIX --with-mccs
+./configure --prefix $CONFIGURE_PREFIX --with-mccs $CONFIGURE_ARGS
 if [ "$OPAM_TEST" != "1" ]; then
   echo 'DUNE_PROFILE=dev' >> Makefile.config
 fi

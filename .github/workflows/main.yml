@@ -47,6 +47,7 @@ env:
   CYGWIN_ROOT: D:\cygwin
   CYGWIN: winsymlinks:native
   CYGWIN_EPOCH: 3
+  CONFIGURE_ARGS:
 
 defaults:
   run:
@@ -388,6 +389,8 @@ jobs:
         key: ${{ needs.Analyse.outputs.archives }}
         force-gzip: true
     - name: Cold
+      env:
+        CONFIGURE_ARGS: --without-vendored-deps
       run: |
         make compiler
         make lib-pkg
