@@ -206,10 +206,12 @@ let check_and_run_external_commands () =
     in
     let env =
       if has_init then
-        let updates =
-          ["PATH", OpamParserTypes.PlusEq,
-           OpamFilename.Dir.to_string plugins_bin, None]
-        in
+        let updates = OpamTypes.[{
+            envu_var = "PATH";
+            envu_op = OpamParserTypes.PlusEq;
+            envu_value = OpamFilename.Dir.to_string plugins_bin;
+            envu_comment = None;
+          }] in
         OpamStateConfig.init ~root_dir ();
         match OpamStateConfig.get_switch_opt () with
         | None -> env_array (OpamEnv.get_pure ~updates ())
