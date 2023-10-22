@@ -221,3 +221,14 @@ let map_success f = function
 let iter_success f = function
   | Success x -> f x
   | Conflicts _ -> ()
+
+(** Environment update path transformers functions *)
+let string_of_path_format = function
+  | Host -> "host"
+  | Target -> "target"
+  | Target_quoted -> "target-quoted"
+  | Host_quoted -> "host-quoted"
+
+let char_of_separator = function
+  | SSemiColumn -> ';'
+  | SColumn -> ':'
