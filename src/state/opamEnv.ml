@@ -19,6 +19,12 @@ open OpamFilename.Op
 let log fmt = OpamConsole.log "ENV" fmt
 let slog = OpamConsole.slog
 
+(* transitional no-op resolver *)
+let resolve_separator_and_format :
+  type r. r env_update -> spf_resolved env_update =
+  fun upd ->
+  { upd with envu_rewrite = Some (SPF_Resolved None); }
+
 (* - Environment and updates handling - *)
 
 type _ env_classification =
@@ -172,7 +178,7 @@ let updates_from_previous_instance = lazy (
       try get_env env_file
       with e -> OpamStd.Exn.fatal e; None))
 
-let expand (updates: env_update list) : env =
+let expand (updates: spf_resolved env_update list) : env =
   let updates =
     if Sys.win32 then
       (* Preserve the case of updates which are already in env *)
@@ -220,7 +226,7 @@ let expand (updates: env_update list) : env =
   let rec apply_updates reverts acc = function
     | upd :: updates ->
       let { envu_var = var; envu_op = op;
-            envu_value = arg; envu_comment = doc } = upd
+            envu_value = arg; envu_comment = doc; _ } = upd
       in
       let var = OpamStd.Env.Name.of_string var in
       let zip, reverts =
@@ -253,7 +259,7 @@ let expand (updates: env_update list) : env =
   in
   apply_updates reverts [] updates
 
-let add (env: env) (updates: env_update list) =
+let add (env: env) (updates: 'r env_update list) : env =
   let updates =
     if Sys.win32 then
       (* Preserve the case of updates which are already in env *)
@@ -295,12 +301,14 @@ let compute_updates ?(force_path=false) st =
   let bindir =
     OpamPath.Switch.bin st.switch_global.root st.switch st.switch_config
   in
+  let empty = Some (SPF_Resolved None) in
   let path = {
     envu_var = "PATH";
     envu_op = (if force_path then PlusEq else EqPlusEq);
     envu_value = OpamFilename.Dir.to_string bindir;
     envu_comment =
       Some ("Binary dir for opam switch "^OpamSwitch.to_string st.switch);
+    envu_rewrite = empty;
   } in
   let man_path =
     let open OpamStd.Sys in
@@ -314,6 +322,7 @@ let compute_updates ?(force_path=false) st =
              (OpamPath.Switch.man_dir
                 st.switch_global.root st.switch st.switch_config);
          envu_comment = Some "Current opam switch man dir";
+         envu_rewrite = empty;
        }]
   in
   let switch_env =
@@ -322,25 +331,33 @@ let compute_updates ?(force_path=false) st =
       envu_value = OpamFilename.Dir.to_string
           (OpamPath.Switch.root st.switch_global.root st.switch);
       envu_comment = Some "Prefix of the current opam switch";
+      envu_rewrite = empty;
     } ::
     List.map (env_expansion st) st.switch_config.OpamFile.Switch_config.env
   in
   let pkg_env = (* XXX: Does this need a (costly) topological sort? *)
     OpamPackage.Set.fold (fun nv acc ->
         match OpamPackage.Map.find_opt nv st.opams with
-        | Some opam -> List.map (env_expansion ~opam st) (OpamFile.OPAM.env opam) @ acc
+        | Some opam ->
+          List.map (fun upd ->
+              env_expansion ~opam st upd
+              |> resolve_separator_and_format)
+            (OpamFile.OPAM.env opam)
+          @ acc
         | None -> acc)
       st.installed []
   in
   switch_env @ pkg_env @ man_path @ [path]
 
 let updates_common ~set_opamroot ~set_opamswitch root switch =
+  let empty = Some (SPF_Resolved None) in
   let root =
     if set_opamroot then
       [{ envu_var = "OPAMROOT";
          envu_op = Eq;
          envu_value = OpamFilename.Dir.to_string root;
          envu_comment = Some "Opam root in use";
+         envu_rewrite = empty;
        }]
     else []
   in
@@ -350,6 +367,7 @@ let updates_common ~set_opamroot ~set_opamswitch root switch =
          envu_op = Eq;
          envu_value = OpamSwitch.to_string switch;
          envu_comment = None;
+         envu_rewrite = empty;
        }]
     else [] in
   root @ switch
@@ -417,7 +435,9 @@ let get_full
     List.filter (fun (name, _) -> not (OpamStd.Env.Name.Set.mem name scrub)) env
   in
   let env0 = List.map (fun (v,va) -> v,va,None) env in
-  let updates = u @ updates ~set_opamroot ~set_opamswitch ~force_path st in
+  let updates =
+    List.map resolve_separator_and_format u
+    @ updates ~set_opamroot ~set_opamswitch ~force_path st in
   add env0 updates
 
 let is_up_to_date_raw ?(skip=OpamStateConfig.(!r.no_env_notice)) updates =
@@ -456,11 +476,13 @@ let switch_path_update ~force_path root switch =
       (OpamStateConfig.Switch.safe_load_t
          ~lock_kind:`Lock_read root switch)
   in
+  let empty = Some (SPF_Resolved None) in
   [{
     envu_var = "PATH";
     envu_op = (if force_path then PlusEq else EqPlusEq);
     envu_value = OpamFilename.Dir.to_string bindir;
     envu_comment = Some "Current opam switch binary dir";
+    envu_rewrite = empty;
   }]
 
 let path ~force_path root switch =
@@ -739,7 +761,7 @@ let init_script root shell =
 
 let string_of_update st shell updates =
   let fenv = OpamPackageVar.resolve st in
-  let aux { envu_var; envu_op; envu_value; envu_comment } =
+  let aux { envu_var; envu_op; envu_value; envu_comment; _ } =
     let string =
       OpamFilter.expand_string ~default:(fun _ -> "") fenv envu_value |>
       OpamStd.Env.escape_single_quotes ~using_backslashes:(shell = SH_fish)

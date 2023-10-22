@@ -357,6 +357,7 @@ let do_upgrade repo_root =
         (string_of_int (1 + int_of_string sn)) ^ "~"
       with Not_found -> str_version ^ "a"
     in
+    let empty = Some (SPF_Unresolved (Empty, Empty)) in
     let wrapper_opam =
       O.create wrapper_nv |>
       O.with_substs [OpamFilename.Base.of_string conf_script_name] |>
@@ -369,23 +370,28 @@ let do_upgrade repo_root =
       O.with_build_env [{
           envu_var = "CAML_LD_LIBRARY_PATH"; envu_op = Eq;
           envu_value = ""; envu_comment = None;
+          envu_rewrite = empty;
         }] |>
       O.with_env [
         { envu_var = "CAML_LD_LIBRARY_PATH";
           envu_op = Eq;
           envu_value = "%{_:stubsdir}%";
           envu_comment = None;
+          envu_rewrite = empty;
         };
         { envu_var = "CAML_LD_LIBRARY_PATH";
           envu_op = PlusEq;
           envu_value = "%{lib}%/stublibs";
           envu_comment = None;
+          envu_rewrite = empty;
         };
         { envu_var = "OCAML_TOPLEVEL_PATH";
           envu_op =Eq;
           envu_value = "%{toplevel}%";
           envu_comment = None;
+          envu_rewrite = empty;
         }] |>
+      (* XXX Rewrite rules ?? *)
       (* leave the Compiler flag to the implementations (since the user
          needs to select one)
          O.with_flags [Pkgflag_Compiler] |> *)

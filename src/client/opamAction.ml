@@ -521,8 +521,10 @@ let prepare_package_source st nv dir =
 
 let compilation_env t opam =
   let open OpamParserTypes in
+  let empty = Some (SPF_Resolved None) in
   let build_env =
     List.map (OpamEnv.env_expansion ~opam t) (OpamFile.OPAM.build_env opam)
+    |> List.map OpamEnv.resolve_separator_and_format
   in
   let cygwin_env =
     match OpamSysInteract.Cygwin.cygbin_opt t.switch_global.config with
@@ -531,6 +533,7 @@ let compilation_env t opam =
          envu_op = EqPlus;
          envu_value = OpamFilename.Dir.to_string cygbin;
          envu_comment = Some "Cygwin path";
+         envu_rewrite = empty;
        }]
     | None -> []
   in
@@ -541,36 +544,42 @@ let compilation_env t opam =
     envu_op = Eq;
     envu_value = "";
     envu_comment = shell_sanitization;
+    envu_rewrite = empty;
   } in
   let makeflags = {
     envu_var = "MAKEFLAGS";
     envu_op = Eq;
     envu_value = "";
     envu_comment = shell_sanitization;
+    envu_rewrite = empty;
   } in
   let makelevel = {
     envu_var = "MAKELEVEL";
     envu_op = Eq;
     envu_value = "";
     envu_comment = Some "make env sanitization";
+    envu_rewrite = empty;
   } in
   let pkg_name = {
     envu_var = "OPAM_PACKAGE_NAME";
     envu_op = Eq;
     envu_value = OpamPackage.Name.to_string (OpamFile.OPAM.name opam);
     envu_comment = build_env_def;
+    envu_rewrite = empty;
   } in
   let pkg_version = {
     envu_var = "OPAM_PACKAGE_VERSION";
     envu_op = Eq;
     envu_value = OpamPackage.Version.to_string (OpamFile.OPAM.version opam);
     envu_comment = build_env_def;
+    envu_rewrite = empty;
   } in
   let cli = {
     envu_var = "OPAMCLI";
     envu_op = Eq;
     envu_value = "2.0";
     envu_comment = Some "opam CLI version";
+    envu_rewrite = empty;
   } in
   let scrub = OpamClientConfig.(!r.scrubbed_environment_variables) in
   OpamEnv.get_full ~scrub ~set_opamroot:true ~set_opamswitch:true

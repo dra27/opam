@@ -282,12 +282,14 @@ let ensure_env_aux ?(base=[]) ?(set_opamroot=false) ?(set_opamswitch=false)
       updates
   in
   let last_env_file = write_last_env_file gt switch updates in
+  let empty = Some (SPF_Resolved None) in
   let updates =
     OpamStd.Option.map_default (fun target ->
         { envu_var = "OPAM_LAST_ENV";
           envu_op = OpamParserTypes.Eq;
           envu_value = OpamFilename.to_string target;
           envu_comment = None;
+          envu_rewrite = empty;
         } ::updates)
       updates last_env_file
   in
@@ -648,11 +650,18 @@ let switch_allowed_fields, switch_allowed_sections =
               (fun nc c ->
                  let open OpamTypes in
                  let env =
-                   List.filter (fun upd ->
-                       None = OpamStd.List.find_opt (fun upd' ->
-                           upd.envu_var = upd'.envu_var
-                           && upd.envu_op = upd'.envu_op
-                           && upd.envu_value = upd'.envu_value)
+                   List.filter
+                     (fun { envu_var = var; envu_op = op;
+                            envu_value = value; envu_comment = _;
+                            envu_rewrite = _ } ->
+                       None =
+                       OpamStd.List.find_opt
+                         (fun { envu_var = var'; envu_op = op';
+                                envu_value = value'; envu_comment = _;
+                                envu_rewrite = _ } ->
+                           String.equal var var'
+                           && (op : OpamParserTypes.env_update_op) = op'
+                           && String.equal value value')
                          nc.env) c.env
                  in
                  { c with env })),

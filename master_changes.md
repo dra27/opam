@@ -152,6 +152,7 @@ users)
   * `OpamFilter`: add `expand_interpolations_in_file_full` which allows setting the output file along with the input file [#5629 @rgrinberg]
   * `OpamFilter`: expose `string_interp_regex` which allows clients to identify variable interpolations in strings [#5633 @gridbugs]
   * `OpamTypes.env_update`: change from tuple to a record [#5636 @rjbou]
+  * `OpamTypes.env_update`: add a `rewrite` field, that contains environement variable rewriting rules (formula to resolved, or already resolved, or no rewriting) [#5636 @rjbou]
 
 ## opam-core
   * `OpamSystem.mk_temp_dir`: resolve real path with `OpamSystem.real_path` before returning it [#5654 @rjbou]
