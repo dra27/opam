@@ -154,6 +154,7 @@ users)
   * `OpamTypes.env_update`: change from tuple to a record [#5636 @rjbou]
   * `OpamTypes.env_update`: add a `rewrite` field, that contains environement variable rewriting rules (formula to resolved, or already resolved, or no rewriting) [#5636 @rjbou]
   * `OpamPp.fallback`: add name concatenation and printing fallback too [#5636 @rjbou]
+  * `OpamFormat`: add `formula_items` to permit definition of formulaes pp not only of the type `package-formula` [#5636 @rjbou]
 
 ## opam-core
   * `OpamSystem.mk_temp_dir`: resolve real path with `OpamSystem.real_path` before returning it [#5654 @rjbou]
