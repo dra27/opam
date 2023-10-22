@@ -195,6 +195,7 @@ val get_cygpath_function: command:string -> (string -> string) lazy_t
     Unix PATH variable into a Unix PATH variable. Returns the identity function
     otherwise. *)
 val get_cygpath_path_transform: (string -> string) lazy_t
+val get_cygpath_winpath_transform: (string -> string) lazy_t
 
 (** [command cmd] executes the command [cmd] in the correct OPAM
     environment. *)
