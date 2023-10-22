@@ -125,6 +125,7 @@ users)
   * dot-install: generalise inner script & use less generic filenames [#5691 @rjbou]
   * dot-install: add a test for removal of non specified in .install empty directories [#5701 @rjbou]
   * Add test in assume-built for depends with switch variable filters [#5700 @rjbou]
+  * Add `env.unix` & `env.win32` to test environment variables rewriting rules [#5636 @rjbou]
 
 ### Engine
   * With real path resolved for all opam temp dir, remove `/private` from mac temp dir regexp [#5654 @rjbou]
