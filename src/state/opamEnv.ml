@@ -61,7 +61,7 @@ let transform_format ~(sepfmt:sep_path_format) =
         fun x -> x
       | Host | Host_quoted ->
         (* noop on non windows *)
-        (Lazy.force OpamSystem.get_cygpath_winpath_transform)
+        (Lazy.force OpamSystem.get_cygpath_path_transform) ~pathlist:false
     in
     match format with
     | Target | Host -> translate
