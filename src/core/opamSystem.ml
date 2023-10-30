@@ -548,17 +548,18 @@ let get_cygpath_function =
     let f = Lazy.from_val (fun x -> x) in
     fun ~command:_ -> f
 
-let apply_cygpath args path =
- let r =
+let apply_cygpath_path_transform ~pathlist path =
+  let args = if pathlist then  [ "--path" ] else [] in
+  let r =
     OpamProcess.run
-      (OpamProcess.command ~name:(temp_file "command") ~verbose:false "cygpath" (args @ ["--"; path]))
+      (OpamProcess.command ~name:(temp_file "command")
+         ~verbose:false "cygpath" (args @ ["--"; path]))
   in
   OpamProcess.cleanup ~force:true r;
   if OpamProcess.is_success r then
     List.hd r.OpamProcess.r_stdout
   else
-    OpamConsole.error_and_exit `Internal_error "Could not apply cygpath %s to %s"
-    (String.concat " " args) path
+    OpamConsole.error_and_exit `Internal_error "Could not apply cygpath --path to %s" path
 
 let get_cygpath_path_transform =
   (* We are running in a functioning Cygwin or MSYS2 environment if and only
@@ -566,21 +567,10 @@ let get_cygpath_path_transform =
   if Sys.win32 then
     lazy (
       match resolve_command "cygpath" with
-      | Some _ -> apply_cygpath [ "--path" ]
-      | None -> fun x -> x)
+      | Some _ -> apply_cygpath_path_transform
+      | None -> fun ~pathlist:_ x -> x)
   else
-    Lazy.from_val (fun x -> x)
-
-let get_cygpath_winpath_transform =
-  (* We are running in a functioning Cygwin or MSYS2 environment if and only
-     if `cygpath` is in the PATH. *)
-  if Sys.win32 then
-    lazy (
-      match resolve_command "cygpath" with
-      | Some _ -> apply_cygpath [ "--windows" ]
-      | None -> fun x -> x)
-  else
-    Lazy.from_val (fun x -> x)
+    Lazy.from_val (fun ~pathlist:_ x -> x)
 
 let runs = ref []
 let print_stats () =
