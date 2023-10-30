@@ -27,6 +27,7 @@ users)
 ## Install
   * [BUG] On install driven by `.install` file, track intermediate directories too, in order to have them suppressed at package removal [#5691 @rjbou - fix #5688]
   * [BUG] With `--assume-built`, resolve variables in depends filter according switch & global environment, not only depends predefined variables [#570 @rjbou - fix #5698]
+  * Reinstall if `x-env-path-rewrite` is updated [#5636 @rjbou]
 
 ## Remove
 
@@ -166,6 +167,7 @@ users)
   * `OpamFormat.V`: add `path_format` & `separator` value parser printer [#5636 @rjbou]
   * `OpamFile.OPAM`: add handling of `x-env-path-rewrite` extensions field, that specifies rewrite rules [#5636 @rjbou]
   * `OpamFile.Environment`: add parsing-printing of rewriting rules, keeping backward compatibility [#5636 @rjbou]
+  * `OpamFile.OPAM`: `effective_part` keeps `x-env-path-rewrite`, affects also `effectively_equal` [#5636 @rjbou]
 
 ## opam-core
   * `OpamSystem.mk_temp_dir`: resolve real path with `OpamSystem.real_path` before returning it [#5654 @rjbou]
