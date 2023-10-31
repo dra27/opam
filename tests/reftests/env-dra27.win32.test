@@ -1,0 +1,66 @@
+N0REP0
+### : dra27 setenv examples :
+### opam switch create rewriting --empty
+### <pkg:msvs-detect.1>
+opam-version: "2.0"
+### <pkg:msvs-detect.1:msvs-detect.config>
+opam-version: "2.0"
+variables {
+  tools-bin: "C:\\Program Files\\Microsoft Visual Studio\\2022\\Preview\\VC\\Tools\\MSVC\\14.38.33030\\bin\\HostX64\\x64;C:\\Program Files\\Microsoft Visual Studio\\2022\\Preview\\Common7\\IDE\\VC\\VCPackages;C:\\Program Files\\Microsoft Visual Studio\\2022\\Preview\\Common7\\Tools\\"
+}
+### opam install msvs-detect -v
+The following actions will be performed:
+=== install 1 package
+  - install msvs-detect 1
+
+<><> Processing actions <><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+-> installed msvs-detect.1
+Done.
+### opam var msvs-detect:tools-bin
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.38.33030\bin\HostX64\x64;C:\Program Files\Microsoft Visual Studio\2022\Preview\Common7\IDE\VC\VCPackages;C:\Program Files\Microsoft Visual Studio\2022\Preview\Common7\Tools\
+### <pkg:setenv-dra27.1>
+opam-version: "2.0"
+# Some (semi)-hypothetical updates
+setenv: [
+  # Splits msvs-detect:tools-bin
+#  [ PATH += msvs-detect:tools-bin ]
+  # Doesn't split msvs-detect:tools-bin (because it's in a string constant)
+  [ PATH += "%{msvs-detect:tools-bin}%" ]
+  [ MANPATH += "/home/dra/manual/man" ]
+  [ PKG_CONFIG_PATH += "%{lib}%/pkgconfig" ]
+  # All converted with cygpath
+#  [ PKG_CONFIG_PATH += msvs-detect:tools-bin ]
+  # One mass conversion with cygpath
+  [ PKG_CONFIG_PATH += "%{msvs-detect:tools-bin}%" ]
+  [ OCAMLPATH += "%{lib}%" ]
+  [ CI = "/home/ci/config" ]
+  [ FOO = "this does not require/allow a rewrite entry" ]
+]
+# All requiring x-env-path-rewrite
+x-env-path-rewrite: [
+  [ PATH (":" {os != "win32"} | ";" {os = "win32"}) ("target" {os != "win32"} | "target-quoted" {os = "win32"}) ]
+  [ MANPATH ":" "host" ]
+  [ PKG_CONFIG_PATH ":" "host" ]
+  [ CAML_LD_LIBRARY_PATH (":" {os != "win32"} | ";") "target" ]
+  [ OCAMLPATH (":" {os != "win32" & os != "cygwin"} | ";" {os = "win32" | os = "cygwin"}) "target" ]
+  [ CI false ]
+]
+### opam install setenv-dra27 -v
+The following actions will be performed:
+=== install 1 package
+  - install setenv-dra27 1
+
+<><> Processing actions <><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+-> installed setenv-dra27.1
+Done.
+### cat OPAM/rewriting/.opam-switch/environment
+OPAM_SWITCH_PREFIX	=	${BASEDIR}/OPAM/rewriting	Prefix\ of\ the\ current\ opam\ switch
+PATH	+=	C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\VC\Tools\MSVC\14.38.33030\bin\HostX64\x64;C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\Common7\IDE\VC\VCPackages;C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\Common7\Tools\	;	target-quoted	Updated\ by\ package\ setenv-dra27
+MANPATH	+=	/home/dra/manual/man	:	host	Updated\ by\ package\ setenv-dra27
+PKG_CONFIG_PATH	+=	${BASEDIR}/OPAM/rewriting/lib/pkgconfig	:	host	Updated\ by\ package\ setenv-dra27
+PKG_CONFIG_PATH	+=	C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\VC\Tools\MSVC\14.38.33030\bin\HostX64\x64;C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\Common7\IDE\VC\VCPackages;C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\Common7\Tools\	:	host	Updated\ by\ package\ setenv-dra27
+OCAMLPATH	+=	${BASEDIR}/OPAM/rewriting/lib	;	target	Updated\ by\ package\ setenv-dra27
+CI	=	/home/ci/config	norewrite	Updated\ by\ package\ setenv-dra27
+FOO	=	this\ does\ not\ require/allow\ a\ rewrite\ entry	;	target	Updated\ by\ package\ setenv-dra27
+MANPATH	=:	${BASEDIR}/OPAM/rewriting/man	Current\ opam\ switch\ man\ dir
+PATH	=+=	${BASEDIR}/OPAM/rewriting/bin	Binary\ dir\ for\ opam\ switch\ rewriting
