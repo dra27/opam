@@ -525,6 +525,27 @@
    (run ./run.exe %{exe:../../src/client/opamMain.exe.exe} %{dep:empty-conflicts-006.test} %{read-lines:testing-env}))))
 
 (rule
+ (alias reftest-env-dra27.win32)
+ (enabled_if (= %{os_type} "Win32"))
+ (action
+  (diff env-dra27.win32.test env-dra27.win32.out)))
+
+(alias
+ (name reftest)
+ (enabled_if (= %{os_type} "Win32"))
+ (deps (alias reftest-env-dra27.win32)))
+
+(rule
+ (targets env-dra27.win32.out)
+ (deps root-N0REP0)
+ (enabled_if (= %{os_type} "Win32"))
+ (package opam)
+ (action
+  (with-stdout-to
+   %{targets}
+   (run ./run.exe %{exe:../../src/client/opamMain.exe.exe} %{dep:env-dra27.win32.test} %{read-lines:testing-env}))))
+
+(rule
  (alias reftest-env)
  (action
   (diff env.test env.out)))
