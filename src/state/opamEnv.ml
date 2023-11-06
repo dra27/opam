@@ -27,8 +27,6 @@ let default_format = Target
 (* Predefined default separators and format for some environment variables *)
 let default_sep_fmt_str var =
   match String.uppercase_ascii var with
-  | "CAML_LD_LIBRARY_PATH" ->
-    default_separator, default_format
   | "PKG_CONFIG_PATH" | "MANPATH" ->
     SColumn, Target_quoted
   | _ -> default_separator, default_format
