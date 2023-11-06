@@ -73,7 +73,7 @@ let transform_format ~(sepfmt:sep_path_format) =
           "\""^path^"\"" else path
 
 (* Already resolved variables separator & formulaes hashtbl *)
-let already_resolved : (string, spf_resolved separator_path_format option) Hashtbl.t =
+let already_resolved =
     Hashtbl.create 16
 
 let resolve_separator_and_format :
@@ -114,7 +114,7 @@ let resolve_separator_and_format :
     let var = upd.envu_var in
     let envu_rewrite =
       try
-        Hashtbl.find already_resolved var
+        Hashtbl.find already_resolved (var, upd.envu_comment)
       with Not_found ->
         let rewrite =
           match upd.envu_rewrite with
@@ -132,7 +132,7 @@ let resolve_separator_and_format :
           | Some (SPF_Resolved _) -> upd.envu_rewrite
           | None -> None
         in
-        Hashtbl.add already_resolved var rewrite;
+        Hashtbl.add already_resolved (var, upd.envu_comment) rewrite;
         rewrite
     in
     { upd with envu_rewrite }
