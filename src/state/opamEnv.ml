@@ -58,7 +58,7 @@ let transform_format ~(sepfmt:sep_path_format) =
     let translate =
       match format with
       | Target | Target_quoted ->
-        fun x -> x
+        OpamSystem.forward_to_back
       | Host | Host_quoted ->
         (* noop on non windows *)
         (Lazy.force OpamSystem.get_cygpath_path_transform) ~pathlist:false
