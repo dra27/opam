@@ -662,7 +662,7 @@ let switch_allowed_fields, switch_allowed_sections =
                                 envu_rewrite = _ } ->
                            String.equal var var'
                            && (op : OpamParserTypes.env_update_op) = op'
-                           && String.equal value value')
+                           && value = value')
                          nc.env) c.env
                  in
                  { c with env })),

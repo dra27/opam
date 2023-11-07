@@ -369,25 +369,25 @@ let do_upgrade repo_root =
       O.with_maintainer [ "platform@lists.ocaml.org" ] |>
       O.with_build_env [{
           envu_var = "CAML_LD_LIBRARY_PATH"; envu_op = Eq;
-          envu_value = ""; envu_comment = None;
+          envu_value = `Value ""; envu_comment = None;
           envu_rewrite = empty;
         }] |>
       O.with_env [
         { envu_var = "CAML_LD_LIBRARY_PATH";
           envu_op = Eq;
-          envu_value = "%{_:stubsdir}%";
+          envu_value = `Value "%{_:stubsdir}%";
           envu_comment = None;
           envu_rewrite = empty;
         };
         { envu_var = "CAML_LD_LIBRARY_PATH";
           envu_op = PlusEq;
-          envu_value = "%{lib}%/stublibs";
+          envu_value = `Value "%{lib}%/stublibs";
           envu_comment = None;
           envu_rewrite = empty;
         };
         { envu_var = "OCAML_TOPLEVEL_PATH";
           envu_op =Eq;
-          envu_value = "%{toplevel}%";
+          envu_value = `Value "%{toplevel}%";
           envu_comment = None;
           envu_rewrite = empty;
         }] |>

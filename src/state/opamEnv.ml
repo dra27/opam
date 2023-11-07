@@ -77,7 +77,7 @@ let already_resolved =
     Hashtbl.create 16
 
 let resolve_separator_and_format :
-  type r. r env_update -> spf_resolved env_update =
+  type r. (r, 'a) env_update -> (spf_resolved, 'a) env_update =
   let env fv =
     let fv = OpamVariable.Full.variable fv in
     OpamStd.Option.(Op.(
@@ -329,7 +329,7 @@ let updates_from_previous_instance = lazy (
       try get_env env_file
       with e -> OpamStd.Exn.fatal e; None))
 
-let expand (updates: spf_resolved env_update list) : env =
+let expand (updates: (spf_resolved, string) env_update list) : env =
   let updates =
     if Sys.win32 then
       (* Preserve the case of updates which are already in env *)
@@ -442,7 +442,7 @@ let expand (updates: spf_resolved env_update list) : env =
   in
   apply_updates reverts [] updates
 
-let add (env: env) (updates: 'r env_update list) : env =
+let add (env: env) (updates: ('r, string) env_update list) : env =
   let updates =
     if Sys.win32 then
       (* Preserve the case of updates which are already in env *)
@@ -474,6 +474,25 @@ let env_expansion ?opam st upd =
     OpamFilter.expand_string ~default:(fun _ -> "") fenv upd.envu_value
   in
   { upd with envu_value = s }
+
+let expand_update expand_string update =
+  match update with
+  | {envu_value = `Value envu_value; _} as update ->
+    [{update with envu_value}]
+  | {envu_value = `Ident ident; envu_rewrite; envu_var; _} ->
+    (* XXX Do this directly from expand_string! *)
+    let envu_value = expand_string (Printf.sprintf "%%{%s}%%" ident) in
+    (* XXX Nicked from expand - factor out *)
+    let sepfmt =
+      match envu_rewrite with
+      | None -> `norewrite
+      | Some (SPF_Resolved None) -> `rewrite_default envu_var
+      | Some (SPF_Resolved (Some spf)) -> `rewrite spf
+    in
+    List.map (fun envu_value -> {update with envu_value}) (split_var ~sepfmt (OpamStd.Env.Name.of_string envu_var) envu_value)
+
+let expand_lists st ?opam =
+  List.concat_map (expand_update (OpamFilter.expand_string ~default:(Fun.const "") (OpamPackageVar.resolve st ?opam)))
 
 let compute_updates ?(force_path=false) st =
   (* Todo: put these back into their packages!
@@ -508,6 +527,7 @@ let compute_updates ?(force_path=false) st =
          envu_rewrite = empty;
        }]
   in
+  let expand_lists = expand_lists st in
   let switch_env =
     { envu_var = "OPAM_SWITCH_PREFIX";
       envu_op = Eq ;
@@ -516,18 +536,15 @@ let compute_updates ?(force_path=false) st =
       envu_comment = Some "Prefix of the current opam switch";
       envu_rewrite = empty;
     } ::
-    List.map (env_expansion st) st.switch_config.OpamFile.Switch_config.env
+    List.map (env_expansion st) (expand_lists st.switch_config.OpamFile.Switch_config.env)
   in
   let pkg_env = (* XXX: Does this need a (costly) topological sort? *)
-    let updates =
-      OpamPackage.Set.fold (fun nv acc ->
-          match OpamPackage.Map.find_opt nv st.opams with
-          | Some opam ->
-            List.map (env_expansion ~opam st) (OpamFile.OPAM.env opam) @ acc
-          | None -> acc)
-        st.installed []
-    in
-    List.map resolve_separator_and_format updates
+    OpamPackage.Set.fold (fun nv acc ->
+        match OpamPackage.Map.find_opt nv st.opams with
+        | Some opam ->
+          List.map (env_expansion ~opam st) (expand_lists ~opam (List.map resolve_separator_and_format (OpamFile.OPAM.env opam))) @ acc
+        | None -> acc)
+      st.installed []
   in
   switch_env @ pkg_env @ man_path @ [path]
 

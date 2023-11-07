@@ -589,33 +589,60 @@ module V = struct
     in
     pp ~name:"separator" parse print
 
-  let env_binding_t empty =
+  let env_binding_t unwrap wrap empty =
     let parse ~pos:_ v = match v.pelem with
-      | Relop ({ pelem = `Eq;_}, { pelem = Ident i;_}, { pelem = String s;_}) ->
-        { envu_var = i; envu_op = OpamParserTypes.Eq;
-          envu_value = s; envu_comment = None;
-          envu_rewrite = Some empty;
-        }
-      | Env_binding ({ pelem = Ident i; _}, op, { pelem = String s; _}) ->
-        { envu_var = i; envu_op = op.pelem;
-          envu_value = s; envu_comment = None;
-          envu_rewrite = Some empty;
-        }
+      | Relop ({ pelem = `Eq;_}, { pelem = Ident i;_}, { pelem = (String _ | Ident _) as value;_}) ->
+        begin match unwrap value with
+        | Some envu_value ->
+          { envu_var = i; envu_op = OpamParserTypes.Eq;
+            envu_value; envu_comment = None;
+            envu_rewrite = Some empty;
+          }
+        | None -> unexpected ()
+        end
+      | Env_binding ({ pelem = Ident i; _}, op, { pelem = (String _ | Ident _) as value; _}) ->
+        begin match unwrap value with
+        | Some envu_value ->
+          { envu_var = i; envu_op = op.pelem;
+            envu_value; envu_comment = None;
+            envu_rewrite = Some empty;
+          }
+        | None -> unexpected ()
+        end
       | _ -> unexpected ()
     in
     let print { envu_var; envu_op; envu_value; envu_comment = _ ;
                 envu_rewrite = _} =
       nullify_pos @@
-      Env_binding (print ident envu_var, nullify_pos envu_op,
-                   print string envu_value)
+      Env_binding (print ident envu_var, nullify_pos envu_op, wrap envu_value)
     in
     list -| singleton -| pp ~name:"env-binding" parse print
 
-  let env_binding =
-    env_binding_t (SPF_Resolved None)
+  let env_binding_ident_or_string =
+    let unwrap = function
+    | String s -> Some (`Value s)
+    | Ident i -> Some (`Ident i)
+    | _ -> None
+    and wrap = function
+    | `Value s -> print string s
+    | `Ident i -> print ident i
+    in
+    unwrap, wrap
 
-  let env_binding_unresolved =
-    env_binding_t (SPF_Unresolved (Empty, Empty))
+  let env_binding_string =
+    let unwrap = function
+    | String s -> Some s
+    | _ -> None
+    in
+    unwrap, print string
+
+  type 'a env_binding_type = (value_kind -> 'a option) * ('a -> value)
+
+  let env_binding (unwrap, wrap) =
+    env_binding_t unwrap wrap (SPF_Resolved None)
+
+  let env_binding_unresolved (unwrap, wrap) =
+    env_binding_t unwrap wrap (SPF_Unresolved (Empty, Empty))
 
   (* Only used by the deprecated "os" field *)
   let os_constraint =

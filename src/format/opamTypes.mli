@@ -434,12 +434,13 @@ type _ separator_path_format =
       (separator * filter) generic_formula
       * (path_format * filter) generic_formula
       -> spf_unresolved separator_path_format
+type ident_or_value = [ `Ident of string | `Value of string ]
 
 (** Environment updates *)
-type 'a env_update = {
+type ('a, 'b) env_update = {
   envu_var : string;
   envu_op : OpamParserTypes.FullPos.env_update_op_kind;
-  envu_value : string;
+  envu_value : 'b;
   envu_comment : string option;
   envu_rewrite: 'a separator_path_format option;
 }

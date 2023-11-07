@@ -183,8 +183,11 @@ module V : sig
   (** Environment variable updates syntax *)
   val separator : (value, separator) t
   val path_format : (value, path_format) t
-  val env_binding : (value, spf_resolved env_update) t
-  val env_binding_unresolved : (value, spf_unresolved env_update) t
+  type 'a env_binding_type = (value_kind -> 'a option) * ('a -> value)
+  val env_binding : 'a env_binding_type -> (value, (spf_resolved, 'a) env_update) t
+  val env_binding_unresolved : 'a env_binding_type -> (value, (spf_unresolved, 'a) env_update) t
+  val env_binding_ident_or_string : ident_or_value env_binding_type
+  val env_binding_string : string env_binding_type
 
   val os_constraint : (value, (bool * string) OpamFormula.formula) t
 end

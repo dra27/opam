@@ -551,7 +551,7 @@ module Environment = LineFile(struct
     let internal = "environment"
     let atomic = true
 
-    type t = spf_resolved env_update list
+    type t = (spf_resolved, string) env_update list
 
     let empty = []
 
@@ -1981,7 +1981,7 @@ module Switch_configSyntax = struct
     variables: (variable * variable_contents) list;
     opam_root: dirname option;
     wrappers: Wrappers.t;
-    env: spf_resolved env_update list;
+    env: (spf_resolved, ident_or_value) env_update list;
     invariant: OpamFormula.t option;
     depext_bypass: OpamSysPkg.Set.t;
   }
@@ -2036,7 +2036,7 @@ module Switch_configSyntax = struct
       (Pp.V.string -| Pp.of_module "dirname" (module OpamFilename.Dir));
     "setenv", Pp.ppacc
       (fun env t -> {t with env}) (fun t -> t.env)
-      (Pp.V.map_list ~depth:2 Pp.V.env_binding);
+      (Pp.V.map_list ~depth:2 Pp.V.(env_binding env_binding_ident_or_string));
     "invariant", Pp.ppacc_opt
       (fun inv t -> {t with invariant = Some inv }) (fun t -> t.invariant)
       (Pp.V.package_formula `Conj Pp.V.(constraints version));
@@ -2533,7 +2533,7 @@ module OPAMSyntax = struct
     conflict_class : name list;
     available  : filter;
     flags      : package_flag list;
-    env        : spf_unresolved env_update list;
+    env        : (spf_unresolved, ident_or_value) env_update list;
 
     (* Build instructions *)
     build      : command list;
@@ -2544,7 +2544,7 @@ module OPAMSyntax = struct
     (* Auxiliary data affecting the build *)
     substs     : basename list;
     patches    : (basename * filter option) list;
-    build_env  : spf_unresolved env_update list;
+    build_env  : (spf_unresolved, ident_or_value) env_update list;
     features   : (OpamVariable.t * filtered_formula * string) list;
     extra_sources: (basename * URL.t) list;
 
@@ -3061,7 +3061,7 @@ module OPAMSyntax = struct
          Pp.V.ident -|
          Pp.of_pair "package-flag" (pkg_flag_of_string, string_of_pkg_flag));
       "setenv", no_cleanup Pp.ppacc with_env env
-        (Pp.V.map_list ~depth:2 Pp.V.env_binding_unresolved);
+        (Pp.V.map_list ~depth:2 Pp.V.(env_binding_unresolved env_binding_ident_or_string));
 
       "build", no_cleanup Pp.ppacc with_build build
         (Pp.V.map_list ~depth:2 Pp.V.command);
@@ -3078,7 +3078,7 @@ module OPAMSyntax = struct
         (Pp.V.map_list ~depth:1 @@
          Pp.V.map_option pp_basename (Pp.opt Pp.V.filter));
       "build-env", no_cleanup Pp.ppacc with_build_env build_env
-        (Pp.V.map_list ~depth:2 Pp.V.env_binding_unresolved);
+        (Pp.V.map_list ~depth:2 Pp.V.(env_binding_unresolved env_binding_ident_or_string));
       "features", no_cleanup Pp.ppacc with_features features
         (Pp.V.map_list ~depth:1 @@
          Pp.V.map_options_2
@@ -3984,7 +3984,7 @@ module CompSyntax = struct
     make         : string list ;
     build        : command list ;
     packages     : formula ;
-    env          : spf_unresolved env_update list;
+    env          : (spf_unresolved, string) env_update list;
     tags         : string list;
   }
 
@@ -4085,7 +4085,7 @@ module CompSyntax = struct
       "packages", Pp.ppacc with_packages packages
         (Pp.V.package_formula `Conj (Pp.V.constraints Pp.V.version));
       "env", Pp.ppacc with_env env
-        (Pp.V.map_list ~depth:2 Pp.V.env_binding_unresolved);
+        (Pp.V.map_list ~depth:2 Pp.V.(env_binding_unresolved env_binding_string));
       "preinstalled", Pp.ppacc_opt with_preinstalled
         (fun t -> if t.preinstalled then Some true else None)
         Pp.V.bool;
@@ -4241,7 +4241,7 @@ module CompSyntax = struct
       maintainer = [ "platform@lists.ocaml.org" ];
       extra_sources;
       patches;
-      env = comp.env;
+      env = (List.map (fun ({envu_value; _} as upd) -> {upd with envu_value = `Value envu_value}) comp.env);
       flags = [Pkgflag_Compiler];
       url;
       descr = descr_opt;

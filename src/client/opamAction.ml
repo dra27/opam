@@ -523,8 +523,8 @@ let compilation_env t opam =
   let open OpamParserTypes in
   let empty = Some (SPF_Resolved None) in
   let build_env =
-    List.map (OpamEnv.env_expansion ~opam t) (OpamFile.OPAM.build_env opam)
-    |> List.map OpamEnv.resolve_separator_and_format
+    (OpamEnv.expand_lists t ~opam) (List.map OpamEnv.resolve_separator_and_format (OpamFile.OPAM.build_env opam))
+    |> List.map (OpamEnv.env_expansion ~opam t)
   in
   let cygwin_env =
     match OpamSysInteract.Cygwin.cygbin_opt t.switch_global.config with
