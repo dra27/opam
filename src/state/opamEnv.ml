@@ -479,15 +479,11 @@ let expand_update expand_string update =
   match update with
   | {envu_value = `Value envu_value; _} as update ->
     [{update with envu_value}]
-  | {envu_value = `Ident ident; envu_rewrite; envu_var; _} ->
+  | {envu_value = `Ident ident; (*envu_rewrite;*) envu_var; _} ->
     (* XXX Do this directly from expand_string! *)
     let envu_value = expand_string (Printf.sprintf "%%{%s}%%" ident) in
     (* XXX Nicked from expand - factor out *)
-    let sepfmt =
-      match envu_rewrite with
-      | None -> `norewrite
-      | Some (SPF_Resolved None) -> `rewrite_default envu_var
-      | Some (SPF_Resolved (Some spf)) -> `rewrite spf
+    let sepfmt = `rewrite (default_separator, default_format)
     in
     List.map (fun envu_value -> {update with envu_value}) (split_var ~sepfmt (OpamStd.Env.Name.of_string envu_var) envu_value)
 

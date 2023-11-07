@@ -61,10 +61,9 @@ PATH	+=	C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\Common7\Tools\	
 PATH	+=	C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\VC\Tools\MSVC\14.38.33030\bin\HostX64\x64;C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\Common7\IDE\VC\VCPackages;C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\Common7\Tools\	;	target-quoted	Updated\ by\ package\ setenv-dra27
 MANPATH	+=	/home/dra/manual/man	:	host	Updated\ by\ package\ setenv-dra27
 PKG_CONFIG_PATH	+=	${BASEDIR}/OPAM/rewriting/lib/pkgconfig	:	host	Updated\ by\ package\ setenv-dra27
-PKG_CONFIG_PATH	+=	C	:	host	Updated\ by\ package\ setenv-dra27
-PKG_CONFIG_PATH	+=	\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\VC\Tools\MSVC\14.38.33030\bin\HostX64\x64;C	:	host	Updated\ by\ package\ setenv-dra27
-PKG_CONFIG_PATH	+=	\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\Common7\IDE\VC\VCPackages;C	:	host	Updated\ by\ package\ setenv-dra27
-PKG_CONFIG_PATH	+=	\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\Common7\Tools\	:	host	Updated\ by\ package\ setenv-dra27
+PKG_CONFIG_PATH	+=	C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\VC\Tools\MSVC\14.38.33030\bin\HostX64\x64	:	host	Updated\ by\ package\ setenv-dra27
+PKG_CONFIG_PATH	+=	C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\Common7\IDE\VC\VCPackages	:	host	Updated\ by\ package\ setenv-dra27
+PKG_CONFIG_PATH	+=	C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\Common7\Tools\	:	host	Updated\ by\ package\ setenv-dra27
 PKG_CONFIG_PATH	+=	C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\VC\Tools\MSVC\14.38.33030\bin\HostX64\x64;C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\Common7\IDE\VC\VCPackages;C:\Program\ Files\Microsoft\ Visual\ Studio\2022\Preview\Common7\Tools\	:	host	Updated\ by\ package\ setenv-dra27
 OCAMLPATH	+=	${BASEDIR}/OPAM/rewriting/lib	;	target	Updated\ by\ package\ setenv-dra27
 CI	=	/home/ci/config	norewrite	Updated\ by\ package\ setenv-dra27
@@ -72,4 +71,4 @@ FOO	=	this\ does\ not\ require/allow\ a\ rewrite\ entry	;	target	Updated\ by\ pa
 MANPATH	=:	${BASEDIR}/OPAM/rewriting/man	Current\ opam\ switch\ man\ dir
 PATH	=+=	${BASEDIR}/OPAM/rewriting/bin	Binary\ dir\ for\ opam\ switch\ rewriting
 ### opam env | grep PKG_CONFIG | '/tmp/build_[^/]*/opam-reftest-[^/]*/' -> '${BASEDIR}/'
-PKG_CONFIG_PATH='/cygdrive/c/Program Files/Microsoft Visual Studio/2022/Preview/VC/Tools/MSVC/14.38.33030/bin/HostX64/x64;C:/Program Files/Microsoft Visual Studio/2022/Preview/Common7/IDE/VC/VCPackages;C:/Program Files/Microsoft Visual Studio/2022/Preview/Common7/Tools/:/cygdrive/c/Program Files/Microsoft Visual Studio/2022/Preview/Common7/Tools":/cygdrive/c/Program Files/Microsoft Visual Studio/2022/Preview/Common7/IDE/VC/VCPackages;C:/cygdrive/c/Program Files/Microsoft Visual Studio/2022/Preview/VC/Tools/MSVC/14.38.33030/bin/HostX64/x64;C:C:${BASEDIR}/OPAM/rewriting/lib/pkgconfig'; export PKG_CONFIG_PATH;
+PKG_CONFIG_PATH='/cygdrive/c/Program Files/Microsoft Visual Studio/2022/Preview/VC/Tools/MSVC/14.38.33030/bin/HostX64/x64;C:/Program Files/Microsoft Visual Studio/2022/Preview/Common7/IDE/VC/VCPackages;C:/Program Files/Microsoft Visual Studio/2022/Preview/Common7/Tools/:/cygdrive/c/Program Files/Microsoft Visual Studio/2022/Preview/Common7/Tools/:/cygdrive/c/Program Files/Microsoft Visual Studio/2022/Preview/Common7/IDE/VC/VCPackages:/cygdrive/c/Program Files/Microsoft Visual Studio/2022/Preview/VC/Tools/MSVC/14.38.33030/bin/HostX64/x64:${BASEDIR}/OPAM/rewriting/lib/pkgconfig'; export PKG_CONFIG_PATH;
