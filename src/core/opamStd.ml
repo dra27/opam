@@ -1096,6 +1096,8 @@ module OpamSys = struct
     in
     lazy (
       let lazy ancestors = windows_process_ancestry in
+      if Sys.getenv_opt "SHELLX" <> None then
+        Printf.eprintf "Ancestry:\n  %s\n%!" (String.concat "\n  " (List.map snd ancestors));
       match OpamList.filter_map categorize_process ancestors with
       | [] -> None
       | Accept most_relevant_shell :: _ -> Some most_relevant_shell
