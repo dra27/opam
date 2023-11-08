@@ -70,5 +70,5 @@ CI	=	/home/ci/config	norewrite	Updated\ by\ package\ setenv-dra27
 FOO	=	this\ does\ not\ require/allow\ a\ rewrite\ entry	;	target	Updated\ by\ package\ setenv-dra27
 MANPATH	=:	${BASEDIR}/OPAM/rewriting/man	Current\ opam\ switch\ man\ dir
 PATH	=+=	${BASEDIR}/OPAM/rewriting/bin	Binary\ dir\ for\ opam\ switch\ rewriting
-### opam env | grep PKG_CONFIG | '/tmp/build_[^/]*/opam-reftest-[^/]*/' -> '${BASEDIR}/'
+### opam env | grep PKG_CONFIG
 PKG_CONFIG_PATH='/cygdrive/c/Program Files/Microsoft Visual Studio/2022/Preview/VC/Tools/MSVC/14.38.33030/bin/HostX64/x64;C:/Program Files/Microsoft Visual Studio/2022/Preview/Common7/IDE/VC/VCPackages;C:/Program Files/Microsoft Visual Studio/2022/Preview/Common7/Tools/:/cygdrive/c/Program Files/Microsoft Visual Studio/2022/Preview/Common7/Tools/:/cygdrive/c/Program Files/Microsoft Visual Studio/2022/Preview/Common7/IDE/VC/VCPackages:/cygdrive/c/Program Files/Microsoft Visual Studio/2022/Preview/VC/Tools/MSVC/14.38.33030/bin/HostX64/x64:${BASEDIR}/OPAM/rewriting/lib/pkgconfig'; export PKG_CONFIG_PATH;
