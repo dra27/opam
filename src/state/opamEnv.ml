@@ -488,7 +488,7 @@ let expand_update expand_string update =
     List.map (fun envu_value -> {update with envu_value}) (split_var ~sepfmt (OpamStd.Env.Name.of_string envu_var) envu_value)
 
 let expand_lists st ?opam =
-  List.concat_map (expand_update (OpamFilter.expand_string ~default:(Fun.const "") (OpamPackageVar.resolve st ?opam)))
+  OpamCompat.List.concat_map (expand_update (OpamFilter.expand_string ~default:(Fun.const "") (OpamPackageVar.resolve st ?opam)))
 
 let compute_updates ?(force_path=false) st =
   (* Todo: put these back into their packages!

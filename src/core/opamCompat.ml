@@ -147,3 +147,15 @@ Quoting commands for execution by cmd.exe is difficult.
 
   include Stdlib.Filename
 end
+
+module List = struct
+  [@@@warning "-32"]
+
+  let concat_map f l =
+    let rec aux f acc = function
+      | [] -> List.rev acc
+      | x :: l ->
+         let xs = f x in
+         aux f (List.rev_append xs acc) l
+    in aux f [] l
+end

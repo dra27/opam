@@ -38,3 +38,8 @@ module Filename: sig
     string -> ?stdin:string -> ?stdout:string -> ?stderr:string
     -> string list -> string
 end
+
+module List : sig
+  (* NOTE: OCaml >= 4.10 *)
+  val concat_map : ('a -> 'b list) -> 'a list -> 'b list
+end
