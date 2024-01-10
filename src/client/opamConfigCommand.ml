@@ -67,143 +67,123 @@ let possibly_unix_path_env_value k v =
     (Lazy.force OpamSystem.get_cygpath_path_transform) ~pathlist:true v
   else v
 
-let rec print_env output = function
-  | [] -> ()
-  | (k, v, comment) :: r ->
-    if OpamConsole.verbose () then
-      OpamStd.Option.iter (Printf.ksprintf output ": %s;\n") comment;
-    if not (List.exists (fun (k1, _, _) -> k = k1) r) || OpamConsole.verbose ()
-    then (
-      let v' = possibly_unix_path_env_value k v in
-      Printf.ksprintf output "%s='%s'; export %s;\n"
-        k (OpamStd.Env.escape_single_quotes v') k);
-    print_env output r
+let sh_string_of_env k v =
+  let v' = possibly_unix_path_env_value k v in
+  Printf.sprintf "%s='%s'; export %s;"
+    k (OpamStd.Env.escape_single_quotes v') k
 
-let rec print_csh_env output = function
-  | [] -> ()
-  | (k, v, comment) :: r ->
-    if OpamConsole.verbose () then
-      OpamStd.Option.iter (Printf.ksprintf output ": %s;\n") comment;
-    if not (List.exists (fun (k1, _, _) -> k = k1) r) || OpamConsole.verbose ()
-    then (
-      let v' = possibly_unix_path_env_value k v in
-      Printf.ksprintf output "setenv %s '%s';\n"
-        k (OpamStd.Env.escape_single_quotes v'));
-    print_csh_env output r
+let csh_string_of_env k v =
+  let v' = possibly_unix_path_env_value k v in
+  Printf.sprintf "setenv %s '%s';\n"
+    k (OpamStd.Env.escape_single_quotes v')
 
-let rec print_pwsh_env output = function
-  | [] -> ()
-  | (k, v, _) :: r ->
-    if not (List.exists (fun (k1, _, _) -> k = k1) r) || OpamConsole.verbose ()
-    then
-      Printf.ksprintf output "$env:%s = '%s'\n"
-        k (OpamStd.Env.escape_powershell v);
-    print_pwsh_env output r
+let pwsh_string_of_env k v =
+  Printf.sprintf "$env:%s = '%s'"
+    k (OpamStd.Env.escape_powershell v)
 
-let print_cmd_env output env =
-  let rec aux = function
-    | [] -> ()
-    | (k, v, _) :: r ->
-      if not (List.exists (fun (k1, _, _) -> k = k1) r) || OpamConsole.verbose ()
-      then begin
-        let is_special = function
-        | '(' | ')' | '!' | '^' | '%' | '"' | '<' | '>' | '|' -> true
-        | _ -> false
-        in
-        if OpamCompat.String.(exists is_special v || exists is_special k) then
-          Printf.ksprintf output "set \"%s=%s\"\n" k v
-        else
-          Printf.ksprintf output "set %s=%s\n" k v
-      end;
-      aux r
+let cmd_string_of_env k v =
+  let is_special = function
+  | '(' | ')' | '!' | '^' | '%' | '"' | '<' | '>' | '|' -> true
+  | _ -> false
   in
-  aux env
+  if OpamCompat.String.(exists is_special v || exists is_special k) then
+    Printf.sprintf "set \"%s=%s\"" k v
+  else
+    Printf.sprintf "set %s=%s" k v
 
-let print_sexp_env output env =
-  let rec aux = function
-    | [] -> ()
-    | (k, v, _) :: r ->
-      if not (List.exists (fun (k1, _, _) -> k = k1) r) then
-        Printf.ksprintf output "  (%S %S)\n" k v;
-      aux r
-  in
-  output "(\n";
-  aux env;
-  output ")\n"
+let sexp_string_of_env = Printf.sprintf "  (%S %S)"
 
-let rec print_fish_env output env =
-  let set_arr_cmd ?(modf=fun x -> x) k v =
-    let v = modf @@ OpamStd.String.split v ':' in
-    Printf.ksprintf output "set -gx %s %s;\n" k
-      (OpamStd.List.concat_map " "
-         (fun v ->
-            Printf.sprintf "'%s'"
-              (OpamStd.Env.escape_single_quotes ~using_backslashes:true v))
-         v)
+let set_arr_cmd ?(modf=fun x -> x) k v =
+  let v = modf @@ OpamStd.String.split v ':' in
+  Printf.sprintf "set -gx %s %s;" k
+    (OpamStd.List.concat_map " "
+       (fun v ->
+          Printf.sprintf "'%s'"
+            (OpamStd.Env.escape_single_quotes ~using_backslashes:true v))
+       v)
+
+(* set manpath if and only if fish version >= 2.7 *)
+let manpath_cmd v =
+  let test =
+    (* test for existence of `argparse` builtin, introduced in fish 2.7 .
+     * use `grep' instead of `builtin string match' so that old fish versions do not
+     *     produce unwanted error messages on stderr.
+     * use `grep' inside a `/bin/sh' fragment so that nothing is written to stdout or
+     *     stderr if `grep' does not exist. *)
+    "builtin -n | /bin/sh -c 'grep -q \\'^argparse$\\'' 1>/dev/null 2>/dev/null; and "
   in
-  (* set manpath if and only if fish version >= 2.7 *)
-  let manpath_cmd v =
-    Printf.ksprintf output "%s" (
-      (* test for existence of `argparse` builtin, introduced in fish 2.7 .
-       * use `grep' instead of `builtin string match' so that old fish versions do not
-       *     produce unwanted error messages on stderr.
-       * use `grep' inside a `/bin/sh' fragment so that nothing is written to stdout or
-       *     stderr if `grep' does not exist. *)
-      "builtin -n | /bin/sh -c 'grep -q \\'^argparse$\\'' 1>/dev/null 2>/dev/null; and "
-    ) ;
-    let modf = function | x::v' -> (":"^x)::v' | v -> v in
-    set_arr_cmd ~modf "MANPATH" v in
-  match env with
-  | [] -> ()
-  | (k, v, _) :: r ->
-    if not (List.exists (fun (k1, _, _) -> k = k1) r) then
-      (match k with
-       | "PATH" | "CDPATH" ->
-         (* This function assumes that `v` does not include any variable
-          * expansions and that the directory names are written in full. See the
-          * opamState.ml for details *)
-         let v' = possibly_unix_path_env_value k v in
-         set_arr_cmd k v'
-       | "MANPATH" ->
-         manpath_cmd v
-       | _ ->
-         Printf.ksprintf output "set -gx %s '%s';\n"
-           k (OpamStd.Env.escape_single_quotes ~using_backslashes:true v));
-    print_fish_env output r
+  let modf = function | x::v' -> (":"^x)::v' | v -> v in
+  test ^ set_arr_cmd ~modf "MANPATH" v
+
+let fish_string_of_env k v =
+  match k with
+  | "PATH" | "CDPATH" ->
+    (* This function assumes that `v` does not include any variable
+     * expansions and that the directory names are written in full. See the
+     * opamState.ml for details *)
+    let v' = possibly_unix_path_env_value k v in
+    set_arr_cmd k v'
+  | "MANPATH" ->
+    manpath_cmd v
+  | _ ->
+    Printf.sprintf "set -gx %s '%s';\n"
+      k (OpamStd.Env.escape_single_quotes ~using_backslashes:true v)
 
 let with_binary_mode oc k =
-  let file_descr = Unix.dup (Unix.descr_of_out_channel oc) in
-  Fun.protect ~finally:(fun () -> Unix.close file_descr) @@ fun () ->
-    let oc = Unix.out_channel_of_descr file_descr in
+  let fd = Unix.dup (Unix.descr_of_out_channel oc) in
+  Fun.protect ~finally:(fun () -> Unix.close fd) @@ fun () ->
+    let oc = Unix.out_channel_of_descr fd in
     set_binary_mode_out oc true;
     k oc
 
-let print_without_cr s =
-  with_binary_mode stdout @@ fun stdout ->
-    output_string stdout s;
-    flush stdout
+let print_without_cr fmt =
+  Printf.ksprintf (fun s -> with_binary_mode stdout @@ fun stdout -> output_string stdout s; flush stdout) fmt
 
 let print_eval_env ~csh ~sexp ~fish ~pwsh ~cmd env =
   let env = (env : OpamTypes.env :> (string * string * string option) list) in
-  let output_normally = OpamConsole.msg "%s" in
-  let never_with_cr =
+  let print_without_cr =
     if Sys.win32 && not OpamStd.Sys.tty_out then
       print_without_cr
     else
-      output_normally
+      OpamConsole.msg
+  in
+  let print, to_string, (comment_format : (string -> unit, unit, string, unit) format4 option) =
+    if sexp then
+      OpamConsole.msg, sexp_string_of_env, None
+    else if csh then
+      print_without_cr, csh_string_of_env, Some ": %s;\n"
+    else if fish then
+      print_without_cr, fish_string_of_env, None
+    else if pwsh then
+      OpamConsole.msg, pwsh_string_of_env, None
+    else if cmd then
+      OpamConsole.msg, cmd_string_of_env, Some ": %s\n"
+    else
+      print_without_cr, sh_string_of_env, Some ": %s;\n"
+  in
+  let verbose = OpamConsole.verbose () in
+  let print_comment =
+    match comment_format with
+    | Some fmt when verbose ->
+        OpamStd.Option.iter (fun s -> print fmt s)
+    | _ ->
+        ignore
+  in
+  let without_duplicates seen (k, v, comment) =
+    if not (OpamStd.String.Set.mem k seen) || verbose then begin
+      (OpamStd.String.Set.add k seen, (Some (to_string k v), comment))
+    end else
+      (seen, (None, comment))
+  in
+  let (_, env) =
+    OpamStd.List.fold_left_map without_duplicates OpamStd.String.Set.empty (List.rev env)
   in
   if sexp then
-    print_sexp_env output_normally env
-  else if csh then
-    print_csh_env never_with_cr env
-  else if fish then
-    print_fish_env never_with_cr env
-  else if pwsh then
-    print_pwsh_env output_normally env
-  else if cmd then
-    print_cmd_env output_normally env
-  else
-    print_env never_with_cr env
+    print "(\n";
+  List.iter (fun (x, y) -> print_comment y; OpamStd.Option.iter (print "%s\n") x) env;
+  ignore ();
+  if sexp then
+    print ")\n"
 
 let regenerate_env ~set_opamroot ~set_opamswitch ~force_path
     gt switch env_file =
