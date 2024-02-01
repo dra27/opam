@@ -142,3 +142,7 @@ val setErrorMode : int -> int
 
 val getErrorMode : unit -> int
 (** Windows only. Directly wraps GetErrorMode. *)
+
+val getVersionInfo : string -> win32_version_info option
+(** Windows only. Returns the version info block for a file or [None] if the
+    file either doesn't exist or doesn't have one. *)
