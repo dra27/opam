@@ -20,6 +20,39 @@ let default_env =
   ) in
  fun () -> Lazy.force (f ())
 
+let bubble_cygwin_path key value =
+  let path_dirs = OpamStd.Sys.split_path_variable value in
+  let winsys = Filename.concat (OpamStd.Sys.system ()) "." |> String.lowercase_ascii in
+  let rec f prefix suffix = function
+  | dir::dirs ->
+      let contains_cygcheck = Sys.file_exists (Filename.concat dir "cygcheck.exe") in
+      if suffix = [] then
+        if String.lowercase_ascii (Filename.concat dir ".") = winsys then
+          f prefix [dir] dirs
+        else
+          if contains_cygcheck then
+            path_dirs
+          else
+            f (dir::prefix) [] dirs
+      else
+        if contains_cygcheck then begin
+          log ~level:2 "Moving %s to after %s in PATH" dir (List.hd prefix);
+          List.rev_append prefix (dir::(List.rev_append suffix dirs))
+        end else
+          f prefix (dir::suffix) dirs
+  | [] -> []
+  in
+  key ^ "=" ^ String.concat ";" (f [] [] path_dirs)
+
+let bubble_cygwin env =
+  let f v =
+    match OpamStd.String.cut_at v '=' with
+    | Some (path, v) when String.lowercase_ascii path = "path" ->
+        bubble_cygwin_path path v
+    | _ -> v
+  in
+  Array.map f env
+
 let cygwin_create_process_env prog args env fd1 fd2 fd3 =
   (*
    * Unix.create_process_env correctly converts arguments to a command line for
@@ -179,28 +212,7 @@ let cygwin_create_process_env prog args env fd1 fd2 fd3 =
         end else
           Some (key ^ "=" ^ String.concat " " settings)
     | "path" ->
-        let path_dirs = OpamStd.Sys.split_path_variable value in
-        let winsys = Filename.concat (OpamStd.Sys.system ()) "." |> String.lowercase_ascii in
-        let rec f prefix suffix = function
-        | dir::dirs ->
-            let contains_cygpath = Sys.file_exists (Filename.concat dir "cygpath.exe") in
-            if suffix = [] then
-              if String.lowercase_ascii (Filename.concat dir ".") = winsys then
-                f prefix [dir] dirs
-              else
-                if contains_cygpath then
-                  path_dirs
-                else
-                  f (dir::prefix) [] dirs
-            else
-              if contains_cygpath then begin
-                log ~level:2 "Moving %s to after %s in PATH" dir (List.hd prefix);
-                List.rev_append prefix (dir::(List.rev_append suffix dirs))
-              end else
-                f prefix (dir::suffix) dirs
-        | [] -> []
-        in
-        Some (key ^ "=" ^ String.concat ";" (f [] [] path_dirs))
+        Some (bubble_cygwin_path key value)
     | _ ->
         Some item in
   let env = OpamStd.List.filter_map f env in

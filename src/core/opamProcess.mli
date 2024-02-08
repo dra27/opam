@@ -144,6 +144,10 @@ val check_success_and_cleanup : result -> bool
 
 (** {2 Misc} *)
 
+(** Mutates the location of the Cygwin directory in PATH to get it above Windows system32 *)
+(* XXX To be updated... *)
+val bubble_cygwin: string array -> string array
+
 (** Reads a text file and returns a list of lines *)
 val read_lines: string -> string list
 

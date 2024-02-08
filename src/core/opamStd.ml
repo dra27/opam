@@ -842,6 +842,8 @@ module Env = struct
     let f v =
       match OpamString.cut_at v '=' with
       | Some (path, c) when Name.equal_string path "path" ->
+        (* XXX This mechanism at present shadows everything - is that correct, or should it bubble? *)
+        (* XXX I think this is being for internal calling to commands, rather than resolving? *)
         (match git_location with
          | None ->
            Printf.sprintf "%s=%s;%s" path cygbin c
