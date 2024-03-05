@@ -128,7 +128,7 @@ let get_cache_cont : type s . s cache_name -> s = function
           | _ -> fun _ b -> b in
         let is_windows = if_windows true false in f
         {name = Printf.sprintf "OCaml %s" version;
-         key = Printf.sprintf "${{ runner.os }}%s-ocaml-%s-${{ %s.outputs.ocaml-cache }}-${{ %s.outputs.archives }}" (if_windows ("-" ^ host) "") version version;
+         key = Printf.sprintf "${{ runner.os }}%s-ocaml-%s-${{ %s.outputs.ocaml-cache }}" (if_windows ("-" ^ host) "") version;
          id = "ocaml-cache";
          force_gzip = is_windows;
          paths = [if_windows {|D:\Cache\ocaml-local.tar|} "~/.cache/ocaml-local/**"];
@@ -488,7 +488,7 @@ let main oc : unit =
   ] in
   let keys = [
     ("archives", "archives-1-${{ hashFiles('src_ext/Makefile.dune', 'src_ext/Makefile.sources', 'src_ext/Makefile', '.github/scripts/common/preamble.sh', '.github/scripts/main/preamble.sh', '.github/scripts/main/archives-cache.sh') }}-${{ env.OPAM_REPO_SHA }}");
-    ("ocaml-cache", "${{ hashFiles('.github/scripts/main/ocaml-cache.sh', '.github/scripts/main/preamble.sh', '.github/scripts/main/create-ocaml-cache.sh') }}");
+    ("ocaml-cache", "${{ hashFiles('src_ext/Makefile.dune', '.github/scripts/main/ocaml-cache.sh', '.github/scripts/main/preamble.sh', '.github/scripts/main/create-ocaml-cache.sh') }}");
     ("cygwin", "${{ hashFiles('.github/scripts/cygwin.cmd') }}-${{ env.CYGWIN_EPOCH }}");
     ("opam-bs-cache", "${{ hashFiles('.github/scripts/main/opam-bs-cache.sh', '*.opam', '.github/scripts/main/preamble.sh') }}");
   ] in
