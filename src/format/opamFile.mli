@@ -1034,7 +1034,7 @@ module Repos_config: sig
 end
 
 module Switch_config: sig
-  type t = {
+  type t = private {
     opam_version: OpamVersion.t;
     synopsis: string;
     repos: repository_name list option;
@@ -1048,6 +1048,17 @@ module Switch_config: sig
   }
 
   val env: t -> (spf_resolved, [> euok_writeable ]) env_update list
+
+  val with_opam_version: OpamVersion.t -> t -> t
+  val with_synopsis: string -> t -> t
+  val with_repos: repository_name list option -> t -> t
+  val with_paths: (std_path * string) list -> t -> t
+  val with_variables: (variable * variable_contents) list -> t -> t
+  val with_opam_root: dirname option -> t -> t
+  val with_wrappers: Wrappers.t -> t -> t
+  val with_env: (spf_resolved, euok_writeable) env_update list -> t -> t
+  val with_invariant: OpamFormula.t option -> t -> t
+  val with_depext_bypass: OpamSysPkg.Set.t -> t -> t
 
   val file_format_version: OpamVersion.t
   val variable: t -> variable -> variable_contents option
