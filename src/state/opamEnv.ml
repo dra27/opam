@@ -9,7 +9,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open OpamParserTypes
 open OpamTypes
 open OpamStateTypes
 open OpamTypesBase
@@ -75,7 +74,7 @@ let transform_format ~(sepfmt:sep_path_format) =
           "\""^path^"\"" else path
 
 let resolve_separator_and_format :
-  type r. r env_update -> spf_resolved env_update =
+  type r. (r, 'a) env_update -> (spf_resolved, 'a) env_update =
   let env fv =
     let fv = OpamVariable.Full.variable fv in
     OpamStd.Option.(Op.(
@@ -250,7 +249,7 @@ let apply_op_zip ~sepfmt op arg (rl1,l2 as zip) =
   | EqPlusEq -> rl1, arg::l2
   | ColonEq ->
     let l, add = colon_eq (rezip zip) in [], add @ l
-  | EqColon ->
+  | EqColon | Cygwin ->
     let l, add = colon_eq ~eqcol:true (List.rev_append l2 rl1) in
     l, List.rev add
 
@@ -280,7 +279,7 @@ let reverse_env_update ~sepfmt var op arg cur_value =
     (match unzip_to var ~sepfmt arg cur_value with
      | Some ([], [""]) -> Some ([], [])
      | r -> r)
-  | EqColon ->
+  | EqColon | Cygwin ->
     (match unzip_to ~sepfmt var arg (List.rev cur_value) with
      | Some ([], [""]) -> Some ([], [])
      | Some (rl1, l2) -> Some (List.rev l2, List.rev rl1)
@@ -327,7 +326,7 @@ let updates_from_previous_instance = lazy (
       try get_env env_file
       with e -> OpamStd.Exn.fatal e; None))
 
-let expand (updates: spf_resolved env_update list) : env =
+let expand updates =
   let updates =
     if Sys.win32 then
       (* Preserve the case of updates which are already in env *)
@@ -440,7 +439,7 @@ let expand (updates: spf_resolved env_update list) : env =
   in
   apply_updates reverts [] updates
 
-let add (env: env) (updates: 'r env_update list) : env =
+let add (env: env) updates : env =
   let updates =
     if Sys.win32 then
       (* Preserve the case of updates which are already in env *)
@@ -508,7 +507,7 @@ let compute_updates ?(force_path=false) st =
          (OpamPath.Switch.root st.switch_global.root st.switch))
       ~comment:"Prefix of the current opam switch")
    ::
-   List.map (env_expansion st) st.switch_config.OpamFile.Switch_config.env
+   List.map (env_expansion st) (OpamFile.Switch_config.env st.switch_config)
   in
   let pkg_env = (* XXX: Does this need a (costly) topological sort? *)
     let updates =
@@ -539,8 +538,10 @@ let updates_common ~set_opamroot ~set_opamswitch root switch =
   root @ switch
 
 let updates ~set_opamroot ~set_opamswitch ?force_path st =
-  updates_common ~set_opamroot ~set_opamswitch st.switch_global.root st.switch @
-  compute_updates ?force_path st
+  let common =
+    updates_common ~set_opamroot ~set_opamswitch st.switch_global.root st.switch
+  in
+  common @ compute_updates ?force_path st
 
 let get_pure ?(updates=[]) () =
   let env = List.map (fun (v,va) -> v,va,None) (OpamStd.Env.list ()) in
@@ -569,7 +570,7 @@ let hash_env_updates upd =
      tabulations *)
   let to_string { envu_var; envu_op; envu_value; _} =
     String.escaped envu_var
-    ^ OpamPrinter.FullPos.env_update_op_kind envu_op
+    ^ OpamPrinter.FullPos.env_update_op_kind (raw_of_op envu_op)
     ^ String.escaped envu_value
   in
   List.rev_map to_string upd
@@ -591,9 +592,10 @@ let get_full
     List.filter (fun (name, _) -> not (OpamStd.Env.Name.Set.mem name scrub)) env
   in
   let env0 = List.map (fun (v,va) -> v,va,None) env in
+  let u =
+    (List.map resolve_separator_and_format u) in
   let updates =
-    (List.map resolve_separator_and_format u)
-    @ updates ~set_opamroot ~set_opamswitch ~force_path st in
+    u @ updates ~set_opamroot ~set_opamswitch ~force_path st in
   add env0 updates
 
 let is_up_to_date_raw ?(skip=OpamStateConfig.(!r.no_env_notice)) updates =
@@ -953,7 +955,7 @@ let string_of_update st shell updates =
            fst @@ default_sep_fmt_str envu_var)
     in
     let key, value =
-      envu_var, match envu_op with
+      envu_var, match (envu_op : euok_writeable env_update_op_kind) with
       | Eq ->
         (match shell with
          | SH_pwsh _ ->
