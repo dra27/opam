@@ -1,0 +1,108 @@
+param (
+  [switch]$Dev,
+  [string]$Version = "2.2.0~rc1",
+  [string]$OpamBinDir = ""
+)
+
+$DevVersion = "2.2.0~rc1"
+$IsAdmin = (New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+$DefaultBinDir = If ($IsAdmin) {"$Env:ProgramFiles\opam\bin"} Else {"$Env:LOCALAPPDATA\Programs\opam\bin"}
+
+Function GetArch {
+  switch ($Env:PROCESSOR_ARCHITECTURE) {
+    "AMD64" { "x86_64" }
+    "Arm64" { "arm64" }
+    "x86" { "i686" }
+    Default { throw "Unknown architecture" }
+  }
+}
+
+Function BinSHA512 {
+  param (
+    [string]$OpamBinName
+  )
+
+  switch ($OpamBinName) {
+    "opam-2.2.0-beta2-x86_64-windows.exe" { "74f034ccc30ef0b2041283ff125be2eab565d4019e79f946b515046c4c290a698266003445f38b91321a9ef931093651f861360906ff06c076c24d18657e2aaf" }
+    "opam-2.2.0-beta3-x86_64-windows.exe" { "f09337d94e06cedb379c5bf45a50a79cf2b2e529d7c2bb9b35c8a56d40902ff8c7e3f4de9c75fb5c8dd8272b87b2a2645b14e40ef965376ef0d19afd923acf3b" }
+    "opam-2.2.0-rc1-x86_64-windows.exe"   { "f2ec830a5706c45cb56a96713e296ef756c3f2904ca15f7c2ad0442916a9585fa1de8070208f2a6bb3a84dc74b677f946f5bc386c8ed1489da802b1d66a5e094" }
+    Default { throw "no sha" }
+  }
+}
+
+Function CheckSHA512 {
+  param (
+    [string]$OpamBinTmpLoc,
+    [string]$OpamBinName
+  )
+
+  $Hash = (CertUtil -hashfile "$OpamBinTmpLoc" SHA512)[1]
+  $HashTarget = BinSHA512 -OpamBinName "$OpamBinName"
+
+  if ("$Hash" -ne "$HashTarget") {
+    throw "Checksum does not match"
+  }
+}
+
+Function DownloadAndCheck {
+  param (
+    [string]$OpamBinUrl,
+    [string]$OpamBinTmpLoc,
+    [string]$OpamBinName
+  )
+
+  Start-BitsTransfer -Source "$OpamBinUrl" -Destination "$OpamBinTmpLoc"
+  CheckSHA512 -OpamBinTmpLoc "$OpamBinTmpLoc" -OpamBinName "$OpamBinName"
+}
+
+if ($Dev.IsPresent) {
+  $Version = $DevVersion
+}
+
+$Tag = $Version -creplace "~", "-"
+$Arch = GetArch
+$OS = "windows"
+$OpamBinUrlBase = "https://github.com/ocaml/opam/releases/download/"
+$OpamBinName = "opam-${Tag}-${Arch}-${OS}.exe"
+$OpamBinUrl = "${OpamBinUrlBase}${Tag}/${OpamBinName}"
+
+$OpamBinTmpLoc = "$Env:TMP\$OpamBinName"
+DownloadAndCheck -OpamBinUrl "$OpamBinUrl" -OpamBinTmpLoc "$OpamBinTmpLoc" -OpamBinName "$OpamBinName"
+
+if ($OpamBinDir -eq "") {
+  $OpamBinDir = Read-Host "## Where should it be installed? [$DefaultBinDir]"
+  if ($OpamBinDir -eq "") {
+    $OpamBinDir = $DefaultBinDir
+  }
+}
+
+# Check existing opam binaries
+$AllOpam = Get-Command -All -Name opam -CommandType Application -ErrorAction Ignore | ForEach-Object -MemberName Source
+foreach($OneOpam in $AllOpam) {
+  if ($OneOpam -ne "$OpamBinDir\opam.exe") {
+    throw "We detected another opam binary installed at '$OneOpam'. To ensure problems won't occure later, please uninstall it or remove it from the PATH"
+  }
+}
+
+if (($OpamBinDir -contains "'") -or ($OpamBinTmpLoc -contains "'") -or ($OpamBinDir -contains '"')) {
+  throw "String contains unsupported characters"
+}
+
+# Install the binary
+if (-not (Test-Path -Path "$OpamBinDir" -PathType Container)) {
+  [void](New-Item -Force -Path "$OpamBinDir" -Type Directory)
+}
+[void](Move-Item -Force -Path "$OpamBinTmpLoc" -Destination "${OpamBinDir}\opam.exe")
+
+# Add the newly installed binary to PATH
+$EnvTarget = If ($IsAdmin) {'MACHINE'} Else {'USER'}
+$PATH = [Environment]::GetEnvironmentVariable('PATH', $EnvTarget)
+if (-not ($PATH -split ';' -contains "$OpamBinDir")) {
+  [Environment]::SetEnvironmentVariable('PATH', "${OpamBinDir};$PATH", $EnvTarget)
+}
+
+# Modify the environment of the current terminal session
+$PATH = [Environment]::GetEnvironmentVariable('PATH', 'PROCESS')
+[Environment]::SetEnvironmentVariable('PATH', "${OpamBinDir};$PATH", 'PROCESS')
+
+Write-Host "opam has been successfully installed."
