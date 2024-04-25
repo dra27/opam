@@ -100,6 +100,7 @@ users)
 ## Reftests
 ### Tests
   * env tests: use `sort` to increase stability of the `opam env` output [#5935 @dra27 @rjbou]
+  * env.win32: add mixed slashes test [#5935 @dra27]
 
 ### Engine
   * Add `sort` command [#5935 @dra27]
