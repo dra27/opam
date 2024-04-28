@@ -101,6 +101,7 @@ users)
 ### Tests
 
 ### Engine
+  * Add `sort` command [#5935 @dra27]
 
 ## Github Actions
 
