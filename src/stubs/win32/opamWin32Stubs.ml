@@ -41,3 +41,4 @@ external getConsoleWindowClass : unit -> string option = "OPAMW_GetConsoleWindow
 external setErrorMode : int -> int = "OPAMW_SetErrorMode"
 external getErrorMode : unit -> int = "OPAMW_GetErrorMode"
 external getVersionInfo : string -> 'a option = "OPAMW_GetVersionInfo"
+external get_initial_environment : unit -> string list = "OPAMW_CreateEnvironmentBlock"
