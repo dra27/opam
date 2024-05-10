@@ -99,6 +99,7 @@ users)
 
 ## Reftests
 ### Tests
+  * env tests: use `sort` to increase stability of the `opam env` output [#5935 @dra27 @rjbou]
 
 ### Engine
   * Add `sort` command [#5935 @dra27]
