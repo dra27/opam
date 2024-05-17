@@ -156,3 +156,8 @@ val getVersionInfo : string -> win32_version_info option
 
 val get_initial_environment : unit -> string list
 (** Windows only. Returns the environment which new processes would receive. *)
+
+val getFinalPathName : string -> string option
+(** Windows only. Returns the canonical name for an existing path using
+    GetFinalPathNameByHandle. Returns [None] on any kind of error (including the
+    file not existing or if it cannot be opened) *)

@@ -159,3 +159,4 @@ users)
   * `OpamStubs.getVersionInfo`: on Windows, retrives the version information block of an executable/library [#???? @dra27]
   * `OpamStubs.readRegistry`: on Windows, complements `OpamStubs.writeRegistry` [#???? @dra27]
   * `OpamStubs.get_initial_environment`: on Windows, returns the pristine environment for new shells [#???? @dra27]
+  * `OpamStubs.getFinalPathName`: on Windows, canonicalises the name of an existing file/directory [#???? @dra27]

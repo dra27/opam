@@ -1032,3 +1032,42 @@ CAMLprim value OPAMW_CreateEnvironmentBlock(value unit)
 
   CAMLreturn(Field(result, 1));
 }
+
+CAMLprim value OPAMW_GetFinalPathName(value vfile)
+{
+  CAMLparam0();
+  CAMLlocal2(result, path);
+  result = Val_none;
+  LPWSTR file = caml_stat_strdup_to_utf16(String_val(vfile));
+  WCHAR final[MAX_PATH];
+  HANDLE hFile =
+    CreateFile(file,
+               FILE_READ_ATTRIBUTES,
+               FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+               NULL,
+               OPEN_EXISTING,
+               FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+               NULL);
+  caml_stat_free(file);
+  if (hFile != INVALID_HANDLE_VALUE) {
+    DWORD ret =
+      GetFinalPathNameByHandle(hFile,
+                               final,
+                               MAX_PATH,
+                               VOLUME_NAME_DOS | FILE_NAME_NORMALIZED);
+    CloseHandle(hFile);
+    if (ret != 0 && ret < MAX_PATH) {
+      if (ret >= 4 && final[0] == L'\\'
+                   && final[1] == L'\\'
+                   && final[2] == L'?'
+                   && final[3] == L'\\')
+        path = caml_copy_string_of_utf16(final + 4);
+      else
+        path = caml_copy_string_of_utf16(final);
+      result = caml_alloc_small(1, 0);
+      Field(result, 0) = path;
+    }
+  }
+
+  CAMLreturn(result);
+}
