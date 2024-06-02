@@ -373,10 +373,7 @@ module Cygwin = struct
          args @@> fun r ->
        OpamSystem.raise_on_process_error r;
        set_fstab_noacl fstab;
-       Done ());
-    cygcheck
-
-  let default_cygroot = "C:\\cygwin64"
+       Done ())
 
   let analysis_cache = Hashtbl.create 17
 
@@ -449,11 +446,8 @@ module Cygwin = struct
               match r.OpamProcess.r_stdout with
               | [] ->
                 Error ("Unexpected error translating \"/\" with " ^ cygpath)
-              | _::_ ->
-                let cygcheck =
-                  OpamFilename.of_string (Filename.concat dir "cygpath.exe")
-                in
-                Ok (kind, cygcheck)
+              | l::_ ->
+                Ok (kind, OpamFilename.Dir.of_string l)
             else
               Error ("Could not determine the root for " ^ cygpath)
         in
