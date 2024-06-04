@@ -198,3 +198,4 @@ users)
   * `OpamStd.Sys.resolve_in_path`: split the logic of `OpamStd.Sys.resolve_command` to allow searching for an arbitrary file in the search path [#5991 @dra27]
   * `OpamProcess.run_background`: name the stderr output file have the .err extension when cmd_stdout is given [#5984 @kit-ty-kate]
   * `OpamStubs.enumRegistry`: on Windows, retrieves all the values of a given type from a registry key, with their names [#6000 @dra27]
+  * `OpamCompat`: add `Seq.find_map` from OCaml 4.14 [#6000 @dra27]
