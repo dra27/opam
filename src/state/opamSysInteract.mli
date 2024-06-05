@@ -49,13 +49,22 @@ module Cygwin : sig
   (* Install an internal Cygwin install, in <root>/.cygwin *)
   val install: OpamSysPkg.t list -> OpamFilename.t
 
-  (* [check_install ~variant path] checks a Cygwin install at [path]. It checks
-     that 'path\cygcheck.exe', 'path\bin\cygcheck.exe', or
-     'path\usr\bin\cygcheck.exe' exists.
-     If [~variant] is false, checks that it is strictly a Cygwin install,
-     otherwise a Cygwin-like install as MSYS2. *)
-  val check_install:
-    variant:bool -> string -> (OpamFilename.t, string) result
+  (* [analyse_install path] searches for and identifies Cygwin/MSYS2
+     installations. [path] may be able the location of cygcheck.exe itself
+     (with or without the .exe) or just a directory. If [path] is just a
+     directory, then the function searches for 'path\cygcheck.exe',
+     'path\bin\cygcheck.exe', or 'path\usr\bin\cygcheck.exe'. If exactly one
+     is found, and cygpath.exe is found with it, then cygpath is used both to
+     identify whether the installation is Cygwin or MSYS2 and to translate the
+     root directory [/] to its Windows path (i.e. to get the canonical root
+     directory of the installation). MSYS2 is additionally required to have
+     pacman.exe in the same directory as cygcheck.exe and cygpath.exe.
+
+     On success, the result is the kind of installation (Cygwin/MSYS2) along
+     with the full path to cygcheck.exe, otherwise a description of the problem
+     encountered is returned. *)
+  val analyse_install:
+    string -> ([ `Cygwin | `Msys2 ] * OpamFilename.t, string) result
 
   (* Returns true if Cygwin install is internal *)
   val is_internal: OpamFile.Config.t -> bool
