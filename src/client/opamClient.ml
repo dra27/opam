@@ -1255,7 +1255,7 @@ let initialise_msys2 root =
       | `Quit ->
         OpamStd.Sys.exit_because `Aborted
 
-let determine_windows_configuration ?cygwin_setup ?git_location config =
+let determine_windows_configuration ?cygwin_setup ?git_location ~bypass_checks config =
   OpamStd.Option.iter
     (log "Cygwin (from CLI): %a" (slog string_of_cygwin_setup)) cygwin_setup;
   (* Check whether symlinks can be created. Developer Mode is not the only way
@@ -1359,6 +1359,13 @@ let determine_windows_configuration ?cygwin_setup ?git_location config =
      tweakable - can pacman / Cygwin setup be used to adjust setup
                  (--no-cygwin-setup disables this)
    *)
+  (* --bypass-checks => --no-cygwin-setup if nothing else was specified *)
+  let cygwin_setup =
+    if bypass_checks && cygwin_setup = None then
+      Some `no
+    else
+      cygwin_setup
+  in
   let mechanisms, cygwin_tweakable =
     match cygwin_setup with
     | Some (`internal packages) ->
@@ -1584,7 +1591,7 @@ let reinit ?(init_config=OpamInitDefaults.init_config()) ~interactive
   let config = update_with_init_config config init_config in
   let config, mechanism, system_packages, msys2_check_root =
     if Sys.win32 then
-      determine_windows_configuration ?cygwin_setup ?git_location config
+      determine_windows_configuration ?cygwin_setup ?git_location ~bypass_checks config
     else
       config, None, [], None
   in
@@ -1671,7 +1678,7 @@ let init
         in
         let config, mechanism, system_packages, msys2_check_root =
           if Sys.win32 then
-            determine_windows_configuration ?cygwin_setup ?git_location config
+            determine_windows_configuration ?cygwin_setup ?git_location ~bypass_checks config
           else
             config, None, [], None
         in
