@@ -255,10 +255,10 @@ module Cygwin = struct
 
   let download_setupexe dst =
     let overwrite = true in
-    let checksum_file = OpamFilename.add_extension dst "sha512" in
+    let kind = `SHA512 in
     let current_checksum =
-      if OpamFilename.exists checksum_file then
-        Some (OpamHash.sha512 (OpamFilename.read checksum_file))
+      if OpamFilename.exists dst then
+        Some (OpamHash.compute ~kind (OpamFilename.to_string dst))
       else
         None
     in
@@ -288,7 +288,6 @@ module Cygwin = struct
       try Some (OpamHash.sha512 Re.(Group.get (exec re content) 1))
       with Not_found -> None
     in
-    let kind = `SHA512 in
     if OpamStd.Option.equal OpamHash.equal current_checksum checksum &&
        OpamFilename.exists dst &&
        OpamStd.Option.equal OpamHash.equal current_checksum
@@ -302,14 +301,6 @@ module Cygwin = struct
         OpamConsole.status_line "Downloading Cygwin setup from cygwin.com";
       OpamDownload.download_as ~overwrite ?checksum url_setupexe dst @@+
         fun () ->
-          OpamFilename.remove checksum_file;
-          let checksum =
-            match checksum with
-            | None -> OpamHash.compute ~kind (OpamFilename.to_string dst)
-            | Some sha512 -> sha512
-          in
-          OpamFilename.with_open_out_bin checksum_file (fun c ->
-            output_string c (OpamHash.contents checksum));
           OpamConsole.clear_status ();
           Done ()
     end

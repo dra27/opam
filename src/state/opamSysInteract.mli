@@ -71,8 +71,7 @@ module Cygwin : sig
 
   (* [check_setup path] checks and store Cygwin setup executable. Is [path] is
      [None], it downloads it, otherwise it copies it to
-     <opamroot>/.cygwin/setup-x86_64.exe. If the file is already existent, it
-     is a no-op. *)
+     <opamroot>/.cygwin/setup-x86_64.exe. *)
   val check_setup: OpamFilename.t option -> unit
 
   (* Return Cygwin binary path *)
