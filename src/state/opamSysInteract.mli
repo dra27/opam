@@ -66,6 +66,11 @@ module Cygwin : sig
   val analyse_install:
     string -> ([ `Cygwin | `Msys2 ] * OpamFilename.Dir.t, string) result
 
+  (* [bindir_for_root kind root] returns the bin directory for the given
+     installation root and [kind], as returned by {!analyse_install}. *)
+  val bindir_for_root:
+    [ `Cygwin | `Msys2 ] -> OpamFilename.Dir.t -> OpamFilename.Dir.t
+
   (* Returns true if Cygwin install is internal *)
   val is_internal: OpamFile.Config.t -> bool
 

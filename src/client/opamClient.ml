@@ -1054,7 +1054,7 @@ let rec cygwin_menu ~bypass_checks header =
         options, `Chosen (`Cygwin, `Internal), None
       | Some (Ok (kind, root)) ->
         let pacman =
-          OpamFilename.Op.(root / "usr" / "bin" // "pacman.exe")
+          OpamFilename.Op.(OpamSysInteract.Cygwin.bindir_for_root `Msys2 root // "pacman.exe")
           |> OpamFilename.to_string
         in
         let root = OpamFilename.Dir.to_string root in
@@ -1219,11 +1219,12 @@ let string_of_git_location_cli = function
   | Right () -> "git-location disabled via CLI"
 
 let initialise_msys2 root =
-  let pacman = OpamFilename.Op.(root / "usr" / "bin" // "pacman.exe") in
+  let bindir = OpamSysInteract.Cygwin.bindir_for_root `Msys2 root in
+  let pacman = OpamFilename.Op.(bindir // "pacman.exe") in
   let gnupg_dir = OpamFilename.Op.(root / "etc" / "pacman.d" / "gnupg") in
   if OpamFilename.exists pacman && not (OpamFilename.exists_dir gnupg_dir) then
     let cmd =
-      OpamFilename.Op.(root / "usr" / "bin" // "bash.exe")
+      OpamFilename.Op.(bindir // "bash.exe")
       |> OpamFilename.to_string
     in
     let answer =
@@ -1460,12 +1461,7 @@ let determine_windows_configuration ?cygwin_setup ?git_location
         in
         apply cygcheck, None
       | `Root root ->
-        let bindir =
-          if kind = `Msys2 then
-            root / "usr" / "bin"
-          else
-            root / "bin"
-        in
+        let bindir = OpamSysInteract.Cygwin.bindir_for_root kind root in
         (* If the user has specified --no-git-location and Git for Windows was
            in PATH and the given location occludes it, then this is our last
            chance to warn about it. *)

@@ -447,6 +447,12 @@ module Cygwin = struct
     in
     Result.bind cygbin identify
 
+  let bindir_for_root kind root =
+    let open OpamFilename.Op in
+    match kind with
+    | `Msys2 -> root / "usr" / "bin"
+    | `Cygwin -> root / "bin"
+
   (* Set setup.exe in the good place, ie in .opam/.cygwin/ *)
   let check_setup ~update =
     let dst = cygsetup () in
