@@ -692,14 +692,14 @@ let string_of_kind = function
   | `Cygwin -> "Cygwin"
 
 let git_for_windows kind mechanism cygwin_is_tweakable =
-  let contains_git p =
+  let resolve_git_in p =
     OpamSystem.resolve_command ~env:[||] (Filename.concat p "git.exe")
   in
   let gits =
     OpamStd.Env.get "PATH"
     |> OpamStd.Sys.split_path_variable
     |> OpamStd.List.fold_left_map (fun gits p ->
-        match contains_git p with
+        match resolve_git_in p with
         | Some git when not (OpamStd.String.Set.mem git gits) ->
           OpamStd.String.Set.add git gits,
           Some (git, OpamSystem.bin_contains_bash p)
@@ -782,7 +782,7 @@ let git_for_windows kind mechanism cygwin_is_tweakable =
     match bin with
     | None -> None
     | Some git_location ->
-      match contains_git git_location,
+      match resolve_git_in git_location,
             OpamSystem.bin_contains_bash git_location with
       | Some _, false ->
         OpamConsole.msg "Using Git from %s" git_location;
@@ -810,6 +810,13 @@ let git_for_windows kind mechanism cygwin_is_tweakable =
       `Abort, ("Abort initialisation to " ^ abort_action);
     ]
   in
+  let add_or_use_git root =
+    let bindir = OpamSysInteract.Cygwin.bindir_for_root kind root in
+    if resolve_git_in (OpamFilename.Dir.to_string bindir) = None then
+      "Add Git to"
+    else
+      "Use Git from"
+  in
   let default, options =
     match mechanism with
     | `Internal ->
@@ -821,17 +828,12 @@ let git_for_windows kind mechanism cygwin_is_tweakable =
       `Default, internal::options
     | `Root root ->
       assert cygwin_is_tweakable;
-      let root = OpamFilename.Dir.to_string root in
-      let git = Filename.concat root "git.exe" in
-      let prefix =
-        if OpamSystem.resolve_command ~env:[||] git = None then
-          "Add Git to"
-        else
-          "Use Git from"
-      in
       let root =
         `Default, Printf.sprintf
-          "%s the %s installation in %s" prefix (string_of_kind kind) root
+          "%s the %s installation in %s"
+          (add_or_use_git root)
+          (string_of_kind kind)
+          (OpamFilename.Dir.to_string root)
       in
       `Default, root::options
     | `Path root ->
@@ -853,8 +855,10 @@ let git_for_windows kind mechanism cygwin_is_tweakable =
         if cygwin_is_tweakable then
           let option =
             `Default, Printf.sprintf
-              "Add Git to %s installation in %s (from PATH)"
-              (string_of_kind kind) root
+              "%s %s installation in %s (from PATH)"
+              (add_or_use_git (OpamFilename.Dir.of_string root))
+              (string_of_kind kind)
+              root
           in
           `Default, option::options
         else
