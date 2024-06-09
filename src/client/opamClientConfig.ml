@@ -209,7 +209,7 @@ let opam_init ?root_dir ?strict ?solver =
   let open OpamStd.Option.Op in
 
   (* (i) get root dir *)
-  let root = OpamStateConfig.opamroot ?root_dir () in
+  let root_from, root = OpamStateConfig.opamroot ?root_dir () in
   if Sys.win32
      (* if default, redirection will be handled by opam init, or should have
         been handled *)
@@ -270,5 +270,5 @@ let opam_init ?root_dir ?strict ?solver =
   OpamCoreConfig.initk ?log_dir |>
   OpamRepositoryConfig.initk |>
   OpamSolverConfig.initk ?solver |>
-  OpamStateConfig.initk ~root_dir:root |>
+  OpamStateConfig.initk ~root_dir:root ~root_from |>
   initk
