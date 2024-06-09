@@ -1692,12 +1692,21 @@ let init
     not (OpamFilename.exists_dir original_root)
     || OpamFilename.dir_is_empty original_root in
   let root = OpamStateConfig.(!r.root_dir) in
-  let root =
+  let root, remove_root =
+    let ignore_non_fatal f x =
+      try f x
+      with e -> OpamStd.Exn.fatal e
+    in
     if root_empty &&
        Sys.win32 &&
        has_space (OpamFilename.Dir.to_string root) then
-      get_redirected_root root
-    else root
+      let root = get_redirected_root root in
+      root, (fun () ->
+        ignore_non_fatal OpamFilename.rmdir root;
+        ignore_non_fatal OpamFilename.rmdir original_root
+      )
+    else
+      root, (fun () -> ignore_non_fatal OpamFilename.rmdir root)
   in
   let config_f = OpamPath.config root in
 
@@ -1785,7 +1794,7 @@ let init
         in
         if failed <> [] then
           (if root_empty then
-             (try OpamFilename.rmdir root with _ -> ());
+             remove_root ();
            OpamConsole.error_and_exit `Sync_error
              "Initial download of repository failed.");
         let default_compiler =
@@ -1820,7 +1829,7 @@ let init
         OpamStd.Exn.finalise e @@ fun () ->
         if not (OpamConsole.debug ()) && root_empty then begin
           OpamSystem.release_all_locks ();
-          OpamFilename.rmdir root
+          remove_root ()
         end)
   in
   OpamEnv.setup root ~interactive
