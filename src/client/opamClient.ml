@@ -1687,16 +1687,19 @@ let init
     shell =
   log "INIT %a"
     (slog @@ OpamStd.Option.to_string OpamRepositoryBackend.to_string) repo;
+  let original_root = OpamStateConfig.(!r.original_root_dir) in
+  let root_empty =
+    not (OpamFilename.exists_dir original_root)
+    || OpamFilename.dir_is_empty original_root in
+  let root = OpamStateConfig.(!r.root_dir) in
   let root =
-    let root = OpamStateConfig.(!r.root_dir) in
-    if Sys.win32 &&
+    if root_empty &&
+       Sys.win32 &&
        has_space (OpamFilename.Dir.to_string root) then
       get_redirected_root root
     else root
   in
   let config_f = OpamPath.config root in
-  let root_empty =
-    not (OpamFilename.exists_dir root) || OpamFilename.dir_is_empty root in
 
   let gt, rt, default_compiler =
     if OpamFile.exists config_f then (
@@ -1710,7 +1713,7 @@ let init
     ) else (
       if not root_empty then (
         OpamConsole.warning "%s exists and is not empty"
-          (OpamFilename.Dir.to_string root);
+          (OpamFilename.Dir.to_string original_root);
         if not (OpamConsole.confirm "Proceed?") then
           OpamStd.Sys.exit_because `Aborted);
       try
