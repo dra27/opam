@@ -1647,36 +1647,108 @@ let reinit ?(init_config=OpamInitDefaults.init_config()) ~interactive
 
 let has_space s = OpamStd.String.contains_char s ' '
 
-let get_redirected_root root =
-  let default = "C:\\opamroot" in
+let default_redirect_root = OpamFilename.Dir.of_string "C:\\opamroot"
+
+let setup_redirection target =
+  let {contents = {OpamStateConfig.original_root_dir = root; _}} =
+    OpamStateConfig.r
+  in
+  let target =
+    match target with
+    | Some target -> target
+    | None ->
+      OpamFilename.mkdir default_redirect_root;
+      let readme = OpamFilename.Op.(default_redirect_root // "ReadMe.txt") in
+      if not (OpamFilename.exists readme) then
+        OpamFilename.write readme
+          "This directory is used to contain redirected opam roots.\n\n\
+           The contents may be shared with other users on this system.";
+      OpamSystem.mk_unique_dir ~dir:(OpamFilename.Dir.to_string default_redirect_root) ()
+  in
+  let root_dir = OpamFilename.Dir.of_string target in
+  OpamFilename.write (OpamPath.redirected root) target;
+  OpamStateConfig.update ~root_dir ();
+  root_dir
+
+let get_redirected_root () =
+  let {contents = {OpamStateConfig.original_root_dir = root; root_from; _}} =
+    OpamStateConfig.r
+  in
+  let r = OpamConsole.colorise `bold (OpamFilename.Dir.to_string root) in
+  let collision =
+    (* UTF-8 <U+0020, U+1F4A5> (Collision emoji) *)
+    if OpamConsole.color () then " \xF0\x9F\x92\xA5" else ""
+  in
+  let options = [
+    `Redirect, Printf.sprintf
+      "Redirect files to a directory in %s"
+      (OpamConsole.colorise `bold (OpamFilename.Dir.to_string default_redirect_root));
+    `Ask, "Redirect files to an alternate directory";
+    `Endure, Printf.sprintf
+      "Do not redirect anything and stick with %s%s" r collision;
+    `Quit, "Abort initialisation"
+  ] in
+  let default, explanation =
+    match root_from with
+    | `Command_line ->
+      (* The user has been explicit with --root; nemo salvet modo... *)
+      `Endure,
+      "You have specified a root directory for opam containing a space."
+    | `Env ->
+      (* The user has perhaps carelessly set an environment variable *)
+      `Redirect,
+      "Your OPAMROOT environment variable contains a space."
+    | `Default ->
+      (* The user has fallen victim to the defaults of Windows Setup and has a
+         space in their user name *)
+      `Redirect,
+      Printf.sprintf
+        "By default, opam would store its data in:\n\
+           %s\n\
+         however, this directory contains a space." r
+  in
   let rec ask () =
-    match OpamConsole.read "Opam root: " with
-    | Some r ->
-      if has_space r then
-        (OpamConsole.msg
-           "Given path '%s' contains space, please choose another one.\n"
-           (OpamConsole.colorise `bold r);
-         ask ())
-      else r
-    | None -> default
+    let check r =
+      if Filename.is_relative r then begin
+        OpamConsole.msg
+          "That path is relative!\n\
+           Please enter an absolute path without spaces.\n";
+        ask ()
+      end else if has_space r then begin
+        OpamConsole.msg
+          "That path contains contains a space!\n\
+           Please enter an absolute path without spaces.\n";
+        ask ()
+      end else
+        Some (Some r)
+    in
+    OpamStd.Option.replace check (OpamConsole.read "Root directory for opam: ")
   in
-  let new_root_f =
-    if OpamConsole.confirm ~default:false
-        "Your opam root path '%s' contains a space, we'll redirect to \
-         '%s'.\nDo you want to choose and enter another spaceless folder?"
-        (OpamFilename.Dir.to_string root) default then
-      ask ()
-    else default
+  let rec menu () =
+    match OpamConsole.menu "Where should opam store files?" ~default ~options
+            ~no:default with
+    | `Redirect ->
+      Some None
+    | `Endure ->
+      None
+    | `Ask ->
+      let r = ask () in
+      if r = None then
+        menu ()
+      else
+        r
+    | `Quit ->
+      OpamStd.Sys.exit_because `Aborted
   in
-  let new_root = OpamFilename.Dir.of_string new_root_f in
-  OpamFilename.write (OpamPath.redirected root) new_root_f;
-  (* Add the readme file in C:\opamroot as redirected *)
-  OpamFilename.write
-    OpamFilename.Op.(root // "readme.txt")
-    (Printf.sprintf "Opam root redirected from %s"
-       (OpamFilename.Dir.to_string OpamStateConfig.(!r.root_dir)));
-  OpamStateConfig.update ~root_dir:new_root ();
-  new_root
+  OpamConsole.header_msg "opam root file store";
+  OpamConsole.msg
+    "\n\
+     %s\n\
+     \n\
+     Many parts of the OCaml ecosystem do not presently work correctly\n\
+     when installed to directories containing spaces. You have been warned!%s\n\
+     \n" explanation collision;
+  Option.map setup_redirection (menu ())
 
 let init
     ~init_config ~interactive
@@ -1697,16 +1769,22 @@ let init
       try f x
       with e -> OpamStd.Exn.fatal e
     in
-    if root_empty &&
-       Sys.win32 &&
-       has_space (OpamFilename.Dir.to_string root) then
-      let root = get_redirected_root root in
+    let new_root =
+      if root_empty &&
+         Sys.win32 &&
+         has_space (OpamFilename.Dir.to_string root) then
+        get_redirected_root ()
+      else
+        None
+    in
+    match new_root with
+    | None ->
+      root, (fun () -> ignore_non_fatal OpamFilename.rmdir root)
+    | Some root ->
       root, (fun () ->
         ignore_non_fatal OpamFilename.rmdir root;
         ignore_non_fatal OpamFilename.rmdir original_root
       )
-    else
-      root, (fun () -> ignore_non_fatal OpamFilename.rmdir root)
   in
   let config_f = OpamPath.config root in
 
