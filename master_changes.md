@@ -20,6 +20,7 @@ users)
 
 ## Init
   * Provide defaults so `opam init -y` no longer asks questions [#6033 @dra27 fix #6013]
+  * Suppress all the Windows menus when running with `opam init -ya` [#6034 @dra27]
 
 ## Config report
 
