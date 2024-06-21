@@ -72,9 +72,10 @@ if (-not (Test-Path -Path $OpamBinTmpLoc -IsValid)) {
 }
 
 Write-Host "## Downloading opam $Version for Windows on x86_64"
+$esc = [char]27
 
 if ([string]::IsNullOrEmpty($OpamBinDir)) {
-  $OpamBinDir = Read-Host "## Where should it be installed? [$DefaultBinDir]"
+  $OpamBinDir = Read-Host "## Where should it be installed? [$esc[1m$DefaultBinDir$esc[0m]"
   if ([string]::IsNullOrEmpty($OpamBinDir)) {
     $OpamBinDir = $DefaultBinDir
   }
