@@ -24,15 +24,6 @@ $DevVersion = "2.2.0~rc1"
 $IsAdmin = (New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 $DefaultBinDir = If ($IsAdmin) {"$Env:ProgramFiles\opam\bin"} Else {"$Env:LOCALAPPDATA\Programs\opam\bin"}
 
-Function GetArch {
-  switch ($Env:PROCESSOR_ARCHITECTURE) {
-    "AMD64" { "x86_64" }
-    "Arm64" { "arm64" }
-    "x86" { "i686" }
-    Default { throw "Unknown architecture" }
-  }
-}
-
 Function BinSHA512 {
   param (
     [string]$OpamBinName
@@ -71,12 +62,16 @@ Function DownloadAndCheck {
   CheckSHA512 -OpamBinTmpLoc "$OpamBinTmpLoc" -OpamBinName "$OpamBinName"
 }
 
+if (-not [System.Environment]::Is64BitOperatingSystem) {
+  throw "opam requires a 64-bit version of Windows"
+}
+
 if ($Dev.IsPresent) {
   $Version = $DevVersion
 }
 
 $Tag = $Version -creplace "~", "-"
-$Arch = GetArch
+$Arch = "x86_64"
 $OS = "windows"
 $OpamBinUrlBase = "https://github.com/ocaml/opam/releases/download/"
 $OpamBinName = "opam-${Tag}-${Arch}-${OS}.exe"
