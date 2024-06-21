@@ -71,6 +71,8 @@ if (-not (Test-Path -Path $OpamBinTmpLoc -IsValid)) {
   throw "Failed to determine a temporary path for downloading opam"
 }
 
+Write-Host "## Downloading opam $Version for Windows on x86_64"
+
 if ($OpamBinDir -eq "") {
   $OpamBinDir = Read-Host "## Where should it be installed? [$DefaultBinDir]"
   if ($OpamBinDir -eq "") {
@@ -109,4 +111,4 @@ if (-not ($PATH -split ';' -contains "$OpamBinDir")) {
 $PATH = [Environment]::GetEnvironmentVariable('PATH', 'PROCESS')
 [Environment]::SetEnvironmentVariable('PATH', "${OpamBinDir};$PATH", 'PROCESS')
 
-Write-Host "opam has been successfully installed."
+Write-Host "## opam $Version installed to $OpamBinDir"
