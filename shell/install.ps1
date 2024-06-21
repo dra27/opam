@@ -80,7 +80,7 @@ if ($OpamBinDir -eq "") {
 $AllOpam = Get-Command -All -Name opam -CommandType Application -ErrorAction Ignore | ForEach-Object -MemberName Source
 foreach($OneOpam in $AllOpam) {
   if ($OneOpam -ne "$OpamBinDir\opam.exe") {
-    throw "We detected another opam binary installed at '$OneOpam'. To ensure problems won't occure later, please uninstall it or remove it from the PATH"
+    throw "We detected another opam binary installed at '$OneOpam'. To ensure problems won't occur later, please uninstall it or remove it from the PATH"
   }
 }
 
