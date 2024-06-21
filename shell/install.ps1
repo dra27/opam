@@ -78,7 +78,6 @@ $OpamBinName = "opam-${Tag}-${Arch}-${OS}.exe"
 $OpamBinUrl = "${OpamBinUrlBase}${Tag}/${OpamBinName}"
 
 $OpamBinTmpLoc = "$Env:TMP\$OpamBinName"
-DownloadAndCheck -OpamBinUrl "$OpamBinUrl" -OpamBinTmpLoc "$OpamBinTmpLoc" -OpamBinName "$OpamBinName"
 
 if ($OpamBinDir -eq "") {
   $OpamBinDir = Read-Host "## Where should it be installed? [$DefaultBinDir]"
@@ -98,6 +97,8 @@ foreach($OneOpam in $AllOpam) {
 if (($OpamBinDir -contains "'") -or ($OpamBinTmpLoc -contains "'") -or ($OpamBinDir -contains '"')) {
   throw "String contains unsupported characters"
 }
+
+DownloadAndCheck -OpamBinUrl $OpamBinUrl -OpamBinTmpLoc $OpamBinTmpLoc -OpamBinName $OpamBinName
 
 # Install the binary
 if (-not (Test-Path -Path "$OpamBinDir" -PathType Container)) {
