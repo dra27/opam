@@ -41,7 +41,8 @@ Function DownloadAndCheck {
     throw "no sha"
   }
 
-  Start-BitsTransfer -Source $OpamBinUrl -Destination $OpamBinTmpLoc -DisplayName "Downloading opam" -Description "Downloading $OpamBinName"
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+  (New-Object System.Net.WebClient).DownloadFile($OpamBinUrl, $OpamBinTmpLoc)
   $Hash = (Get-FileHash -Path $OpamBinTmpLoc -Algorithm SHA512).Hash
 
   if ($Hash -ne "$($SHA512s[$OpamBinName])") {
