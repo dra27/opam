@@ -107,6 +107,13 @@ foreach ($loc in $EnvTarget, 'PROCESS') {
   $PATH = [Environment]::GetEnvironmentVariable('PATH', $loc)
   if (-not ($PATH -split ';' -contains $OpamBinDir)) {
     [Environment]::SetEnvironmentVariable('PATH', "$OpamBinDir;$PATH", $loc)
+    if ($loc -ne 'PROCESS') {
+      Write-Host "## opam has added $OpamBinDir to the $loc PATH for future sessions"
+      Write-Host ""
+      Write-Host "Please use the Environment Variables editor in Control Panel to remove"
+      Write-Host "this entry if you subsequently decide to remove opam from your system"
+      Write-Host "(it can be started by running $esc[1mrundll32 sysdm.cpl,EditEnvironmentVariables$esc[0m)"
+    }
   }
 }
 
