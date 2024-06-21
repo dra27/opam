@@ -79,11 +79,19 @@ $OpamBinUrl = "${OpamBinUrlBase}${Tag}/${OpamBinName}"
 
 $OpamBinTmpLoc = "$Env:TEMP\$OpamBinName"
 
+if (-not (Test-Path -Path $OpamBinTmpLoc -IsValid)) {
+  throw "Failed to determine a temporary path for downloading opam"
+}
+
 if ($OpamBinDir -eq "") {
   $OpamBinDir = Read-Host "## Where should it be installed? [$DefaultBinDir]"
   if ($OpamBinDir -eq "") {
     $OpamBinDir = $DefaultBinDir
   }
+}
+
+if (-not (Test-Path -Path $OpamBinDir -IsValid)) {
+  throw "Destination given for installation is not a valid path"
 }
 
 # Check existing opam binaries
@@ -92,10 +100,6 @@ foreach($OneOpam in $AllOpam) {
   if ($OneOpam -ne "$OpamBinDir\opam.exe") {
     throw "We detected another opam binary installed at '$OneOpam'. To ensure problems won't occur later, please uninstall it or remove it from the PATH"
   }
-}
-
-if (($OpamBinDir -contains "'") -or ($OpamBinTmpLoc -contains "'") -or ($OpamBinDir -contains '"')) {
-  throw "String contains unsupported characters"
 }
 
 DownloadAndCheck -OpamBinUrl $OpamBinUrl -OpamBinTmpLoc $OpamBinTmpLoc -OpamBinName $OpamBinName
