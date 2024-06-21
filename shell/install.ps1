@@ -77,7 +77,7 @@ $OpamBinUrlBase = "https://github.com/ocaml/opam/releases/download/"
 $OpamBinName = "opam-${Tag}-${Arch}-${OS}.exe"
 $OpamBinUrl = "${OpamBinUrlBase}${Tag}/${OpamBinName}"
 
-$OpamBinTmpLoc = "$Env:TMP\$OpamBinName"
+$OpamBinTmpLoc = "$Env:TEMP\$OpamBinName"
 
 if ($OpamBinDir -eq "") {
   $OpamBinDir = Read-Host "## Where should it be installed? [$DefaultBinDir]"
