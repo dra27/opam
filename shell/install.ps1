@@ -80,7 +80,7 @@ if ([string]::IsNullOrEmpty($OpamBinDir)) {
   }
 }
 
-if (-not (Test-Path -Path $OpamBinDir -IsValid)) {
+if (-not (Test-Path -Path $OpamBinDir -IsValid) -or $OpamBinDir -contains ';') {
   throw "Destination given for installation is not a valid path"
 }
 
