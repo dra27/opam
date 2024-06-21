@@ -17,7 +17,7 @@ param (
   # Install this specific version of opam instead of the latest
   [string]$Version = "2.2.0~rc1",
   # Specify the installation directory for the opam binary
-  [string]$OpamBinDir = ""
+  [string]$OpamBinDir = $null
 )
 
 $DevVersion = "2.2.0~rc1"
@@ -58,12 +58,12 @@ if ($Dev.IsPresent) {
   $Version = $DevVersion
 }
 
-$Tag = $Version -creplace "~", "-"
+$Tag = $Version.Replace("~", "-")
 $Arch = "x86_64"
 $OS = "windows"
 $OpamBinUrlBase = "https://github.com/ocaml/opam/releases/download/"
-$OpamBinName = "opam-${Tag}-${Arch}-${OS}.exe"
-$OpamBinUrl = "${OpamBinUrlBase}${Tag}/${OpamBinName}"
+$OpamBinName = "opam-$Tag-$Arch-$OS.exe"
+$OpamBinUrl = "$OpamBinUrlBase$Tag/$OpamBinName"
 
 $OpamBinTmpLoc = "$Env:TEMP\$OpamBinName"
 
@@ -73,9 +73,9 @@ if (-not (Test-Path -Path $OpamBinTmpLoc -IsValid)) {
 
 Write-Host "## Downloading opam $Version for Windows on x86_64"
 
-if ($OpamBinDir -eq "") {
+if ([string]::IsNullOrEmpty($OpamBinDir)) {
   $OpamBinDir = Read-Host "## Where should it be installed? [$DefaultBinDir]"
-  if ($OpamBinDir -eq "") {
+  if ([string]::IsNullOrEmpty($OpamBinDir)) {
     $OpamBinDir = $DefaultBinDir
   }
 }
@@ -95,20 +95,18 @@ foreach($OneOpam in $AllOpam) {
 DownloadAndCheck -OpamBinUrl $OpamBinUrl -OpamBinTmpLoc $OpamBinTmpLoc -OpamBinName $OpamBinName
 
 # Install the binary
-if (-not (Test-Path -Path "$OpamBinDir" -PathType Container)) {
-  [void](New-Item -Force -Path "$OpamBinDir" -Type Directory)
+if (-not (Test-Path -Path $OpamBinDir -PathType Container)) {
+  [void](New-Item -Force -Path $OpamBinDir -Type Directory)
 }
-[void](Move-Item -Force -Path "$OpamBinTmpLoc" -Destination "${OpamBinDir}\opam.exe")
+[void](Move-Item -Force -Path $OpamBinTmpLoc -Destination "$OpamBinDir\opam.exe")
 
-# Add the newly installed binary to PATH
+# Add the newly installed binary to PATH for this and future sessions
 $EnvTarget = If ($IsAdmin) {'MACHINE'} Else {'USER'}
-$PATH = [Environment]::GetEnvironmentVariable('PATH', $EnvTarget)
-if (-not ($PATH -split ';' -contains "$OpamBinDir")) {
-  [Environment]::SetEnvironmentVariable('PATH', "${OpamBinDir};$PATH", $EnvTarget)
+foreach ($loc in $EnvTarget, 'PROCESS') {
+  $PATH = [Environment]::GetEnvironmentVariable('PATH', $loc)
+  if (-not ($PATH -split ';' -contains $OpamBinDir)) {
+    [Environment]::SetEnvironmentVariable('PATH', "$OpamBinDir;$PATH", $loc)
+  }
 }
-
-# Modify the environment of the current terminal session
-$PATH = [Environment]::GetEnvironmentVariable('PATH', 'PROCESS')
-[Environment]::SetEnvironmentVariable('PATH', "${OpamBinDir};$PATH", 'PROCESS')
 
 Write-Host "## opam $Version installed to $OpamBinDir"
