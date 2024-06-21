@@ -1,6 +1,22 @@
+<#
+  .SYNOPSIS
+  Downloads and installs opam from binaries distributed on GitHub.
+
+  .DESCRIPTION
+  Script is able to perform either a per-machine or per-user installation of
+  opam for any version of opam after 2.2.0~beta2. By default it will install the
+  latest released version.
+
+  .LINK
+  See https://opam.ocaml.org/doc/Install.html for further information.
+#>
+
 param (
+  # Install the latest alpha, beta or rc
   [switch]$Dev,
+  # Install this specific version of opam instead of the latest
   [string]$Version = "2.2.0~rc1",
+  # Specify the installation directory for the opam binary
   [string]$OpamBinDir = ""
 )
 
