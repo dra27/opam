@@ -52,11 +52,11 @@ Function CheckSHA512 {
     [string]$OpamBinName
   )
 
-  $Hash = (CertUtil -hashfile "$OpamBinTmpLoc" SHA512)[1]
+  $Hash = (Get-FileHash -Path $OpamBinTmpLoc -Algorithm SHA512).Hash
   $HashTarget = BinSHA512 -OpamBinName "$OpamBinName"
 
   if ("$Hash" -ne "$HashTarget") {
-    throw "Checksum does not match"
+    throw "Checksum mismatch, a problem occurred during download."
   }
 }
 
@@ -67,7 +67,7 @@ Function DownloadAndCheck {
     [string]$OpamBinName
   )
 
-  Start-BitsTransfer -Source "$OpamBinUrl" -Destination "$OpamBinTmpLoc"
+  Start-BitsTransfer -Source $OpamBinUrl -Destination $OpamBinTmpLoc -DisplayName "Downloading opam" -Description "Downloading $OpamBinName"
   CheckSHA512 -OpamBinTmpLoc "$OpamBinTmpLoc" -OpamBinName "$OpamBinName"
 }
 
