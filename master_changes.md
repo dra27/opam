@@ -75,6 +75,7 @@ users)
 
 ## Build
  * Synchronise opam-core.opam with opam-repository changes [#6043 @dra27]
+ * Ensure Dune and MCCS are downloaded as part of `make -C src_ext cache-archives` [#6070 @dra27 - fix regression from #5494]
 
 ## Infrastructure
 
