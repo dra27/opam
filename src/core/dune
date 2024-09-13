@@ -21,11 +21,15 @@
 
 (rule
  (enabled_if (< %{ocaml_version} "5.0"))
- (action (copy opamStubs.ocaml4.ml opamStubs.win32.ml)))
+ (action (with-stdout-to opamStubs.win32.ml
+    (progn (cat opamStubs.win32.pp.ml)
+           (echo "\"win_create_process\" \"win_create_process_native\"")))))
 
 (rule
  (enabled_if (>= %{ocaml_version} "5.0"))
- (action (copy opamStubs.ocaml5.ml opamStubs.win32.ml)))
+ (action (with-stdout-to opamStubs.win32.ml
+    (progn (cat opamStubs.win32.pp.ml)
+           (echo "\"caml_unix_create_process\" \"caml_unix_create_process_native\"")))))
 
 (rule
   (write-file opamCoreConfigDeveloper.ml
