@@ -44,7 +44,7 @@ CAMLprim value opam_check_executable(value path)
 #ifdef _WIN32
   ret = _waccess(p, 04);
 #else
-  ret = faccessat(AT_FDCWD, p, R_OK | X_OK, AT_EACCESS);
+  ret = faccessat(AT_FDCWD, p, X_OK, AT_EACCESS);
 #endif
   caml_leave_blocking_section();
   caml_stat_free(p);
