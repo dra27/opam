@@ -1249,15 +1249,11 @@ module OpamSys = struct
   (* OCaml 4.05.0 no longer follows the updated PATH to resolve commands. This
      makes unqualified commands absolute as a workaround. *)
   let resolve_command =
-    let check_perms f =
-      try OpamStubs.check_executable f; true
-      with Unix.Unix_error _ -> false
-    in
     let resolve ?dir env name =
       if not (Filename.is_relative name) then begin
         (* absolute path *)
         if not (Sys.file_exists name) then `Not_found
-        else if not (check_perms name) then `Denied
+        else if not (OpamStubs.is_executable name) then `Denied
         else `Cmd name
       end else if is_external_cmd name then begin
         (* relative path *)
@@ -1266,7 +1262,7 @@ module OpamSys = struct
           | Some d -> Filename.concat d name
         in
         if not (Sys.file_exists cmd) then `Not_found
-        else if not (check_perms cmd) then `Denied
+        else if not (OpamStubs.is_executable cmd) then `Denied
         else `Cmd cmd
       end else
       (* bare command, lookup in PATH *)
@@ -1280,7 +1276,7 @@ module OpamSys = struct
          expected name but not the right permissions are skipped silently.
          Therefore, only two outcomes are possible in that case, [`Cmd ..] or
          [`Not_found]. *)
-      match List.find check_perms possibles with
+      match List.find OpamStubs.is_executable possibles with
       | cmdname -> `Cmd cmdname
       | exception Not_found ->
         if possibles = [] then

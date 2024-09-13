@@ -114,7 +114,7 @@ type win32_version_info = {
     (** Non-fixed string table. First field is a pair of Language and Codepage ID. *)
 }
 
-external check_executable : string -> unit = "opam_check_executable"
+external is_executable : string -> bool = "opam_is_executable"
 (** faccessat on Unix; _waccess on Windows. Checks whether a path is executable
     for the current process. On Unix, unlike Unix.access, this is checked using
     the EUID/EGID rather than RUID/RGID. *)

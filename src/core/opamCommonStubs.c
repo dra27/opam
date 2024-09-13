@@ -13,26 +13,38 @@
 /*                                                                        */
 /**************************************************************************/
 
+/* Needed for the Windows string conversion functions on older OCaml */
+#define CAML_INTERNALS
+
 #include <caml/mlvalues.h>
 #include <caml/alloc.h>
 #include <caml/memory.h>
 #include <caml/signals.h>
-#define CAML_INTERNALS
 #include <caml/osdeps.h>
 #include <caml/unixsupport.h>
-#include <fcntl.h>
+#include <caml/version.h>
 
-#ifdef _WIN32
-#include <io.h>
-#else
+#ifndef _WIN32
+
+#include <fcntl.h>
 #include <unistd.h>
+
+#else
+
+#include <io.h>
+
+/* mingw-w64 defines R_OK */
+#ifndef R_OK
+#define R_OK 4
+#endif
+
 #endif
 
 #if OCAML_VERSION < 50000
-#define caml_uerror uerror
+#define caml_unix_access unix_access
 #endif
 
-CAMLprim value opam_check_executable(value path)
+CAMLprim value opam_is_executable(value path)
 {
   CAMLparam1(path);
   char_os * p;
@@ -42,15 +54,14 @@ CAMLprim value opam_check_executable(value path)
   p = caml_stat_strdup_to_os(String_val(path));
   caml_enter_blocking_section();
 #ifdef _WIN32
-  ret = _waccess(p, 04);
+  /* No execute bit on Windows */
+  ret = _waccess(p, R_OK);
 #else
   ret = faccessat(AT_FDCWD, p, X_OK, AT_EACCESS);
 #endif
   caml_leave_blocking_section();
   caml_stat_free(p);
-  if (ret == -1)
-    caml_uerror("faccessat", path);
-  CAMLreturn(Val_unit);
+  CAMLreturn(Val_bool(ret == 0));
 }
 
 /* This is done here as it simplifies the dune file */
