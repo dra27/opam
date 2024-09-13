@@ -52,3 +52,9 @@ CAMLprim value opam_check_executable(value path)
     caml_uerror("faccessat", path);
   CAMLreturn(Val_unit);
 }
+
+/* This is done here as it simplifies the dune file */
+#ifdef _WIN32
+#include "opamInject.c"
+#include "opamWindows.c"
+#endif

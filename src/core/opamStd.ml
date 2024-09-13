@@ -1250,7 +1250,7 @@ module OpamSys = struct
      makes unqualified commands absolute as a workaround. *)
   let resolve_command =
     let check_perms f =
-      try OpamCommonStubs.check_executable f; true
+      try OpamStubs.check_executable f; true
       with Unix.Unix_error _ -> false
     in
     let resolve ?dir env name =
