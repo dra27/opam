@@ -16,7 +16,7 @@
                    (:include c-libraries.sexp)))
  (wrapped false))
 
-(rule (copy opamCommonStubs.mli opamCommonStubs.ml))
+(rule (copy# opamCommonStubs.mli opamCommonStubs.ml))
 
 (rule
   (with-stdout-to c-libraries.sexp (run ocaml %{dep:../../../shell/context_flags.ml} clibs)))
