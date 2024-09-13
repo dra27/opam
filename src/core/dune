@@ -4,7 +4,6 @@
   (synopsis    "OCaml Package Manager core internal stdlib")
   ; TODO: Remove (re_export ...) when CI uses the OCaml version that includes https://github.com/ocaml/ocaml/pull/11989
   (libraries   re (re_export ocamlgraph) unix sha jsonm swhid_core uutf
-               opam-core.common-stubs
                (select opamStubs.ml from
                        (opam-core.stubs -> opamStubs.win32.ml)
                        (                -> opamStubs.dummy.ml)))
@@ -12,10 +11,21 @@
                (:include ../ocaml-flags-standard.sexp)
                (:include ../ocaml-flags-configure.sexp)
                (:include ../ocaml-context-flags.sexp)))
+  (foreign_stubs
+    (language c)
+    (names opamCommonStubs)
+    (flags :standard
+           -DUNICODE -D_UNICODE -DCAML_NAME_SPACE
+           (:include ../stubs/c-flags.sexp)))
+  (c_library_flags (:standard
+                   (:include c-libraries.sexp)))
   (wrapped     false))
 
 (rule
   (copy# opamStubsTypes.ml opamStubsTypes.mli))
+
+(rule
+  (copy# opamCommonStubs.mli opamCommonStubs.ml))
 
 (rule
  (enabled_if (< %{ocaml_version} "5.0"))
@@ -42,3 +52,6 @@
   (targets developer)
   (mode    fallback)
   (action  (with-stdout-to %{targets} (echo ""))))
+
+(rule
+  (with-stdout-to c-libraries.sexp (run ocaml %{dep:../../shell/context_flags.ml} clibs)))
