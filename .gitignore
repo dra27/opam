@@ -25,6 +25,7 @@ src_ext/dune-local/
 src_ext/extlib/
 src_ext/findlib
 src_ext/lib
+src_ext/menhir
 src_ext/mccs/
 src_ext/ocamlgraph/
 src_ext/opam-0install-cudf/
