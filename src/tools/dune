@@ -24,6 +24,8 @@
 
 (rule (write-file opam_installer.mli ""))
 
+(rule (copy opam_installer.exe opam_nouac.exe))
+
 (executable
   (name        opam_installer)
   (package     opam-installer)

@@ -13,7 +13,7 @@
   (files opam.1))
 
 (rule
-  (with-stdout-to opam-installer.1 (run %{bin:opam-installer} --help=groff)))
+  (with-stdout-to opam-installer.1 (run ../../src/tools/opam_nouac.exe --help=groff)))
 
 (install
   (section man)
