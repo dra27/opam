@@ -1,5 +1,5 @@
-URL_cppo = https://github.com/ocaml-community/cppo/archive/refs/tags/v1.7.0.tar.gz
-MD5_cppo = 90f66810f73b115cc55e581a34bf7db9
+URL_cppo = https://github.com/ocaml-community/cppo/archive/v1.8.0.tar.gz
+MD5_cppo = a197cb393b84f6b30e0ff55080ac429b
 
 URL_extlib = https://github.com/ygrek/ocaml-extlib/releases/download/1.8.0/extlib-1.8.0.tar.gz
 MD5_extlib = 43fb3bf2989671af1769147b1171d080
@@ -7,8 +7,8 @@ MD5_extlib = 43fb3bf2989671af1769147b1171d080
 URL_base64 = https://github.com/mirage/ocaml-base64/releases/download/v3.5.1/base64-3.5.1.tbz
 MD5_base64 = bfdd16aa8c136412878109df8791fc01
 
-URL_re = https://github.com/ocaml/ocaml-re/releases/download/1.11.0/re-1.11.0.tbz
-MD5_re = e0199e32947fd33fcc1b8e69de2308a1
+URL_re = https://github.com/ocaml/ocaml-re/releases/download/1.12.0/re-1.12.0.tbz
+MD5_re = d7f617a2a03c93e4ce1057f4498bf6ba
 
 URL_cmdliner = https://erratique.ch/software/cmdliner/releases/cmdliner-1.3.0.tbz
 MD5_cmdliner = 662936095a1613d7254815238e11793f
