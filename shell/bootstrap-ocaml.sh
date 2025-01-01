@@ -89,9 +89,20 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
         fi
       fi
     ;;
+    "msvc64arm")
+      HOST=aarch64-pc-windows
+      if ! command -v ml64 > /dev/null ; then
+        eval $($BOOTSTRAP_ROOT/../shell/msvs-detect --arch=arm64)
+        if [ -n "${MSVS_NAME}" ] ; then
+          PATH_PREPEND="${MSVS_PATH}"
+          LIB_PREPEND="${MSVS_LIB};"
+          INC_PREPEND="${MSVS_INC};"
+        fi
+      fi
+    ;;
     *)
       if [ "$1" != "auto" ] ; then
-        echo "Compiler architecture $1 not recognised -- mingw64, mingw, msvc64, msvc (or auto)"
+        echo "Compiler architecture $1 not recognised -- mingw64, mingw, msvc64, msvcarm64, msvc (or auto)"
       fi
       if [ -n "${PROCESSOR_ARCHITEW6432}" -o "${PROCESSOR_ARCHITECTURE}" = "AMD64" ] ; then
         TRY64=1
@@ -111,8 +122,17 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
         PATH_PREPEND=`bash $BOOTSTRAP_ROOT/../shell/check_linker`
       else
         if [ ${TRY64} -eq 1 ] ; then
-          HOST=x86_64-pc-windows
-          HOST_ARCH=x64
+          # XXX This doesn't feel right...
+          case "${PROCESSOR_IDENTIFIER}" in
+            ARMv8*)
+              HOST=aarch64-pc-windows
+              HOST_ARCH=arm64
+            ;;
+            *)
+              HOST=x86_64-pc-windows
+              HOST_ARCH=x64
+            ;;
+          esac
         else
           HOST=i686-pc-windows
           HOST_ARCH=x86

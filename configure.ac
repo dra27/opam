@@ -128,7 +128,7 @@ OCAML_CC="$($OCAMLBESTCC -config | sed -n -e "s/native_c_compiler: \(.*\) .*/\1/
 set dummy ${OCAML_CC}; OCAML_TEST_CC=$2
 AS_IF([test ! -x ${OCAML_TEST_CC}],[
   AS_IF([test "x${CCOMP_TYPE}" = "xmsvc"],[
-    AS_IF([test "${ARCH}" = "i386"],[SDK_ARCH=x86],[SDK_ARCH=x64])
+    AS_CASE([$ARCH], [i386], [SDK_ARCH=x86], [amd64], [SDK_ARCH=x64], [SDK_ARCH="$ARCH"])
     AC_MSG_CHECKING([for an installed Microsoft C Compiler for ${SDK_ARCH}])
     eval `PATH="$PRE_BOOTSTRAP_PATH" bash ./shell/msvs-detect --arch=$SDK_ARCH; echo RESULT=$?`
     AS_IF([ test "x$MSVS_PATH" = "x" ], [
@@ -160,7 +160,21 @@ AS_IF([test "x${enable_developer_mode}" = "xyes"],[
   rm -f src/core/developer
 ])
 
-AS_IF([test "x${with_mccs}" = "xno"], [AC_SUBST(MCCS_ENABLED,false)], [AC_SUBST(MCCS_ENABLED,true)])
+AS_IF([test "x${with_mccs}" = "xno"], [
+  AC_SUBST(MCCS_ENABLED,false)
+],[
+  AS_IF([ test "${WIN32}-${ARCH}" = "1-arm64" ], [
+    AS_IF([ test "x${with_mccs}" = "xyes"], [
+      dnl Not actually tried it, but fairly sure there's some
+      dnl architecture-specific code for dealing with cancelling.
+      AC_MSG_ERROR([MCCS is not supported for Windows-on-ARM64])
+    ],[
+      AC_SUBST(MCCS_ENABLED,false)
+    ])
+  ],[
+    AC_SUBST(MCCS_ENABLED,true)
+  ])
+])
 
 CONF_OCAMLFLAGS=''
 
@@ -186,7 +200,7 @@ AS_IF([ test ${WIN32} -eq 1 -a "$GCC" = "yes"],[
   AC_SUBST(CC)
 ])
 
-AS_IF([ test ${WIN32} -eq 1 ],[
+AS_IF([ test ${WIN32} -eq 1 && test "x${ARCH}" != "xarm64" ],[
   AS_IF([ test "$GCC" = "yes"], [
     AS_IF([ test "x${CC64}" = "x" ], [
       AS_IF([ test "$ARCH" = "i386" ],

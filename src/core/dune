@@ -66,7 +66,7 @@
   (action  (run ocaml %{dep:../../shell/build-putenv.ml} %{targets} %{dep:opam-putenv.c} %{dep:cc64})))
 
 (install
-  (enabled_if (= %{os_type} "Win32"))
+  (enabled_if (and (= %{os_type} "Win32") (<> %{architecture} "arm64")))
   (section bin)
   (package opam)
   (files   opam-putenv.exe))
