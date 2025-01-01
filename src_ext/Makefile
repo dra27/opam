@@ -14,6 +14,9 @@ MD5_ocaml = b28daefda803b5d5910cecf085b1451c
 URL_flexdll = https://github.com/ocaml/flexdll/archive/0.43.tar.gz
 MD5_flexdll = 6ce706f6c65b2c5adf5791fac678f090
 
+URL_winpthreads = https://github.com/ocaml/winpthreads/archive/20240209-1.tar.gz
+MD5_winpthreads = 09893ca88335482a356fee406a428d9b
+
 ifndef FETCH
   ifneq ($(shell command -v curl 2>/dev/null),)
     FETCH = curl -LSfs -o $(2) $(1)
@@ -95,10 +98,10 @@ clone: $(DUNE_CLONE) $(SRC_EXTS:=.stamp) | ext-ignore
 archives: $(DUNE_CLONE:.stamp=.download) $(SRC_EXTS:=.download)
 	@true
 
-cache-archives: $(SRC_EXTS:=.cache) mccs.cache dune-local.cache ocaml.cache flexdll.cache
+cache-archives: $(SRC_EXTS:=.cache) mccs.cache dune-local.cache ocaml.cache flexdll.cache winpthreads.cache
 	@
 
-has-archives: $(addprefix archives/, $(notdir $(URL_ocaml)) $(notdir $(URL_flexdll)) $(ARCHIVES))
+has-archives: $(addprefix archives/, $(notdir $(URL_ocaml)) $(notdir $(URL_flexdll)) $(notdir $(URL_winpthreads)) $(ARCHIVES))
 	@
 
 define cache_url

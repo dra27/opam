@@ -18,7 +18,9 @@ URL=`sed -ne 's/URL_ocaml *= *//p' $BOOTSTRAP_ROOT/src_ext/Makefile | tr -d '\r'
 MD5=`sed -ne 's/MD5_ocaml *= *//p' $BOOTSTRAP_ROOT/src_ext/Makefile | tr -d '\r'`
 V=`echo ${URL}| sed -e 's|.*/\([^/]*\)\.tar\.gz|\1|'`
 FV_URL=`sed -ne 's/URL_flexdll *= *//p' $BOOTSTRAP_ROOT/src_ext/Makefile | tr -d '\r'`
+WP_URL=`sed -ne 's/URL_winpthreads *= *//p' $BOOTSTRAP_ROOT/src_ext/Makefile | tr -d '\r'`
 FLEXDLL=`echo ${FV_URL}| sed -e 's|.*/\([^/]*\)|\1|'`
+WINPTHREADS=`echo ${WP_URL}| sed -e 's|.*/\([^/]*\)|\1|'`
 if [ ! -e ${V}.tar.gz ]; then
   cp $BOOTSTRAP_ROOT/src_ext/archives/${V}.tar.gz . 2>/dev/null || ${CURL} ${URL}
 fi
@@ -130,6 +132,9 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
   if [ ! -e ${FLEXDLL} ]; then
     cp $BOOTSTRAP_ROOT/src_ext/archives/${FLEXDLL} . 2>/dev/null || ${CURL} ${FV_URL}
   fi
+  if [ ! -e ${WINPTHREADS} ]; then
+    cp $BOOTSTRAP_ROOT/src_ext/archives/${WINPTHREADS} . 2>/dev/null || ${CURL} ${WP_URL}
+  fi
   cd ocaml-${V}
   PREFIX=`cd .. ; pwd`/ocaml
   WINPREFIX=`echo ${PREFIX} | cygpath -f - -m`
@@ -137,6 +142,9 @@ if [ -n "$1" -a -n "${COMSPEC}" -a -x "${COMSPEC}" ] ; then
     tar -xzf $BOOTSTRAP_ROOT/${FLEXDLL}
     rm -rf flexdll
     mv flexdll-* flexdll
+    tar -xzf ${BOOTSTRAP_ROOT}/${WINPTHREADS}
+    rm -rf winpthreads
+    mv winpthreads-* winpthreads
     PATH="${PATH_PREPEND}${PREFIX}/bin:${PATH}" \
     Lib="${LIB_PREPEND}${Lib}" \
     Include="${INC_PREPEND}${Include}" \
