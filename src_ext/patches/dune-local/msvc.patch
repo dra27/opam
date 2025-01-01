@@ -1,0 +1,57 @@
+diff -Naur a/src/dune_digest/dune_digest_stubs.c b/src/dune_digest/dune_digest_stubs.c
+--- a/src/dune_digest/dune_digest_stubs.c	2024-12-17 15:49:11.000000000 +0000
++++ b/src/dune_digest/dune_digest_stubs.c	2025-01-01 13:54:15.918292300 +0000
+@@ -9,6 +9,11 @@
+ #include <errno.h>
+ #include <caml/md5.h>
+ 
++#ifdef _MSC_VER
++#include <io.h>
++#define read _read
++#endif
++
+ /* yanked from:
+  * https://github.com/janestreet/core/blob/master/core/src/md5_stubs.c
+  */
+diff -Naur a/vendor/sha/sha1_stubs.c b/vendor/sha/sha1_stubs.c
+--- a/vendor/sha/sha1_stubs.c	2024-12-17 15:49:11.000000000 +0000
++++ b/vendor/sha/sha1_stubs.c	2025-01-01 13:54:33.987145400 +0000
+@@ -21,6 +21,10 @@
+ #include <BaseTsd.h>
+ typedef SSIZE_T ssize_t;
+ #define alloca _alloca
++#include <io.h>
++#define open _open
++#define close _close
++#define read _read
+ #else
+ #include <unistd.h>
+ #endif
+diff -Naur a/vendor/sha/sha256_stubs.c b/vendor/sha/sha256_stubs.c
+--- a/vendor/sha/sha256_stubs.c	2024-12-17 15:49:11.000000000 +0000
++++ b/vendor/sha/sha256_stubs.c	2025-01-01 13:54:33.987145400 +0000
+@@ -21,6 +21,10 @@
+ #include <BaseTsd.h>
+ typedef SSIZE_T ssize_t;
+ #define alloca _alloca
++#include <io.h>
++#define open _open
++#define close _close
++#define read _read
+ #else
+ #include <unistd.h>
+ #endif
+diff -Naur a/vendor/sha/sha512_stubs.c b/vendor/sha/sha512_stubs.c
+--- a/vendor/sha/sha512_stubs.c	2024-12-17 15:49:11.000000000 +0000
++++ b/vendor/sha/sha512_stubs.c	2025-01-01 13:54:34.003153700 +0000
+@@ -21,6 +21,10 @@
+ #include <BaseTsd.h>
+ typedef SSIZE_T ssize_t;
+ #define alloca _alloca
++#include <io.h>
++#define open _open
++#define close _close
++#define read _read
+ #else
+ #include <unistd.h>
+ #endif
