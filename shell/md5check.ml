@@ -9,7 +9,7 @@ let md5_of_file =
   Digest.to_hex (Digest.file file)
 
 let () =
-  if md5 <> md5_of_file then (
+  if md5 <> "volatile" && md5 <> md5_of_file then (
     Printf.eprintf
       "MD5 for %s differs:\n\
       \  expected: %s\n\
@@ -23,4 +23,7 @@ let () =
       with Not_found -> false
     in
     if not silent then
-      Printf.printf "%s has the expected MD5.\n" file
+      if md5 = "volatile" then
+        Printf.printf "Skipping checksum check for %s (marked volatile).\n" file
+      else
+        Printf.printf "%s has the expected MD5.\n" file
