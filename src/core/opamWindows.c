@@ -23,6 +23,15 @@
 #include <caml/signals.h>
 #include <caml/unixsupport.h>
 
+#include <winbase.h>
+#ifdef WINAPI
+#undef WINAPI
+#endif
+#define WINAPI __stdcall __declspec(dllimport)
+#include <winver.h>
+#undef WINAPI
+#define WINAPI __stdcall
+
 #include <Windows.h>
 #include <Shlobj.h>
 #include <TlHelp32.h>
