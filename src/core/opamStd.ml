@@ -46,6 +46,7 @@ module type MAP = sig
   val of_list: (key * 'a) list -> 'a t
   val safe_add: key -> 'a -> 'a t -> 'a t
   val update: key -> ('a -> 'a) -> 'a -> 'a t -> 'a t
+  val add_to_list: key -> 'a -> 'a list t -> 'a list t
   val map_reduce:
     ?default:'b -> (key -> 'a -> 'b) -> ('b -> 'b -> 'b) -> 'a t -> 'b
   val filter_map: (key -> 'a -> 'b option) -> 'a t -> 'b t
@@ -429,6 +430,10 @@ module Map = struct
       if mem k map
       then failwith (Printf.sprintf "duplicate entry %s" (O.to_string k))
       else add k v map
+
+    let add_to_list x data m =
+      let add = function None -> Some [data] | Some l -> Some (data :: l) in
+      M.update x add m
 
     let update k f zero map =
       let v = try find k map with Not_found -> zero in
