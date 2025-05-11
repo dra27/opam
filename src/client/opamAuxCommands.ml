@@ -390,7 +390,7 @@ let simulate_local_pinnings ?quiet ?(for_view=false) st to_pin =
       ++ local_packages
     else st.pinned
   in
-  let st = {
+  let st = let local_opams = (OpamPackage.Map.map Lazy.from_val local_opams) in{
     st with
     opams =
       OpamPackage.Map.union (fun _ o -> o) st.opams local_opams;
@@ -420,7 +420,7 @@ let simulate_local_pinnings ?quiet ?(for_view=false) st to_pin =
           | None -> reinstall
           | Some local_pkg ->
             let old_opam = OpamPackage.Map.find pinned_pkg st.installed_opams in
-            let new_opam = OpamPackage.Map.find local_pkg local_opams in
+            let lazy new_opam = OpamPackage.Map.find local_pkg local_opams in
             if OpamFile.OPAM.effectively_equal old_opam new_opam then
               reinstall
             else

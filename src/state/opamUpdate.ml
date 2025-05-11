@@ -257,11 +257,11 @@ let pinned_package st ?version ?(autolock=false) ?(working_dir=false) name =
       in
       (* get the latest version below v *)
       match OpamPackage.Map.split nv packages with
-      | _, (Some opam), _ -> Some opam
+      | _, (Some (lazy opam)), _ -> Some opam
       | below, None, _ when not (OpamPackage.Map.is_empty below) ->
-        Some (snd (OpamPackage.Map.max_binding below))
+        Some (Lazy.force (snd (OpamPackage.Map.max_binding below)))
       | _, None, above when not (OpamPackage.Map.is_empty above) ->
-        Some (snd (OpamPackage.Map.min_binding above))
+        Some (Lazy.force (snd (OpamPackage.Map.min_binding above)))
       | _ -> None
     in
     (if working_dir then Done () else
@@ -410,7 +410,7 @@ let pinned_package st ?version ?(autolock=false) ?(working_dir=false) name =
          confirm, but use it still (e.g. descr may have changed) *)
       let opam = save_overlay new_opam in
       Done
-        ((fun st -> {st with opams = OpamPackage.Map.add nv opam st.opams}),
+        ((fun st -> {st with opams = OpamPackage.Map.add nv (Lazy.from_val opam) st.opams}),
          true)
     | Result  _, _ ->
       Done ((fun st -> st), true)

@@ -316,7 +316,7 @@ let edit st ?version name =
 let version_pin st name version =
   let root = st.switch_global.root in
   let nv = OpamPackage.create name version in
-  let repo_opam =
+  let lazy repo_opam =
     try OpamPackage.Map.find nv st.repos_package_index
     with Not_found ->
       OpamConsole.error_and_exit `Not_found
@@ -328,7 +328,7 @@ let version_pin st name version =
     | Some pinned_nv ->
       let opam = OpamSwitchState.opam st pinned_nv in
       if Some opam =
-         OpamPackage.Map.find_opt pinned_nv st.repos_package_index
+         Option.map Lazy.force (OpamPackage.Map.find_opt pinned_nv st.repos_package_index)
       then (* already version-pinned *)
         (if pinned_nv <> nv then
            (OpamConsole.note
@@ -690,7 +690,7 @@ let unpin_one st nv =
         OpamPackage.Map.find_opt nv st.installed_opams with
   | None, None ->
     OpamSwitchState.remove_package_metadata nv st
-  | Some opam, _ | None, Some opam -> (* forget about overlay *)
+  | Some (lazy opam), _ | None, Some opam -> (* forget about overlay *)
     let st = OpamSwitchState.update_package_metadata nv opam st in
     { st with available_packages }
 

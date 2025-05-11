@@ -571,7 +571,7 @@ let detail_printer ?prettify ?normalise ?(sort=false) installed st nv =
        let opam = get_opam st nv in
        if
          OpamStd.Option.equal_some OpamFile.OPAM.equal
-           opam (OpamPackage.Map.find_opt nv st.repos_package_index)
+           opam (Option.map Lazy.force (OpamPackage.Map.find_opt nv st.repos_package_index))
        then
          Printf.sprintf "pinned to version %s"
            (OpamPackage.Version.to_string nv.version % [`blue])

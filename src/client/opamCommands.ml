@@ -1551,7 +1551,7 @@ let config cli =
                      let opam = OpamSwitchState.opam state nv in
                      let kind =
                        if Some opam =
-                          OpamPackage.Map.find_opt nv state.repos_package_index
+                          Option.map Lazy.force (OpamPackage.Map.find_opt nv state.repos_package_index)
                        then "version"
                        else
                          OpamStd.Option.to_string ~none:"local"
@@ -2075,7 +2075,7 @@ let reinstall cli =
       OpamPackage.Set.iter (fun nv ->
           try
             let installed = OpamPackage.Map.find nv st.installed_opams in
-            let upstream = OpamPackage.Map.find nv st.opams in
+            let lazy upstream = OpamPackage.Map.find nv st.opams in
             if not (OpamFile.OPAM.effectively_equal installed upstream) &&
                OpamConsole.confirm
                  "Metadata of %s were updated. Force-update, without performing \

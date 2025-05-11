@@ -653,7 +653,7 @@ let compute_updates ?(force_path=false) st =
     let updates =
       OpamPackage.Set.fold (fun nv acc ->
           match OpamPackage.Map.find_opt nv st.opams with
-          | Some opam ->
+          | Some (lazy opam) ->
             List.map (env_expansion ~opam st) (OpamFile.OPAM.env opam) @ acc
           | None -> acc)
         st.installed []

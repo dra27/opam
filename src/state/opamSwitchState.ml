@@ -37,6 +37,7 @@ let load_switch_config ~lock_kind gt switch =
 let filter_available_packages gt switch switch_config ~opams =
   OpamPackage.keys @@
     OpamPackage.Map.filter (fun package opam ->
+      let lazy opam = opam in
         OpamFilter.eval_to_bool ~default:false
           (OpamPackageVar.resolve_switch_raw ~package gt switch switch_config)
           (OpamFile.OPAM.available opam))
@@ -97,7 +98,7 @@ let infer_switch_invariant_raw
       OpamPackageVar.resolve_switch_raw ~package:nv gt switch switch_config v
   in
   let resolve_deps nv =
-    let opam = OpamPackage.Map.find nv opams in
+    let lazy opam = OpamPackage.Map.find nv opams in
     OpamPackageVar.filter_depends_formula
       ~build:true ~post:true ~default:true ~env:(env nv)
       (OpamFormula.ands [
@@ -153,7 +154,7 @@ let infer_switch_invariant st =
     if OpamPackage.Set.is_empty st.compiler_packages then
       OpamPackage.Set.filter (fun nv ->
           OpamFile.OPAM.has_flag Pkgflag_Compiler
-            (OpamPackage.Map.find nv st.opams))
+            (Lazy.force (OpamPackage.Map.find nv st.opams)))
         st.installed
     else st.compiler_packages
   in
@@ -164,7 +165,7 @@ let infer_switch_invariant st =
 
 let depexts_raw ~env nv opams =
   try
-    let opam = OpamPackage.Map.find nv opams in
+    let lazy opam = OpamPackage.Map.find nv opams in
     List.fold_left (fun depexts (names, filter) ->
         if OpamFilter.eval_to_bool ~default:false env filter then
           OpamSysPkg.Set.Op.(names ++ depexts)
@@ -302,7 +303,7 @@ let load lock_kind gt rt switch =
             | _ -> nv.version
           in
           let nv = OpamPackage.create nv.name version in
-          let o = OpamFile.OPAM.with_version version o in
+          let o = Lazy.from_val (OpamFile.OPAM.with_version version o) in
           OpamPackage.Set.add nv pinned,
           OpamPackage.Map.add nv o opams
       )
@@ -319,7 +320,7 @@ let load lock_kind gt rt switch =
             |> OpamFilename.dirname
             |> OpamFilename.Dir.to_string
           in
-          OpamFile.OPAM.with_metadata_dir (Some (None, metadata_dir)) opam)
+          (OpamFile.OPAM.with_metadata_dir (Some (None, metadata_dir)) opam))
         opams
     | None ->
       let opams =
@@ -347,7 +348,7 @@ let load lock_kind gt rt switch =
   let opams =
     (* Keep definitions of installed packages, but lowest priority, and after
        computing availability *)
-    OpamPackage.Map.union (fun _ x -> x) installed_opams opams
+    OpamPackage.Map.union (fun _ x -> x) (OpamPackage.Map.map Lazy.from_val installed_opams) opams
   in
   let packages = OpamPackage.keys opams in
   let installed_without_def =
@@ -355,6 +356,7 @@ let load lock_kind gt rt switch =
         if OpamPackage.Map.mem nv installed_opams then nodef else
         try
           let o = OpamPackage.Map.find nv opams in
+          let lazy o = o in
           if lock_kind = `Lock_write then (* auto-repair *)
             (log "Definition missing for installed package %s, \
                   copying from repo"
@@ -377,7 +379,7 @@ let load lock_kind gt rt switch =
     let changed =
       OpamPackage.Map.merge (fun _ opam_new opam_installed ->
           match opam_new, opam_installed with
-          | Some r, Some i when not (OpamFile.OPAM.effectively_equal ~modulo_state:true i r) ->
+          | Some (lazy r), Some i when not (OpamFile.OPAM.effectively_equal ~modulo_state:true i r) ->
             Some ()
           | _ -> None)
         opams installed_opams
@@ -631,6 +633,7 @@ let load_virtual ?repos_list ?(avail_default=true) gt rt =
   let packages = OpamPackage.keys opams in
   let available_packages = lazy (
     OpamPackage.Map.filter (fun _ opam ->
+      let lazy opam = opam in
         OpamFilter.eval_to_bool ~default:avail_default
           (OpamPackageVar.resolve_global gt)
           (OpamFile.OPAM.available opam))
@@ -689,7 +692,7 @@ let with_write_lock ?dontblock st f =
   in
   ret, { st with switch_lock = st.switch_lock }
 
-let opam st nv = OpamPackage.Map.find nv st.opams
+let opam st nv = Lazy.force (OpamPackage.Map.find nv st.opams)
 
 let opam_opt st nv = try Some (opam st nv) with Not_found -> None
 
@@ -749,7 +752,7 @@ let is_dev_package st nv =
     else
       match OpamPackage.Map.find_opt nv st.repos_package_index with
       | None -> opam_opt st nv
-      | some -> some
+      | (Some (lazy some)) -> Some some
   in
   match opam_opt with
   | Some opam -> OpamPackageVar.is_dev_package st opam
@@ -763,9 +766,11 @@ let is_version_pinned st name =
   | None -> false
   | Some nv ->
     match opam_opt st nv with
-    | Some opam ->
-      OpamPackage.Map.find_opt nv st.repos_package_index = Some opam
     | None -> false
+    | Some opam ->
+      match OpamPackage.Map.find_opt nv st.repos_package_index with
+      | Some (lazy nv) -> nv = opam
+      | None -> false
 
 let source_dir st nv =
   if OpamPackage.Set.mem nv st.pinned
@@ -791,7 +796,7 @@ let conflicts_with st subset =
   let forward_conflicts, conflict_classes =
     OpamPackage.Set.fold (fun nv (cf,cfc) ->
         try
-          let opam = OpamPackage.Map.find nv st.opams in
+          let lazy opam = OpamPackage.Map.find nv st.opams in
           let conflicts =
             OpamFilter.filter_formula ~default:false
               (OpamPackageVar.resolve_switch ~package:nv st)
@@ -808,7 +813,7 @@ let conflicts_with st subset =
        not (OpamPackage.has_name subset nv.name) &&
        (OpamFormula.verifies forward_conflicts nv ||
         try
-          let opam = OpamPackage.Map.find nv st.opams in
+          let lazy opam = OpamPackage.Map.find nv st.opams in
           List.exists (fun cl -> OpamPackage.Name.Set.mem cl conflict_classes)
             (OpamFile.OPAM.conflict_class opam)
           ||
@@ -827,6 +832,7 @@ let remove_conflicts st subset pkgs =
 let get_conflicts_t env packages opams_map =
   let conflict_classes =
     OpamPackage.Map.fold (fun nv opam acc ->
+      let lazy opam = opam in
         List.fold_left (fun acc cc ->
             OpamPackage.Name.Map.update cc
               (OpamPackage.Set.add nv) OpamPackage.Set.empty acc)
@@ -849,6 +855,7 @@ let get_conflicts_t env packages opams_map =
       conflict_classes
   in
   OpamPackage.Map.fold (fun nv opam acc ->
+      let lazy opam = opam in
       let conflicts =
         OpamFilter.filter_formula ~default:false
           (env nv)
@@ -944,6 +951,7 @@ let get_dependencies_t st ~force_dev_deps ~test ~doc ~dev_setup
         Atom (name, fc))
   in
   OpamPackage.Map.mapi (fun nv opam ->
+    let lazy opam = opam in
       OpamFilter.partial_filter_formula
         (package_env_t st ~force_dev_deps ~test ~doc
            ~dev_setup ~requested_allpkgs ~err_undefined:false nv)
@@ -1061,6 +1069,7 @@ let universe st
 let dump_pef_state st oc =
   let conflicts = get_conflicts st st.packages st.opams in
   let print_def nv opam =
+    let lazy opam = opam in
     Printf.fprintf oc "package: %s\n" (OpamPackage.name_to_string nv);
     Printf.fprintf oc "version: %s\n" (OpamPackage.version_to_string nv);
     let installed = OpamPackage.Set.mem nv st.installed in
@@ -1220,7 +1229,7 @@ let unavailable_reason st ?(default="") atom =
 
 let update_package_metadata nv opam st =
   { st with
-    opams = OpamPackage.Map.add nv opam st.opams;
+    opams = OpamPackage.Map.add nv (Lazy.from_val opam) st.opams;
     packages = OpamPackage.Set.add nv st.packages;
     available_packages = lazy (
       if OpamFilter.eval_to_bool ~default:false

@@ -435,7 +435,7 @@ let import_t ?ask ?(deps_only=false) importfile t =
   let opams =
     OpamPackage.Name.Map.fold (fun name opam opams ->
         let nv = OpamPackage.create name (OpamFile.OPAM.version opam) in
-        OpamPackage.Map.add nv opam opams)
+        OpamPackage.Map.add nv (Lazy.from_val opam) opams)
       import_opams t.opams
   in
 
@@ -732,6 +732,7 @@ let get_compiler_packages ?repos rt =
   let package_index = OpamRepositoryState.build_index rt repos in
   OpamPackage.Map.filter
     (fun _ opam ->
+      let lazy opam = opam in
        OpamFile.OPAM.has_flag Pkgflag_Compiler opam &&
        OpamFilter.eval_to_bool ~default:false
          (OpamPackageVar.resolve_global rt.repos_global)
@@ -749,6 +750,7 @@ let guess_compiler_invariant ?repos rt strings =
   let compiler_packages =
     OpamPackage.Map.filter
       (fun _ opam ->
+        let lazy opam = opam in
          OpamFile.OPAM.has_flag Pkgflag_Compiler opam &&
          not (OpamFile.OPAM.has_flag Pkgflag_AvoidVersion opam) &&
          not (OpamFile.OPAM.has_flag Pkgflag_Deprecated opam))

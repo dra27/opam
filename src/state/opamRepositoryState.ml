@@ -19,7 +19,7 @@ let slog = OpamConsole.slog
 module Cache = struct
   type t = {
     cached_repofiles: (repository_name * OpamFile.Repo.t) list;
-    cached_opams: (repository_name * ((repository_name option * string) option * OpamFile.OPAM.t) OpamPackage.Map.t) list;
+    cached_opams: (repository_name * int OpamPackage.Map.t) list;
   }
 
   module C = OpamCached.Make (struct
@@ -36,12 +36,20 @@ module Cache = struct
     in
     List.iter remove_cache_file (OpamFilename.files cache_dir)
 
-  let memoize bindings =
+  let memoize (bindings : (OpamRepositoryName.Map.key *
+          OpamFile.OPAM.t lazy_t OpamTypes.package_map)
+         list) =
     let hash = Hashtbl.create 32768 in
+(*
     let hash2 = Hashtbl.create 64 in
-    let hits = ref 0 in
+*)
+    let hits = ref (-1) in
     let f (key, value) =
-      let f value =
+      let f (value : OpamFile.OPAM.t lazy_t) =
+        let lazy value = value in
+          try Hashtbl.find hash value
+          with Not_found -> incr hits; Hashtbl.add hash value !hits; !hits
+(*
         let key = OpamFile.OPAM.with_metadata_dir None value in
         let key2 = OpamFile.OPAM.metadata_dir value in
         let repo_part =
@@ -53,11 +61,11 @@ module Cache = struct
           with Not_found -> Hashtbl.add hash key key; key
         in
         (repo_part, opam_part)
+*)
       in
       (key, OpamPackage.Map.map f value)
     in
-    let r = List.map f bindings in
-    Printf.eprintf "Hits: %d\n%!" !hits; r
+    List.map f bindings, hash
 
   let marshall rt =
     (* Repository without remote are not cached, they are intended to be
@@ -71,33 +79,64 @@ module Cache = struct
            with Not_found -> false)
         repos_map
     in
+    let cached_opams, hash =
+      memoize (
+        OpamRepositoryName.Map.bindings
+          (filter_out_nourl rt.repo_opams))
+    in
       { cached_repofiles =
           OpamRepositoryName.Map.bindings
             (filter_out_nourl rt.repos_definitions);
-        cached_opams =
-          memoize (
-          OpamRepositoryName.Map.bindings
-            (filter_out_nourl rt.repo_opams));
-      }
+        cached_opams;
+      }, hash
 
   let file rt =
     OpamPath.state_cache rt.repos_global.root
 
+  let save_new rt =
+    let value, hash = marshall rt in
+    let oc = C.save_with_channel (file rt) value in
+    let opams = Array.make (Hashtbl.length hash) "" in
+    Hashtbl.iter (fun v i -> opams.(i) <- Marshal.to_string v []) hash;
+    let index = Array.map (fun x -> String.length x) opams in
+    if Array.length index > 0 then begin
+      let c = ref (index.(0)) in
+      index.(0) <- 0;
+      for i = 1 to Array.length index - 1 do
+        let l = index.(i) in
+        index.(i) <- !c;
+        c := !c + l
+      done;
+    end;
+    Marshal.to_channel oc index [];
+    Array.iter (output_string oc) opams;
+    close_out oc
+
   let save rt =
     remove ();
-    C.save (file rt) (marshall rt)
-
-  let save_new rt =
-    C.save (file rt) (marshall rt)
+    save_new rt
 
   let load root =
     let file = OpamPath.state_cache root in
+(*
     let conv (name, map) =
       let conv (metadata_dir, opam) =
         OpamFile.OPAM.with_metadata_dir metadata_dir opam in
       (name, OpamPackage.Map.map conv map) in
-    match C.load file with
-    | Some cache ->
+*)
+    match C.load_with_channel file with
+    | Some (cache, ic) ->
+      let chrono = OpamConsole.timer () in
+      let (index : int array) = Marshal.from_channel ic in
+      let buf = In_channel.input_all ic in
+      log "Loaded index and buffer in %.3fs" (chrono ());
+      let conv (name, map) =
+        let conv opam =
+          lazy (Marshal.from_string buf index.(opam))
+        in
+        (name, OpamPackage.Map.map conv map)
+      in
+      close_in ic;
       Some
         (OpamRepositoryName.Map.of_list cache.cached_repofiles,
          OpamRepositoryName.Map.of_list (List.map conv cache.cached_opams))
@@ -121,7 +160,7 @@ let load_opams_from_dir repo_name repo_root =
                OpamPackage.of_string
                  OpamFilename.(Base.to_string (basename_dir dir))
              in
-             OpamPackage.Map.add nv opam r
+             OpamPackage.Map.add nv (Lazy.from_val opam) r
            with Failure _ ->
              log "ERR: directory name not a valid package: ignored %s"
                OpamFilename.(to_string Op.(dir // "opam"));
@@ -261,7 +300,7 @@ let find_package_opt rt repo_list nv =
           OpamStd.Option.Op.(
             OpamRepositoryName.Map.find_opt repo_name rt.repo_opams >>=
             OpamPackage.Map.find_opt nv >>| fun opam ->
-            repo_name, opam
+            repo_name, Lazy.force opam
           )
       | some -> fun _ -> some)
     None repo_list

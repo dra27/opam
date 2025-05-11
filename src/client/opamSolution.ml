@@ -1158,7 +1158,7 @@ let get_depexts ?(force=false) ?(recover=false) t
         let more_pkgs =
           OpamPackage.Set.filter (fun nv ->
               (* dirty heuristic: recompute for all non-canonical packages *)
-              OpamPackage.Map.find_opt nv t.repos_package_index
+              (Option.map Lazy.force (OpamPackage.Map.find_opt nv t.repos_package_index))
               <> OpamSwitchState.opam_opt t nv)
             pkg_to_install
         in

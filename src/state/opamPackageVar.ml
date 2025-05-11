@@ -187,7 +187,7 @@ let build_id st opam =
       let hash_map, deps_hashes =
         OpamPackage.Set.fold (fun nv (hash_map, hashes) ->
             let hash_map, hash =
-              aux hash_map nv (OpamPackage.Map.find nv st.opams)
+              aux hash_map nv (Lazy.force (OpamPackage.Map.find nv st.opams))
             in
             hash_map, hash::hashes)
            (all_installed_deps st opam) (hash_map, [])
@@ -253,7 +253,7 @@ let resolve st ?opam:opam_arg ?(local=OpamVariable.Map.empty) v =
       | _ ->
         try
           let nv = OpamPackage.package_of_name st.installed name in
-          Some (OpamPackage.Map.find nv st.opams)
+          Some (Lazy.force (OpamPackage.Map.find nv st.opams))
         with Not_found -> None
     in
     let get_nv opam = OpamPackage.create name (OpamFile.OPAM.version opam) in

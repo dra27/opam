@@ -24,9 +24,13 @@ module Make (X: ARG): sig
   (** Marshal and write the cache to disk *)
   val save: OpamFilename.t -> t -> unit
 
+  val save_with_channel: OpamFilename.t -> t -> out_channel
+
   (** Load the cache if it exists and is valid and compatible with the current
      binary. Clear it otherwise. *)
   val load: OpamFilename.t -> t option
+
+  val load_with_channel: OpamFilename.t -> (t * in_channel) option
 
   val remove: OpamFilename.t -> unit
 

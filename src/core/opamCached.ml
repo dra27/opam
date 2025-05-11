@@ -22,7 +22,11 @@ module Make (X: ARG): sig
 
   val save: OpamFilename.t -> t -> unit
 
+  val save_with_channel: OpamFilename.t -> t -> out_channel
+
   val load: OpamFilename.t -> t option
+
+  val load_with_channel: OpamFilename.t -> (t * in_channel) option
 
   val remove: OpamFilename.t -> unit
 
@@ -61,18 +65,20 @@ end = struct
         let (cache: t) =
           OpamCompat.Gc.ramp_up (fun () -> Marshal.from_channel ic) in
         log "Loaded %a in %.3fs" (slog OpamFilename.to_string) file (chrono ());
-        Some cache
+        Some (cache, ic)
       with End_of_file | Failure _ ->
         log "Bad %s cache: likely a truncated file, ignoring." X.name;
         None
     in
     OpamStd.Option.Op.(check_marshaled_file fd >>= f)
 
-  let load cache_file =
+  let load_with_channel cache_file =
     match OpamFilename.opt_file cache_file with
     | Some file ->
         let r =
-          OpamFilename.with_flock `Lock_read file @@ fun fd ->
+          let lock = OpamFilename.flock `Lock_read file in
+          let fd = OpamSystem.get_lock_fd lock in
+          (* XXX Fun.protect etc *)
           marshal_from_file file fd
         in
         if r = None then begin
@@ -82,23 +88,45 @@ end = struct
         r
     | None -> None
 
-  let save cache_file t =
-    if OpamCoreConfig.(!r.safe_mode) then
-      log "Running in safe mode, not upgrading the %s cache" X.name
-    else
+  let load cache_file =
+    load_with_channel cache_file
+    |> Option.map (fun (v, ic) -> close_in ic; v)
+
+  (* XXX Generalise from OpamSystem / OpamFilename ?? *)
+  let null () =
+    let null =
+      if OpamStd.Sys.(os () = Win32) then
+        "nul"
+      else
+        "/dev/null"
+    in
+    Stdlib.open_out null
+
+  let save_with_channel cache_file t =
+    if OpamCoreConfig.(!r.safe_mode) then begin
+      log "Running in safe mode, not upgrading the %s cache" X.name;
+      null ()
+    end else
     try
       let chrono = OpamConsole.timer () in
-      OpamFilename.with_flock `Lock_write cache_file @@ fun fd ->
+      let lock = OpamFilename.flock `Lock_write cache_file in
+      let fd = OpamSystem.get_lock_fd lock in
+      (* XXX Fun.protect, etc. *)
       log "Writing the %s cache to %s ..."
         X.name (OpamFilename.prettify cache_file);
       let oc = Unix.out_channel_of_descr fd in
       output_string oc (OpamVersion.magic ());
       Marshal.to_channel oc t [];
       flush oc;
-      log "%a written in %.3fs" (slog OpamFilename.prettify) cache_file (chrono ())
+      log "%a written in %.3fs" (slog OpamFilename.prettify) cache_file (chrono ());
+      oc
     with Unix.Unix_error _ ->
       log "Could not acquire lock for writing %s, skipping %s cache update"
-        (OpamFilename.prettify cache_file) X.name
+        (OpamFilename.prettify cache_file) X.name;
+      null ()
+
+  let save cache_file t =
+    close_out (save_with_channel cache_file t)
 
   let remove cache_file =
     OpamFilename.remove cache_file

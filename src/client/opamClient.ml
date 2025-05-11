@@ -197,7 +197,7 @@ let upgrade_t
             let latest =
               OpamPackage.Set.fold (fun pkg latest ->
                   if OpamPackage.compare latest pkg < 0 then
-                    let opam = OpamPackage.Map.find pkg t.opams in
+                    let lazy opam = OpamPackage.Map.find pkg t.opams in
                     let avoid_version =
                       List.exists (function
                           | Pkgflag_AvoidVersion | Pkgflag_Deprecated -> true
@@ -529,7 +529,7 @@ let update
   let repo_changed =
     not
       (OpamRepositoryName.Map.equal
-         (OpamPackage.Map.equal (OpamFile.OPAM.effectively_equal))
+         (OpamPackage.Map.equal (fun l r -> let lazy l = l in let lazy r = r in OpamFile.OPAM.effectively_equal l r))
          rt_before.repo_opams rt.repo_opams)
   in
 
@@ -2601,7 +2601,7 @@ module PIN = struct
           let url =
             let nv = (OpamPackage.create name srcv) in
             match OpamPackage.Map.find_opt nv st.repos_package_index with
-            | Some opam ->
+            | Some (lazy opam) ->
               (match
                  OpamStd.Option.Op.(OpamFile.OPAM.url opam >>| OpamFile.URL.url)
                with
@@ -2683,7 +2683,7 @@ module PIN = struct
           let target =
             OpamStd.Option.Op.(OpamSwitchState.url st nv >>| OpamFile.URL.url)
           in
-          let opam = OpamPackage.Map.find_opt nv st.repos_package_index in
+          let opam = Option.map Lazy.force (OpamPackage.Map.find_opt nv st.repos_package_index) in
           try source_pin st name ~edit:true ?version ?opam ?locked target
           with OpamPinCommand.Aborted -> OpamStd.Sys.exit_because `Aborted
              | OpamPinCommand.Nothing_to_do -> st

@@ -22,7 +22,7 @@ module Cache: sig
   val load:
     dirname ->
     (OpamFile.Repo.t repository_name_map *
-     OpamFile.OPAM.t package_map repository_name_map)
+     OpamFile.OPAM.t lazy_t package_map repository_name_map)
       option
   val remove: unit -> unit
 end
@@ -43,19 +43,19 @@ val find_package_opt: 'a repos_state -> repository_name list -> package ->
 (** Given the repos state, and a list of repos to use (highest priority first),
     build a map of all existing package definitions *)
 val build_index:
-  'a repos_state -> repository_name list -> OpamFile.OPAM.t OpamPackage.Map.t
+  'a repos_state -> repository_name list -> OpamFile.OPAM.t lazy_t OpamPackage.Map.t
 
 (** Finds a package repository definition from its name (assuming it's in
     ROOT/repos/) *)
 val get_repo: 'a repos_state -> repository_name -> repository
 
-val load_opams_from_dir: repository_name -> dirname -> OpamFile.OPAM.t OpamPackage.Map.t
+val load_opams_from_dir: repository_name -> dirname -> OpamFile.OPAM.t lazy_t OpamPackage.Map.t
 
 (** Load all the metadata within the local mirror of the given repository,
     without cache *)
 val load_repo:
   repository -> OpamFilename.Dir.t ->
-  OpamFile.Repo.t * OpamFile.OPAM.t OpamPackage.Map.t
+  OpamFile.Repo.t * OpamFile.OPAM.t lazy_t OpamPackage.Map.t
 
 (** Get the (lazily extracted) repository root for the given repository *)
 val get_root: 'a repos_state -> repository_name -> OpamFilename.Dir.t

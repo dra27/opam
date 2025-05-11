@@ -1059,6 +1059,7 @@ let run_test ?(vars=[]) ~opam t =
                   OpamRepositoryName.Map.fold (fun reponame pkgmap files->
                       let pre = OpamRepositoryName.to_string reponame in
                       OpamPackage.Map.fold (fun pkg opam files ->
+                          let lazy opam = opam in
                           let name = pre ^ ":" ^ OpamPackage.to_string pkg in
                           let content = OpamFile.OPAM.write_to_string opam in
                           (name, content)::files)
