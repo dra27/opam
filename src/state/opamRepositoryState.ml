@@ -19,7 +19,7 @@ let slog = OpamConsole.slog
 module Cache = struct
   type t = {
     cached_repofiles: (repository_name * OpamFile.Repo.t) list;
-    cached_opams: (repository_name * OpamFile.OPAM.t OpamPackage.Map.t) list;
+    cached_opams: (repository_name * ((repository_name option * string) option * OpamFile.OPAM.t) OpamPackage.Map.t) list;
   }
 
   module C = OpamCached.Make (struct
@@ -35,6 +35,29 @@ module Cache = struct
         OpamFilename.remove file
     in
     List.iter remove_cache_file (OpamFilename.files cache_dir)
+
+  let memoize bindings =
+    let hash = Hashtbl.create 32768 in
+    let hash2 = Hashtbl.create 64 in
+    let hits = ref 0 in
+    let f (key, value) =
+      let f value =
+        let key = OpamFile.OPAM.with_metadata_dir None value in
+        let key2 = OpamFile.OPAM.metadata_dir value in
+        let repo_part =
+          try Hashtbl.find hash2 key2
+          with Not_found -> Hashtbl.add hash2 key2 key2; key2
+        in
+        let opam_part =
+          try Hashtbl.find hash key
+          with Not_found -> Hashtbl.add hash key key; key
+        in
+        (repo_part, opam_part)
+      in
+      (key, OpamPackage.Map.map f value)
+    in
+    let r = List.map f bindings in
+    Printf.eprintf "Hits: %d\n%!" !hits; r
 
   let marshall rt =
     (* Repository without remote are not cached, they are intended to be
@@ -52,8 +75,9 @@ module Cache = struct
           OpamRepositoryName.Map.bindings
             (filter_out_nourl rt.repos_definitions);
         cached_opams =
+          memoize (
           OpamRepositoryName.Map.bindings
-            (filter_out_nourl rt.repo_opams);
+            (filter_out_nourl rt.repo_opams));
       }
 
   let file rt =
@@ -68,11 +92,15 @@ module Cache = struct
 
   let load root =
     let file = OpamPath.state_cache root in
+    let conv (name, map) =
+      let conv (metadata_dir, opam) =
+        OpamFile.OPAM.with_metadata_dir metadata_dir opam in
+      (name, OpamPackage.Map.map conv map) in
     match C.load file with
     | Some cache ->
       Some
         (OpamRepositoryName.Map.of_list cache.cached_repofiles,
-         OpamRepositoryName.Map.of_list cache.cached_opams)
+         OpamRepositoryName.Map.of_list (List.map conv cache.cached_opams))
     | None -> None
 
 end
