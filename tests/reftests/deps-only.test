@@ -495,12 +495,9 @@ Done.
 ### # it takes lorem.2
 ### opam install --deps-only dolor.1 lorem
 The following actions will be performed:
-=== remove 1 package
-  - remove  lorem 1 [conflicts with lorem]
 === install 1 package
-  - install sit   2 [required by lorem]
+  - install sit 2 [required by lorem]
 
 <><> Processing actions <><><><><><><><><><><><><><><><><><><><><><><><><><><><>
--> removed   lorem.1
 -> installed sit.2
 Done.
