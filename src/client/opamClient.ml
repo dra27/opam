@@ -2168,6 +2168,36 @@ let install_t t ?ask ?(ignore_conflicts=false) ?(depext_only=false)
     if assume_built then filter_unpinned_locally t atoms compl
     else List.map compl atoms
   in
+  let atoms =
+    if deps_only then
+      let request =
+        OpamSolver.request ()
+          ~install:atoms
+          ~deprequest:(OpamFormula.to_atom_formula formula)
+      in
+      let packages =
+        OpamFormula.packages_of_atoms t.packages atoms in
+      let solution =
+        OpamSolution.resolve t Install ~requested:packages request in
+      match solution with
+      | Conflicts cs ->
+          display_conflicts t cs;
+          OpamConsole.msg "No solution found, exiting\n";
+          OpamStd.Sys.exit_because `No_solution
+      | Success solution ->
+          let pkgs = OpamSolver.all_packages solution in
+          let f (name, _) =
+            let atom =
+              try OpamSolution.eq_atom_of_package (OpamPackage.max_version pkgs name)
+              with Not_found ->
+                OpamSolution.eq_atom_of_package (OpamSwitchState.find_installed_package_by_name t name)
+            in
+            atom
+          in
+          List.map f atoms
+    else
+      atoms
+  in
   let names =
     OpamPackage.Name.Set.of_list (List.rev_map fst atoms)
   in

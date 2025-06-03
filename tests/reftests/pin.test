@@ -1061,7 +1061,7 @@ opam-version: "2.0"
 [ERROR] Package conflict!
   * Incompatible packages:
     - (invariant) -> simcomp
-    - deps-of-sim
+    - sim >= 2.0
     You can temporarily relax the switch invariant with `--update-invariant'
 
 No solution found, exiting

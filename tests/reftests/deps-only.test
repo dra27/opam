@@ -36,9 +36,9 @@ The following actions would be performed:
 Nothing to do.
 ### opam install --deps-only foo.2 baz.1
 [ERROR] Package conflict!
-  * Incompatible packages:
-    - deps-of-baz -> bar -> foo < 2
-    - deps-of-foo
+  * No agreement on the version of foo:
+    - baz -> bar -> foo < 2
+    - foo >= 2
 
 No solution found, exiting
 # Return code 20 #
@@ -93,7 +93,7 @@ depends: "b"
 ### opam install a c --deps-only
 [ERROR] Package conflict!
   * Missing dependency:
-    - deps-of-c -> b -> a
+    - (request) -> a
     unmet availability conditions: 'false'
 
 No solution found, exiting
@@ -101,7 +101,7 @@ No solution found, exiting
 ### opam install c --deps-only
 [ERROR] Package conflict!
   * Missing dependency:
-    - deps-of-c -> b -> a
+    - c -> b -> a
     unmet availability conditions: 'false'
 
 No solution found, exiting
@@ -305,9 +305,9 @@ opam-version: "2.0"
 depopts: "lorem" { < "2" }
 ### opam install --deps-only lorem.2 dolor.1
 [ERROR] Package conflict!
-  * Incompatible packages:
-    - deps-of-dolor -> ipsum -> lorem < 2
-    - deps-of-lorem
+  * No agreement on the version of lorem:
+    - dolor -> ipsum -> lorem < 2
+    - lorem >= 2
 
 No solution found, exiting
 # Return code 20 #
@@ -401,9 +401,9 @@ The following actions will be performed:
 Done.
 ### opam install --deps-only lorem.2 dolor.1
 [ERROR] Package conflict!
-  * Incompatible packages:
-    - deps-of-dolor -> ipsum -> lorem < 2
-    - deps-of-lorem
+  * No agreement on the version of lorem:
+    - dolor -> ipsum -> lorem < 2
+    - lorem >= 2
 
 No solution found, exiting
 # Return code 20 #
@@ -467,18 +467,17 @@ Done.
 ### opam switch create deps-conflictssss --empty
 ### opam install --deps-only lorem.2 dolor.2
 [ERROR] Package conflict!
-  * Missing dependency:
-    - deps-of-dolor -> deps-of-lorem < 2
-    no matching version
+  * No agreement on the version of lorem:
+    - dolor >= 2 -> lorem < 2
+    - lorem >= 2
 
 No solution found, exiting
 # Return code 20 #
 ### opam switch create deps-conflictsssss --empty
 ### opam install --deps-only lorem.1 lorem.2
 [ERROR] Package conflict!
-  * Missing dependency:
-    - (request) -> deps-of-lorem
-    unknown package
+  * No agreement on the version of lorem:
+    - lorem
 
 No solution found, exiting
 # Return code 20 #
@@ -502,7 +501,6 @@ The following actions will be performed:
   - install sit   2 [required by lorem]
 
 <><> Processing actions <><><><><><><><><><><><><><><><><><><><><><><><><><><><>
--> removed   deps-of-lorem.1
 -> removed   lorem.1
 -> installed sit.2
 Done.
