@@ -2122,6 +2122,35 @@ let filter_unpinned_locally t atoms f =
          None))
     atoms
 
+let display_conflicts t cs =
+  OpamConsole.error "Package conflict!";
+  let (conflicts, _cycles) as explanations =
+    OpamCudf.conflict_explanations_raw t.packages cs
+  in
+  let has_missing_depexts =
+    let check = function
+      | `Missing (_, _, fdeps) ->
+        OpamFormula.fold_right (fun a x ->
+            match OpamSwitchState.unavailable_reason_raw t x with
+            | `MissingDepexts _ -> true
+            | _ -> a)
+          false fdeps
+      | _ -> false
+    in
+    List.exists check conflicts
+  in
+  let extra_message =
+    if has_missing_depexts then
+      let gt = t.switch_global in
+      OpamStd.Option.map_default (fun s -> s ^ ".\n\n") ""
+        (OpamSysInteract.repo_enablers ~env:gt.global_variables gt.config)
+    else ""
+  in
+  OpamConsole.errmsg "%s%s"
+    (OpamCudf.string_of_explanations
+       (OpamSwitchState.unavailable_reason t) explanations)
+    extra_message
+
 let install_t t ?ask ?(ignore_conflicts=false) ?(depext_only=false)
     ?(download_only=false) atoms ?(formula=OpamFormula.Empty)
     add_to_roots ~deps_only ~assume_built =
@@ -2305,33 +2334,7 @@ let install_t t ?ask ?(ignore_conflicts=false) ?(depext_only=false)
   let t, solution = match solution with
     | Conflicts cs ->
       log "conflict!";
-      OpamConsole.error "Package conflict!";
-      let (conflicts, _cycles) as explanations =
-        OpamCudf.conflict_explanations_raw t.packages cs
-      in
-      let has_missing_depexts =
-        let check = function
-          | `Missing (_, _, fdeps) ->
-            OpamFormula.fold_right (fun a x ->
-                match OpamSwitchState.unavailable_reason_raw t x with
-                | `MissingDepexts _ -> true
-                | _ -> a)
-              false fdeps
-          | _ -> false
-        in
-        List.exists check conflicts
-      in
-      let extra_message =
-        if has_missing_depexts then
-          let gt = t.switch_global in
-          OpamStd.Option.map_default (fun s -> s ^ ".\n\n") ""
-            (OpamSysInteract.repo_enablers ~env:gt.global_variables gt.config)
-        else ""
-      in
-      OpamConsole.errmsg "%s%s"
-        (OpamCudf.string_of_explanations
-           (OpamSwitchState.unavailable_reason t) explanations)
-        extra_message;
+      display_conflicts t cs;
       t, if depext_only then None else Some (Conflicts cs)
     | Success solution ->
       let skip =
