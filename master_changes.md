@@ -154,6 +154,7 @@ users)
   * Add opam file loading tests to `update.test` to demonstrate current behaviour of loading full repository instead of only changed files. [#6614 @arozovyk @rjbou @kit-ty-kate]
   * Fix `env.test` in cases where calling `env` inside of a script outputs a `__CF_USER_TEXT_ENCODING` environment variable that isn't present in `sh -c env` [#6719 @kit-ty-kate]
   * Add complete tests for the `pin-depends` feature [#6611 @rjbou]
+  * Add a test for `variables.sh` double-applying [#6729 @dra27]
 
 ### Engine
   * Fix gcc < 14.3 bug on mingw i686 [#6624 @kit-ty-kate]
