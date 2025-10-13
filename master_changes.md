@@ -22,6 +22,7 @@ users)
 
 ## Init
   * Remove `getconf` from the list of required runtime tools, which allows `opam init` to work out-of-the-box on Haiku [#6634 @kit-ty-kate - fix #6632]
+  * The variables scripts now only update the environment if `OPAM_SWITCH_PREFIX` is unset-or-empty [#6729 @dra27 - fix dbuenzli/topkg#142, #4649, #5761]
 
 ## Config report
 
@@ -115,11 +116,13 @@ users)
   * [NEW] Fetch shared archive sources without checksums [#6627 @psafont - fix #5638]
 
 ## Shell
+  * csh: Don't double-set unconditional variables in `variables.csh` and `env_hook.csh` [#6729 @dra27]
 
 ## Internal
   * Replace every polymorphic uses of `List.mem` by a version that doesn't use `Repr.equal` [#6644 @kit-ty-kate]
   * Simplify the `src_ext/update-sources.sh` script [#6701 @kit-ty-kate]
   * Homogeneise verbose command output between sandboxed and non sandboxed one [#6675 @rjbou]
+  * Add the `install-pin-depends`, `ignore-pin-depends`, `proceed-actions` and `switch-clean-up` named questions [#6611 @kit-ty-kate @rjbou]
 
 ## Internal: Unix
 
@@ -151,6 +154,9 @@ users)
   * Add a test showing the behaviour of nested extra-files [#6715 @kit-ty-kate]
   * Add opam file loading tests to `update.test` to demonstrate current behaviour of loading full repository instead of only changed files. [#6614 @arozovyk @rjbou @kit-ty-kate]
   * Fix `env.test` in cases where calling `env` inside of a script outputs a `__CF_USER_TEXT_ENCODING` environment variable that isn't present in `sh -c env` [#6719 @kit-ty-kate]
+  * Add complete tests for the `pin-depends` feature [#6611 @rjbou]
+  * Add a test for `variables.sh` double-applying [#6729 @dra27]
+  * Add a test showing the "nuking the root" effect [#6729 @dra27]
 
 ### Engine
   * Fix gcc < 14.3 bug on mingw i686 [#6624 @kit-ty-kate]
