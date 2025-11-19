@@ -1,3 +1,5 @@
+.SHELLFLAGS := -eu$(if $(shell (set -o pipefail 2>/dev/null && echo yes)),o pipefail) $(.SHELLFLAGS)
+
 TAG = master
 VERSION = $(shell git describe $(TAG))
 OPAM_VERSION = $(subst -,~,$(VERSION))
