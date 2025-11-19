@@ -1,3 +1,5 @@
+.SHELLFLAGS := -eu$(if $(shell (set -o pipefail 2>/dev/null && echo yes)),o pipefail) $(.SHELLFLAGS)
+
 -include ../Makefile.config
 
 ifeq ($(DUNE),)
